@@ -1,0 +1,80 @@
+[
+  {
+    "duplicate": "512899e9b5fa",
+    "of": "5679172dbe1b",
+    "source": "openalex",
+    "rule": "exact_title"
+  },
+  {
+    "duplicate": "d77b095dba26",
+    "of": "541902b54e2d",
+    "source": "openalex",
+    "rule": "exact_title"
+  },
+  {
+    "duplicate": "9d44a809594c",
+    "of": "9d44a809594c",
+    "source": "pubmed",
+    "rule": "doi"
+  },
+  {
+    "duplicate": "de267f627087",
+    "of": "de267f627087",
+    "source": "pubmed",
+    "rule": "doi"
+  },
+  {
+    "duplicate": "d331d78c3781",
+    "of": "d331d78c3781",
+    "source": "pubmed",
+    "rule": "doi"
+  },
+  {
+    "duplicate": "512899e9b5fa",
+    "of": "5679172dbe1b",
+    "source": "pubmed",
+    "rule": "doi"
+  },
+  {
+    "duplicate": "a308762151ba",
+    "of": "a308762151ba",
+    "source": "pubmed",
+    "rule": "doi"
+  },
+  {
+    "duplicate": "5aeaf82b13bb",
+    "of": "5aeaf82b13bb",
+    "source": "pubmed",
+    "rule": "doi"
+  },
+  {
+    "duplicate": "3e99d85a1224",
+    "of": "3e99d85a1224",
+    "source": "pubmed",
+    "rule": "doi"
+  },
+  {
+    "duplicate": "a8d3bd592b84",
+    "of": "a8d3bd592b84",
+    "source": "semantic_scholar",
+    "rule": "doi"
+  },
+  {
+    "duplicate": "16474c750646",
+    "of": "16474c750646",
+    "source": "semantic_scholar",
+    "rule": "doi"
+  },
+  {
+    "duplicate": "68964742fb1a",
+    "of": "68964742fb1a",
+    "source": "semantic_scholar",
+    "rule": "doi"
+  },
+  {
+    "duplicate": "a8d3bd592b84",
+    "of": "a8d3bd592b84",
+    "source": "arxiv",
+    "rule": "doi"
+  }
+]

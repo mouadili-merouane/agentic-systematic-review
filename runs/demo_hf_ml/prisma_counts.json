@@ -1,0 +1,11 @@
+{
+  "identified_per_source": {
+    "openalex": 100,
+    "pubmed": 100,
+    "semantic_scholar": 60,
+    "arxiv": 25
+  },
+  "identified_total": 285,
+  "duplicates_removed": 13,
+  "records_screened": 272
+}

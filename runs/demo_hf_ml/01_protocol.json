@@ -1,0 +1,60 @@
+{
+  "title": "Machine learning for predicting readmission or mortality in heart failure",
+  "research_question": "In adult patients with heart failure, how well do machine learning models predict hospital readmission or mortality, and how do they compare with conventional statistical models?",
+  "pico": {
+    "population": "Adults (>=18 years) diagnosed with heart failure (any type: HFrEF, HFpEF, acute or chronic)",
+    "intervention": "Machine learning or deep learning prediction models (e.g., random forest, gradient boosting, neural networks)",
+    "comparator": "Conventional statistical models (e.g., logistic regression, Cox model, clinical risk scores) — optional",
+    "outcomes": "Hospital readmission and/or all-cause or cardiovascular mortality; discrimination (AUC/C-statistic), calibration"
+  },
+  "inclusion_criteria": [
+    {
+      "id": "I1",
+      "text": "The study reports original research that develops or externally validates a machine‑learning or deep‑learning prediction model."
+    },
+    {
+      "id": "I2",
+      "text": "The study population consists of adult (≥18 years) patients diagnosed with heart failure of any phenotype."
+    },
+    {
+      "id": "I3",
+      "text": "The primary or secondary outcome evaluated by the model is hospital readmission, all‑cause mortality, or cardiovascular mortality."
+    },
+    {
+      "id": "I4",
+      "text": "The article provides at least one quantitative performance metric for the model (e.g., AUC, C‑statistic, accuracy, sensitivity, specificity, calibration measure)."
+    }
+  ],
+  "exclusion_criteria": [
+    {
+      "id": "E1",
+      "text": "The publication type is a review, meta‑analysis, editorial, letter, or conference abstract that does not present full primary data."
+    },
+    {
+      "id": "E2",
+      "text": "The study sample is limited to pediatric participants (age < 18 years)."
+    },
+    {
+      "id": "E3",
+      "text": "The model predicts incident heart‑failure diagnosis or onset rather than prognostic outcomes (readmission or mortality)."
+    },
+    {
+      "id": "E4",
+      "text": "The study evaluates only conventional statistical models without any machine‑learning or deep‑learning algorithm."
+    }
+  ],
+  "study_designs": [
+    "retrospective cohort",
+    "prospective cohort",
+    "registry-based study",
+    "secondary analysis of trial data"
+  ],
+  "years": [
+    2015,
+    2026
+  ],
+  "languages": [
+    "English"
+  ],
+  "rationale": "The criteria isolate primary research that applies ML/DL methods to prognostic prediction in adult heart‑failure patients, ensuring relevance to the question, availability of performance data, and exclusion of non‑original or pediatric work that would not inform clinical utility in the target population."
+}

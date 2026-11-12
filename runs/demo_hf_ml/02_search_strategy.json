@@ -1,0 +1,72 @@
+{
+  "strategy": {
+    "concept_blocks": [
+      {
+        "name": "population",
+        "keywords": [
+          "heart failure",
+          "cardiac failure",
+          "congestive heart failure",
+          "HF",
+          "left ventricular dysfunction",
+          "systolic dysfunction",
+          "diastolic dysfunction"
+        ],
+        "mesh_terms": [
+          "Heart Failure"
+        ]
+      },
+      {
+        "name": "intervention",
+        "keywords": [
+          "machine learning",
+          "artificial intelligence",
+          "deep learning",
+          "neural network",
+          "random forest",
+          "gradient boosting",
+          "support vector machine"
+        ],
+        "mesh_terms": [
+          "Machine Learning",
+          "Artificial Intelligence"
+        ]
+      },
+      {
+        "name": "outcome",
+        "keywords": [
+          "readmission",
+          "rehospitalization",
+          "hospital readmission",
+          "mortality",
+          "all-cause mortality",
+          "cardiovascular mortality",
+          "death"
+        ],
+        "mesh_terms": [
+          "Mortality",
+          "Hospitalization"
+        ]
+      }
+    ],
+    "exclusion_keywords": [
+      "pediatric",
+      "child",
+      "adolescent",
+      "review",
+      "meta-analysis",
+      "editorial",
+      "letter",
+      "abstract",
+      "conference",
+      "case report"
+    ],
+    "rationale": "Three concept blocks capture the target population (adults with heart failure), the predictive technologies of interest (machine‑learning and deep‑learning algorithms), and the clinical outcomes (readmission or mortality). Synonyms and common variants are combined with OR within each block, and the blocks are combined with AND to ensure high recall while limiting irrelevant hits. Exclusion keywords remove pediatric studies, non‑original publications, and other formats that would not provide primary predictive performance data."
+  },
+  "queries": {
+    "pubmed": "(\"heart failure\"[tiab] OR \"cardiac failure\"[tiab] OR \"congestive heart failure\"[tiab] OR HF[tiab] OR \"left ventricular dysfunction\"[tiab] OR \"systolic dysfunction\"[tiab] OR \"diastolic dysfunction\"[tiab] OR \"Heart Failure\"[Mesh]) AND (\"machine learning\"[tiab] OR \"artificial intelligence\"[tiab] OR \"deep learning\"[tiab] OR \"neural network\"[tiab] OR \"random forest\"[tiab] OR \"gradient boosting\"[tiab] OR \"support vector machine\"[tiab] OR \"Machine Learning\"[Mesh] OR \"Artificial Intelligence\"[Mesh]) AND (readmission[tiab] OR rehospitalization[tiab] OR \"hospital readmission\"[tiab] OR mortality[tiab] OR \"all-cause mortality\"[tiab] OR \"cardiovascular mortality\"[tiab] OR death[tiab] OR \"Mortality\"[Mesh] OR \"Hospitalization\"[Mesh]) AND (\"2015\"[dp] : \"2026\"[dp]) NOT (pediatric[ti] OR child[ti] OR adolescent[ti] OR review[ti] OR \"meta-analysis\"[ti] OR editorial[ti] OR letter[ti] OR abstract[ti] OR conference[ti] OR \"case report\"[ti])",
+    "openalex": "(\"heart failure\" OR \"cardiac failure\" OR \"congestive heart failure\" OR HF OR \"left ventricular dysfunction\" OR \"systolic dysfunction\" OR \"diastolic dysfunction\") AND (\"machine learning\" OR \"artificial intelligence\" OR \"deep learning\" OR \"neural network\" OR \"random forest\" OR \"gradient boosting\" OR \"support vector machine\") AND (readmission OR rehospitalization OR \"hospital readmission\" OR mortality OR \"all-cause mortality\" OR \"cardiovascular mortality\" OR death)",
+    "arxiv": "(abs:\"heart failure\" OR abs:\"cardiac failure\" OR abs:\"congestive heart failure\" OR abs:HF OR abs:\"left ventricular dysfunction\" OR abs:\"systolic dysfunction\" OR abs:\"diastolic dysfunction\") AND (abs:\"machine learning\" OR abs:\"artificial intelligence\" OR abs:\"deep learning\" OR abs:\"neural network\" OR abs:\"random forest\" OR abs:\"gradient boosting\" OR abs:\"support vector machine\") AND (abs:readmission OR abs:rehospitalization OR abs:\"hospital readmission\" OR abs:mortality OR abs:\"all-cause mortality\" OR abs:\"cardiovascular mortality\" OR abs:death)",
+    "semantic_scholar": "(\"heart failure\" | \"cardiac failure\" | \"congestive heart failure\" | HF | \"left ventricular dysfunction\" | \"systolic dysfunction\" | \"diastolic dysfunction\") + (\"machine learning\" | \"artificial intelligence\" | \"deep learning\" | \"neural network\" | \"random forest\" | \"gradient boosting\" | \"support vector machine\") + (readmission | rehospitalization | \"hospital readmission\" | mortality | \"all-cause mortality\" | \"cardiovascular mortality\" | death)"
+  }
+}
