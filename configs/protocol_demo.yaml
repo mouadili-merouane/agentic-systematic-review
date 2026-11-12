@@ -38,3 +38,7 @@ sources:            # nombre max d'enregistrements récupérés par source (dém
   arxiv: 25
 
 human_in_the_loop: true   # pauses de validation humaine aux étapes critiques
+
+# Étape texte intégral : si false, un article sans texte intégral en accès libre est évalué sur son
+# résumé (signalé 'abstract_only') ; si true, il est compté 'non récupéré' (PRISMA) et non évalué.
+fulltext_required: false

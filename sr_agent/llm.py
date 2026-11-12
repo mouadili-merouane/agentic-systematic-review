@@ -16,8 +16,19 @@ def make_llm(model, provider, temperature=0):
     return init_chat_model(model, model_provider=provider, temperature=temperature)
 
 
+class QuotaExceeded(RuntimeError):
+    """Quota journalier du fournisseur atteint : inutile de réessayer, changer de modèle ou attendre."""
+
+
+def _is_daily_quota(e):
+    msg = str(e).lower()
+    return any(k in msg for k in ["per day", "tpd", "rpd", "daily"])
+
+
 def _is_retryable(e):
     msg = str(e).lower()
+    if isinstance(e, QuotaExceeded):
+        return False
     return any(k in msg for k in ["rate", "429", "limit", "timeout", "503", "502", "overloaded", "connection"])
 
 
@@ -33,7 +44,12 @@ def _throttle():
        reraise=True)
 def call(llm, system, user):
     _throttle()
-    resp = llm.invoke([("system", system), ("user", user)])
+    try:
+        resp = llm.invoke([("system", system), ("user", user)])
+    except Exception as e:
+        if _is_daily_quota(e):
+            raise QuotaExceeded(f"Quota journalier atteint : {str(e)[:300]}") from e
+        raise
     return resp.content if isinstance(resp.content, str) else str(resp.content)
 
 
