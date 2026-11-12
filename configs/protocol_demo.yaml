@@ -1,0 +1,40 @@
+# Protocole de revue systématique (PRISMA 2020) — fichier d'entrée du pipeline.
+# Pour une nouvelle revue : copier ce fichier, changer le sujet, garder la structure.
+
+review_id: demo_hf_ml
+title: "Machine learning for predicting readmission or mortality in heart failure"
+research_question: >
+  In adult patients with heart failure, how well do machine learning models predict
+  hospital readmission or mortality, and how do they compare with conventional
+  statistical models?
+
+pico:
+  population: "Adults (>=18 years) diagnosed with heart failure (any type: HFrEF, HFpEF, acute or chronic)"
+  intervention: "Machine learning or deep learning prediction models (e.g., random forest, gradient boosting, neural networks)"
+  comparator: "Conventional statistical models (e.g., logistic regression, Cox model, clinical risk scores) — optional"
+  outcomes: "Hospital readmission and/or all-cause or cardiovascular mortality; discrimination (AUC/C-statistic), calibration"
+
+study_designs: ["retrospective cohort", "prospective cohort", "registry-based study", "secondary analysis of trial data"]
+
+# Critères bruts : l'agent Protocole les reformule en critères numérotés (I1.., E1..)
+inclusion:
+  - "Original research developing or validating a ML/DL model"
+  - "Population of adult heart failure patients"
+  - "Outcome is readmission or mortality"
+  - "Reports at least one performance metric (AUC, C-statistic, accuracy, sensitivity...)"
+exclusion:
+  - "Reviews, meta-analyses, editorials, letters, conference abstracts without full results"
+  - "Pediatric populations"
+  - "Models predicting HF diagnosis/onset only (not prognosis)"
+  - "Studies using only conventional statistics with no ML model"
+
+years: [2015, 2026]
+languages: ["English"]
+
+sources:            # nombre max d'enregistrements récupérés par source (démo)
+  openalex: 100
+  pubmed: 100
+  semantic_scholar: 60
+  arxiv: 25
+
+human_in_the_loop: true   # pauses de validation humaine aux étapes critiques

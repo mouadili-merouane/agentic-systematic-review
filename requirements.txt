@@ -1,0 +1,17 @@
+langgraph>=0.3
+langgraph-checkpoint-sqlite
+langchain>=0.3
+langchain-community
+langchain-groq
+langchain-google-genai
+langchain-openai
+faiss-cpu
+rank_bm25
+sentence-transformers
+pymupdf
+rapidfuzz
+tenacity
+pydantic>=2
+pyyaml
+requests
+pandas
