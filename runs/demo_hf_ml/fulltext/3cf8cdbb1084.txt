@@ -1,0 +1,680 @@
+AI derived ECG global 
+longitudinal strain compared to 
+echocardiographic measurements
+Hong-Mi Choi1,2, Joonghee Kim2,3,4, Jiesuck Park1,2, Jun-Bean Park2,5, Hyung-Kwan Kim2,5, 
+Hye Jung Choi1,2, Yeonyee E. Yoon1,2, Goo-Yeong Cho1,2, Youngjin Cho1,2,4,6 & 
+In-Chang Hwang1,2,6
+Left ventricular (LV) global longitudinal strain (LVGLS) is versatile; however, it is difficult to obtain. We 
+evaluated the potential of an artificial intelligence (AI)-generated electrocardiography score for LVGLS 
+estimation (ECG-GLS score) to diagnose LV systolic dysfunction and predict prognosis of patients 
+with heart failure (HF). A convolutional neural network-based deep-learning algorithm was trained to 
+estimate the echocardiography-derived GLS (LVGLS). ECG-GLS score performance was evaluated using 
+data from an acute HF registry at another tertiary hospital (n = 1186). In the validation cohort, the 
+ECG-GLS score could identify patients with impaired LVGLS (≤ 12%) (area under the receiver-operating 
+characteristic curve [AUROC], 0.82; sensitivity, 85%; specificity, 59%). The performance of ECG-GLS in 
+identifying patients with an LV ejection fraction (LVEF) < 40% (AUROC, 0.85) was comparable to that 
+of LVGLS (AUROC, 0.83) (p = 0.08). Five-year outcomes (all-cause death; composite of all-cause death 
+and hospitalization for HF) occurred significantly more frequently in patients with low ECG-GLS scores. 
+Low ECG-GLS score was a significant risk factor for these outcomes after adjustment for other clinical 
+risk factors and LVEF. The ECG-GLS score demonstrated a meaningful correlation with the LVGLS and 
+is effective in risk stratification for long-term prognosis after acute HF, possibly acting as a practical 
+alternative to the LVGLS.
+Keywords  Artificial intelligence, Electrocardiography, Global longitudinal strain, Heart failure, Prognosis
+Recent developments in echocardiography have emphasized the significance of the left ventricular (LV) global 
+longitudinal strain (GLS; LVGLS) as a prognosticator of various heart diseases1, including heart failure (HF)2, 
+valvular heart diseases3–5, and cardiomyopathies6. Despite its vast clinical utility, there are barriers to the 
+widespread use of LVGLS. For instance, the measurement and interpretation of the LVGLS are time-consuming 
+and complex compared to those of the ejection fraction and require specific machines, software, and skilled 
+personnel.
+Electrocardiography (ECG) is a simple, cost-effective, and well-established method for heart-disease 
+screening. Advances in artificial intelligence (AI) have expanded the capabilities of ECG, enhancing its 
+diagnostic scope in the cardiovascular field7. AI can also assist in the diagnosis of subclinical atrial fibrillation, 
+HF, hypertrophic cardiomyopathy (HCM), and valvular heart diseases8. Previous studies have indicated the 
+potential of AI-assisted analysis of ECG patterns and features not only for the detection of certain diseases but also 
+for the estimation of LV function. For example, AI-enabled ECG analysis can distinguish ST-segment elevation, 
+myocardial infarction, or LV systolic dysfunction among patients who visit the emergency department9,10.
+Given the expanding clinical utility of LVGLS, with its superior sensitivity over that of the LV ejection fraction 
+(LVEF) and robust prognostic value across various heart diseases, leveraging AI technology to estimate LVGLS 
+from ECG features has merits, as this could enhance its clinical efficacy and cost-effectiveness. In the present 
+study, we generated an ECG-derived GLS (ECG-GLS) score using an AI deep-learning algorithm and evaluated 
+its potential in diagnosing LV systolic dysfunction and predicting the prognosis of patients with HF.
+1Department of Cardiology, Cardiovascular Center, Seoul National University Bundang Hospital, Seongnam, South 
+Korea. 2Department of Internal Medicine, Seoul National University College of Medicine, Seoul, South Korea. 
+3Department of Emergency Medicine, Seoul National University Bundang Hospital, Seongnam, South Korea. 4ARPI 
+Inc., Seongnam, South Korea. 5Department of Internal Medicine, Cardiovascular Center, Seoul National University 
+Hospital, Seoul, South Korea. 6These authors contributed equally: Youngjin Cho and In-Chang Hwang. email: 
+cho_y@snubh.org; inchang.hwang@gmail.com
+OPEN
+Scientific Reports | (2024) 14:26458 
+1
+| https://doi.org/10.1038/s41598-024-78268-8
+www.nature.com/scientificreports
+
+Methods
+Study population and data management
+This multicenter retrospective cohort study involved two tertiary hospitals (Hospitals A and B). ECG and 
+echocardiographic data were obtained from the following four registries: (1) the STRATS-AHF cohort, which 
+included patients who were admitted for acute HF with a range of ejection fractions from June 2009 to June 
+2015 (n = 1,608);2 (2) angiotensin receptor/neprilysin inhibitor (ARNI) baseline cohort, which included patients 
+with HF with reduced ejection fraction (HFrEF) who were prescribed ARNI from September 2015 to April 
+2020 (n = 409); (3) ARNI follow-up cohort from December 2020 to January 2021 (n = 409);11 and (4) threechamber strain cohort, which included patients who underwent echocardiography with GLS data from February 
+2020 to November 2022, irrespective of diagnosis (n = 984). The validation cohort comprised patients in the 
+STRATS-AHF registry from Hospital B2. Patients with inadequate images for strain analysis were excluded. A 
+total of 2,882 and 1,186 echocardiography and ECG pairs were included in the training and validation cohorts, 
+respectively (Fig. 1). All ECG recordings used consistent settings (25 mm/s speed and 10 mm/mV voltage gain), 
+and the input method for our analysis involved ECG image files (jpg format). Echocardiography and 12-lead ECG 
+pairs performed within a 7-day interval were included in the analysis. Clinical data were collected by reviewing 
+electronic medical records. The study outcomes were the 5-year all-cause death (ACD) and a composite of the 
+5-year ACD and hospitalization for HF (HHF)2.
+The study protocol was approved and the written informed consent was waived by the Seoul National 
+University Bundang Hospital Institutional Review Board (IRB No. B-2212-801-102) and the Seoul National 
+University Hospital Institutional Review Board (IRB No. J-2302-117-1407), given the retrospective nature of 
+this study. All clinical investigations were conducted according to the principles of the Declaration of Helsinki.
+AI algorithm
+The AI algorithm was developed using a transfer-learning approach that leveraged the encoder component from 
+an existing deep-learning system. This system, designed to classify cardiac rhythms and provide various risk 
+scores for emergency conditions, utilizes a common ECG encoder based on a modified ResNet-152 architecture. 
+The architecture was further enhanced with squeeze excitation blocks and a non-local network to capture both 
+local and global features from the ECG signals.
+We retained the head of the original convolutional neural network (CNN) and, replaced the tail portion with 
+two multi-layer perceptron (MLP) layers. Each layer consists of 128 neurons with ReLU activation functions, 
+and dropout layers were added to mitigate overfitting. These layers were designed to map features from the 
+encoder to a single numerical output, the ECG-GLS score.
+The model was fine-tuned using the Adam optimizer with a learning rate of 0.0001, over a maximum of 20 
+epochs, incorporating early stopping to prevent overfitting. During training, data augmentation techniques, 
+including random shift, rotation, random color jitter, and Gaussian noise, were applied to improve the model 
+robustness. The model was developed using the PyTorch framework and trained on a single RTX A6000 
+GPU, completing the process in under three hours. Each inference takes less than 1 s per case in routine use. 
+Fig. 1.  Composition of the training and validation cohorts. Echocardiography and 12-lead electrocardiography 
+(ECG) pairs performed within a 7-day interval were included in the analysis.
+ 
+Scientific Reports | (2024) 14:26458 
+2
+| https://doi.org/10.1038/s41598-024-78268-8
+www.nature.com/scientificreports/
+
+The loss function used for training was the mean squared error (MSE), appropriate for this regression task 
+(Supplementary Figure S1).
+Echocardiography and strain analysis
+Echocardiographic images were obtained using comprehensive echocardiography in accordance with the 
+guidelines of the American Society of Echocardiography12. LVEF was measured from apical four- and twochamber views using the Modified Simpson’s method. LVGLS was measured using a built-in software in each 
+echocardiography machine. For the training cohorts 2 and 3, the Image-Arena system (TomTec Imaging Systems, 
+Munich, Germany) was utilized to measure LVGLS. For strain analysis, the endocardial borders were traced on 
+the end-systolic frame defined by the QRS complex. The software tracked speckles along the endocardial border 
+and myocardium throughout the cardiac cycle. The peak longitudinal strain was automatically computed by 
+averaging regional strain values. The LVGLS was obtained from apical three-, four-, and two-chamber views. 
+Because the LVGLS values are expressed as absolute values to avoid confusion, higher values represent better 
+function. For patients with sinus rhythm, analyses were performed on a single cardiac cycle. For patients with 
+atrial fibrillation, strain values were calculated as the average of three cardiac cycles. Representative cases are 
+described in Fig. 2.
+Statistical analysis
+Continuous variables are presented as means and standard deviations or medians with interquartile ranges and 
+were compared using the independent two-sample t-test or Mann–Whitney U test. Categorical variables are 
+presented as frequencies with percentages and were compared using the χ2 test. The primary measure of model 
+performance was the AUROC for the prediction of LV systolic dysfunction estimated by the LVGLS. AUROC 
+curves were compared using DeLong’s test.
+Kaplan–Meier curves for study outcomes were plotted to indicate the discrimination capacities of the ECGGLS score and LVGLS, which were compared using the log-rank test. We used Cox proportional hazards modeling 
+Fig. 2.  Representative case of LVGLS and ECG-GLS score pair. (A) A 43-year-old female who underwent 
+echocardiography for routine checkup. (B) A 78-year-old female with ischemic cardiomyopathy.
+ 
+Scientific Reports | (2024) 14:26458 
+3
+| https://doi.org/10.1038/s41598-024-78268-8
+www.nature.com/scientificreports/
+
+to compare the predictability for study outcomes between the ECG-GLS score and the echocardiographyderived GLS (LVGLS). The HR was adjusted for parameters that showed an association with study outcomes 
+on univariate analysis (p < 0.1) or had relevant clinical significance, excluding those with > 10% missing data or 
+multicollinearity with other variables. The Harrell’s C-index (C-index) was calculated to compare the predictive 
+performance of Cox proportional hazards models using the bootstrapping method. A two-sample t-test was 
+conducted on 1,000 sets of bootstrapped C-indices to compare the two models.
+Statistical significance was defined as a two-sided p value < 0.05. All statistical analyses were performed using 
+R software, version 4.1.2 (https://www.R-project.org).
+Results
+Baseline characteristics and echocardiographic parameters
+A total of 2,882 and 1,186 patients were included in the training and validation cohorts, respectively. The baseline 
+characteristics are presented in Table 1. The training cohort comprised four registries, including patients with 
+acute HF, chronic HF, various heart diseases, and normal heart function from Hospital A. The validation cohort 
+was also drawn from one of the four registries, but the patients were from Hospital B. Age and sex were comparable 
+between the training and validation cohorts; however, other features, including comorbidities, serum creatinine 
+levels, and echocardiographic parameters, were significantly different. The mean interval between ECG and 
+echocardiography was 0.58 ± 1.26 and 1.00 ± 2.49 days in the training and validation cohorts, respectively.
+ECG-GLS performance
+The LVGLS and ECG-GLS score were significantly correlated, with a correlation coefficient of 0.64 (p < 0.001, 
+Fig. 3A) in the validation cohort. In the training cohort, the areas under the receiver operating characteristic 
+Training cohort 1
+Training cohort 2
+Training cohort 3
+Training cohort 4
+p value 
+(Training 
+Cohort 
+1–4)
+Training cohort 
+(total)
+Validation 
+cohort
+p value 
+(Training 
+vs. 
+Validation)
+STRATS-AHF 
+(Hospital A)
+ARNI cohort 
+(Initial)
+ARNI cohort 
+(Follow-up)
+Three-chamber 
+strain cohort
+Hospital A (Total)
+Hospital B
+(STRATS-AHF)
+(N = 1,528)
+(N = 343)
+(N = 334)
+(N = 677)
+(N = 2,882)
+(N = 1,186)
+Age (years)
+72.3 ± 13.1
+64.6 ± 13.7
+64.8 ± 14.1
+68.4 ± 14.4
+< 0.001
+69.6 ± 13.9
+69.0 ± 14.8
+0.246
+Male sex
+763 (49.9%)
+252 (73.5%)
+244 (73.1%)
+403 (59.5%)
+< 0.001
+1662 (57.7%)
+681 (57.4%)
+0.912
+SBP (mmHg)
+133.4 ± 29.1
+119.1 ± 18.0
+118.4 ± 17.4
+128.2 ± 18.8
+< 0.001
+128.8 ± 25.3
+129.0 ± 27.4
+0.826
+DBP (mmHg)
+74.8 ± 18.6
+71.7 ± 13.9
+71.2 ± 3.1
+73.7 ± 12.7
+< 0.001
+73.8 ± 16.3
+75.9 ± 16.6
+< 0.001
+DM
+587 (38.4%)
+118 (34.4%)
+114 (34.1%)
+158 (23.3%)
+< 0.001
+977 (33.9%)
+346 (29.2%)
+0.004
+HTN
+1049 (68.7%)
+110 (32.1%)
+108 (32.3%)
+271 (40.0%)
+< 0.001
+1538 (53.4%)
+522 (44.0%)
+< 0.001
+Prior HF
+450 (29.5%)
+343 (100.0%)
+334 (100.0%)
+225 (33.2%)
+< 0.001
+1352 (46.9%)
+812 (68.5%)
+< 0.001
+Prior CAD
+523 (34.2%)
+114 (33.2%)
+108 (32.3%)
+196 (29.0%)
+0.111
+941 (32.7%)
+305 (25.7%)
+< 0.001
+BUN (mg/dL)
+27.6 ± 18.0
+22.3 ± 12.7
+22.2 ± 12.6
+20.6 ± 13.3
+< 0.001
+24.7 ± 16.1
+26.1 ± 17.0
+0.023
+Creatinine (mg/
+dL)
+1.6 ± 1.8
+1.3 ± 1.3
+1.3 ± 1.1
+1.2 ± 1.4
+< 0.001
+1.5 ± 1.6
+1.7 ± 2.0
+< 0.001
+LVEDD (mm)
+53.0 ± 9.2
+60.5 ± 7.7
+56.4 ± 8.8
+48.6 ± 7.3
+< 0.001
+53.2 ± 9.3
+56.1 ± 9.8
+< 0.001
+LVESD (mm)
+40.3 ± 11.3
+51.1 ± 8.7
+45.3 ± 10.3
+33.4 ± 8.9
+< 0.001
+40.5 ± 11.6
+41.7 ± 12.3
+0.012
+LVEF (%)
+41.5 ± 15.8
+27.7 ± 6.8
+38.0 ± 11.9
+56.7 ± 12.2
+< 0.001
+43.0 ± 16.3
+40.7 ± 15.4
+< 0.001
+LVMI (g/m2)
+135.0 ± 44.2
+140.5 ± 37.8
+124.6 ± 35.1
+104.8 ± 35.3
+< 0.001
+127.2 ± 42.6
+126.6 ± 42.3
+0.679
+LA diameter (mm)
+43.7 ± 8.9
+44.2 ± 7.8
+41.8 ± 8.6
+40.3 ± 8.1
+< 0.001
+42.7 ± 8.7
+48.9 ± 10.5
+< 0.001
+LAVI (ml/m2)
+59.2 ± 32.3
+61.6 ± 28.3
+53.6 ± 29.1
+46.1 ± 26.0
+< 0.001
+55.8 ± 30.6
+64.0 ± 53.8
+< 0.001
+E velocity (m/s)
+0.9 ± 0.4
+0.8 ± 0.3
+0.7 ± 0.3
+0.8 ± 0.3
+< 0.001
+0.8 ± 0.3
+0.9 ± 0.4
+< 0.001
+E/e’
+19.1 ± 10.8
+18.9 ± 10.5
+15.0 ± 9.0
+13.0 ± 7.3
+< 0.001
+17.1 ± 10.1
+19.4 ± 11.0
+< 0.001
+TR Vmax (m/s)
+2.8 ± 0.6
+2.7 ± 0.6
+2.5 ± 0.5
+2.5 ± 0.5
+< 0.001
+2.7 ± 0.6
+3.0 ± 0.6
+< 0.001
+RVSP (mmHg)
+38.6 ± 13.7
+36.9 ± 15.0
+31.0 ± 11.8
+31.8 ± 11.4
+< 0.001
+36.0 ± 13.5
+48.6 ± 15.3
+< 0.001
+LVGLS (%, 
+absolute)
+10.5 ± 4.8
+10.2 ± 3.2
+12.8 ± 4.4
+16.4 ± 4.5
+< 0.001
+12.1 ± 5.2
+10.4 ± 5.2
+< 0.001
+Vendor
+< 0.001
+< 0.001
+ GE
+964 (63.3%)
+0 (0.0%)
+0 (0.0%)
+168 (24.8%)
+1132 (51.5%)
+547 (46.2%)
+ Philips
+167 (11.0%)
+343 (100.0%)
+334 (100.0%)
+509 (75.2%)
+676 (30.7%)
+266 (22.4%)
+ Siemens
+392 (25.7%)
+0 (0.0%)
+0 (0.0%)
+0 (0.0%)
+392 (17.8%)
+372 (31.4%)
+Table 1.  Baseline characteristics of the training and validation cohorts. BUN blood urea nitrogen, 
+CAD coronary artery disease, DBP diastolic blood pressure, DM diabetes mellitus, HF heart failure, 
+HTN hypertension, LA left atrium, LAVI left atrial volume index, LVEDD left ventricular end-diastolic 
+dimension, LVEF left ventricular ejection fraction, LVESD left ventricular end-systolic dimension, LVGLS, 
+left ventricular global longitudinal strain, LVMI left ventricular mass index, SBP systolic blood pressure, 
+TR tricuspid regurgitation.
+ 
+Scientific Reports | (2024) 14:26458 
+4
+| https://doi.org/10.1038/s41598-024-78268-8
+www.nature.com/scientificreports/
+
+curve (AUROCs) of the ECG-GLS scores for detecting LVGLS ≤ 16% (indicating LV systolic dysfunction) and 
+LVGLS ≤ 12% (indicating more severe LV systolic dysfunction) were 0.93 and 0.90, respectively. In the validation 
+cohort, the AUROCs of the ECG-GLS score for detecting LVGLS ≤ 16% and LVGLS < 12% were 0.85 and 0.82, 
+respectively (Fig. 3B). The precision, recall, and F1 score of the predictive model using the ECG-GLS score to 
+identify patients with LVGLS ≤ 12% were 0.80, 0.84, and 0.82, respectively. The area under the precision-recall 
+curve was 0.90 (Supplementary Figure S2). The diagnostic performance of the ECG-GLS score for identifying 
+patients with HFrEF (LVEF < 40%) was comparable to that of the LVGLS (AUROC, 0.85 vs. 0.83, respectively; 
+p = 0.08; Fig. 4).
+Prediction of study outcomes
+Five-year ACD and the composite of ACD and HHF were significantly higher in patients with ECG-GLS 
+scores ≤ 12 than in patients with ECG-GLS scores > 12 (log-rank p = 0.002 and p < 0.001, respectively; Fig. 5A). 
+An analogous pattern was observed for the Kaplan–Meier curves using an LVGLS cutoff of 12% (log-rank 
+p < 0.001 and p = 0.001, respectively; Fig. 5B).
+LVGLS ≤ 12% (hazard ratio, HR 1.41, 95% confidence interval [CI] 1.16–1.71) and ECG-GLS score ≤ 12 
+(HR 1.36, 95% CI 1.12–1.66) were associated with a significantly higher 5-year ACD on univariate analysis 
+(Supplementary Table S1). After adjustment for relevant clinical risk factors and echocardiographic parameters, 
+a low ECG-GLS score (≤ 12) was a significant predictor of ACD (HR 1.38, 95% CI 1.11–1.73), with results 
+comparable to those for LVGLS ≤ 12% (HR 1.43, 95% CI 1.14–1.79; p value for bootstrapped mean of Harrel’s 
+C-indices = 0.109; Table 2). Similar results were observed for the composite outcome of the 5-year ACD and HHF. 
+LVGLS ≤ 12% (HR 1.29, 95% CI 1.09–1.54) and ECG-GLS score ≤ 12 (HR 1.34, 95% CI 1.12–1.60) were both 
+significant indicators of the composite outcome (p value for bootstrapped mean of Harrell’s C-indices = 0.423; 
+Table 3; results of the univariate analysis are provided in Supplementary Table S2).
+Discussion
+In the present study, we demonstrated a strong correlation between the ECG-GLS (estimated from ECG features 
+using an AI-based algorithm) and the LVGLS (measured using echocardiography). We also found that the 
+performance of ECG-GLS in predicting the long-term prognosis of patients with HF and LVGLS was similar to 
+that of the LVGLS, suggesting the relevance of our AI-based algorithm for estimating GLS from ECG features 
+and its potential as a practical alternative to LVGLS. To our knowledge, the present study is the first to attempt 
+to estimate the LVGLS from ECG data using an AI-based algorithm.
+Research on AI-based algorithms that use ECG images to detect a range of heart diseases has been reported, 
+expanding the role of AI in cardiology8. The utilization of AI-based ECG algorithms has focused on the early 
+detection of diseases that can be easily diagnosed using ECG but are often missed, such as atrial fibrillation13 
+or ST-segment elevation myocardial infarction14. However, the rapid growth of AI has expanded the potential 
+of ECG to an extent that it rivals that of echocardiography by revealing previous unseen pieces of information. 
+Acceptable AI-enabled ECG performance has been demonstrated in the diagnosis of various types of HF10,15,16 
+Fig. 3.  ECG-GLS evaluations. (A) In the validation cohort, the LVGLS and ECG-GLS score were significantly 
+correlated (correlation coefficient = 0.64, p < 0.001). (B) Receiver-operating characteristic curves of the 
+ECG-GLS score for the prediction of LVGLS ≤ 12% in the training cohort (blue) and validation cohort 
+(red) are shown. Abbreviations: AUROC, area under the receiver operating characteristic curve; ECGGLS,electrocardiography-derived global longitudinal strain; LVGLS, left ventricular global longitudinal strain 
+on echocardiography.
+ 
+Scientific Reports | (2024) 14:26458 
+5
+| https://doi.org/10.1038/s41598-024-78268-8
+www.nature.com/scientificreports/
+
+and myocardial diseases, such as HCM17 and cardiac amyloidosis18. Moreover, AI-enabled ECG HCM scores 
+were correlated with decreases in LV outflow tract gradients and N-terminal pro-B-natriuretic peptide levels 
+over time in patients with obstructive HCM who were prescribed mavacamten19. Most recently, Lee et al. showed 
+improved performance in prognostication related to diastolic dysfunction with AI-enabled ECG20. In the present 
+study, we attempted to extend the capability of AI-enabled ECG to predict LVGLS, a state-of-the-art technology 
+in the echocardiography field. Using ECG features of 2,881 patients from four retrospective registries, our AIbased algorithm for the estimation of LVGLS produced ECG-GLS scores that showed a good correlation with 
+echocardiographic measurements of the LVGLS and were able to predict the long-term prognosis in patients who 
+were admitted for HF. As the ECG-GLS score is a unitless value and is not numerically identical to the LVGLS (%) 
+measured by echocardiography, the correlation coefficient of 0.64 seems lower than expected. However, a small 
+number of patients were distributed out of the limit of agreements in the Bland-Altman analysis (Supplementary 
+Figure S3). Additionally, the prognostic predictability of GLS in HF patients was preserved with a similar cutoff 
+value, which means the distribution of ECG-GLS score is similar to that of LVGLS.
+Fig. 4.  Receiver-operating characteristic curves. The performance of the ECG-GLS score (solid line) 
+and LVGLS (dashed line) for the prediction of heart failure with reduced ejection fraction are shown. 
+Abbreviations: AUROC, area under the receiver operating characteristic curve; ECG-GLS,electrocardiographyderived global longitudinal strain; LVGLS, left ventricular global longitudinal strain on echocardiography.
+ 
+Scientific Reports | (2024) 14:26458 
+6
+| https://doi.org/10.1038/s41598-024-78268-8
+www.nature.com/scientificreports/
+
+In the present study, the AUROCs of the ECG-GLS score for detecting LVGLS ≤ 16% and ≤ 12% were 0.85 
+and 0.82, respectively, which were not as high as we expected. This is because the validation cohort comprised 
+patients admitted for HF, whereas patients with all ranges of LVEF and LVGLS were included in the training 
+cohort. In addition, the number of patients included in our study was smaller than that in other studies on AIenabled ECG because of the limited collection of GLS data. Nonetheless, this study is the first to predict LVGLS 
+using AI-enabled ECG. Our ECG-GLS score is comparable to the LVGLS in identifying patients with HFrEF. 
+Furthermore, the ECG-GLS score is consistent with the familiar unit of the LVGLS. Thus, the ECG-GLS score is 
+user-friendly and can be used interchangeably with the LVGLS in real-world settings.
+Furthermore, the ECG-GLS score was comparable to the LVGLS score in predicting the long-term prognosis 
+of patients. LVGLS has been shown to be a better indicator than LVEF for predicting cardiovascular outcomes 
+in hospitalized patients with acute HF2. Previous studies on AI-enabled ECG have predominantly emphasized 
+its diagnostic capabilities, specifically for detecting various heart diseases or conditions. Although the diagnostic 
+potential of AI-enabled ECG is considerable and holds significant promise for clinical use, augmenting the 
+output of AI-enabled ECG algorithms with prognostic information can further enhance their utility. This 
+integration of prognostic data reinforces and validates the diagnostic accuracy of the algorithm. Consistent with 
+Fig. 5.  Survival curve comparisons. (A) Event-free survival curves for ACD and the composite outcome of 
+ACD and HHF according to an ECG-GLS score > 12 (blue) and ≤ 12 (red). (B) Event-free survival curves for 
+ACD and the composite outcome of ACD and HHF according to an LVGLS > 12% (green) and ≤ 12% (purple). 
+Abbreviations: ACD, all-cause death; ECG-GLS, electrocardiography-derived global longitudinal strain; 
+HHF, hospitalization for heart failure; LVGLS, left ventricular global longitudinal strain onechocardiography.
+ 
+Scientific Reports | (2024) 14:26458 
+7
+| https://doi.org/10.1038/s41598-024-78268-8
+www.nature.com/scientificreports/
+
+this, our findings indicate that AI-enabled ECG serves not only as an accurate indicator of the LVGLS, but also 
+as a valuable tool for prognostication, thereby extending its role beyond mere diagnostics.
+ECG has many advantages: it is ubiquitous, inexpensive, rapid, and does not require special training. Recently, 
+AI researchers have expanded the role of ECG in the diagnosis of various heart diseases8. Although the LVGLS 
+has recently been recognized as a valuable tool, echocardiographic LVGLS measurements require additional time 
+and effort from experts, as well as dedicated software or machines, which makes GLS underutilized compared to 
+its recommendations and demonstrated utility21. The LVGLS also has the troublesome issue of between-vendor 
+variability22. Moreover, measuring the LVGLS using echocardiography may be limited in patients with poor 
+echocardiographic windows, atrial fibrillation, and videos with low frame rates23. In contrast, the ECG-GLS 
+score is free from almost all of these limitations. Using the ECG-GLS score, non-experts can also predict the 
+value of the LVGLS, diagnose LV systolic dysfunction, and forecast the outcome of patients easily, making it 
+usable outside the echocardiography laboratory and significantly reducing time and costs. Integrating AI in 
+interpreting ECG results could potentially improve the cardiac diagnostic process, making it more accessible and 
+less reliant on specialized training and equipment.
+Limitations
+This study has several limitations. First, the ECG and echocardiography pairs used in this study were insufficient 
+to provide better prediction. Although we included diverse population with a wide range of LVGLS values in 
+the training cohort, the potential for overfitting remains. Future studies should incorporate a larger dataset, with 
+more diverse populations to further improve the model’s performance. Additionally, evaluating the utility of the 
+ECG-GLS score in a more diverse population across various clinical settings will be essential to fully assess its 
+generalizability and robustness. Second, although various vendors were used in the measurement of the LVGLS, 
+the number of ECG-echocardiography pairs used in the training cohort significantly differed among vendors. 
+Hence, the generalization of our ECG-GLS score prediction to all strain vendors requires further investigation. 
+This may limit the generalizability of the findings to broader populations. In addition, there was no formal 
+sample size calculation for this study, as we used all available data to enhance model performance. Finally, the 
+Model 1 (LVGLS)
+Model 2 (ECG-GLS)
+HR
+95% CI
+P value
+HR
+95% CI
+P value
+Age (years)
+1.03
+1.03–1.04
+< 0.001
+1.03
+1.03–1.04
+< 0.001
+Male sex
+1.07
+0.92–1.25
+0.391
+1.06
+0.91–1.24
+0.450
+DM
+1.39
+1.19–1.61
+< 0.001
+1.39
+1.19–1.61
+< 0.001
+Creatinine (mg/dL)
+1.07
+1.04–1.11
+< 0.001
+1.07
+1.03–1.10
+< 0.001
+Beta-blocker
+0.89
+0.76–1.03
+0.125
+0.89
+0.76–1.03
+0.115
+RAS blocker
+0.84
+0.72–0.98
+0.023
+0.82
+0.71–0.96
+0.011
+LVEF ≤ 30%
+1.08
+0.90–1.28
+0.409
+1.08
+0.91–1.29
+0.360
+LVGLS ≤ 12%
+1.29
+1.09–1.54
+0.003
+ECG-GLS 
+score ≤ 12
+1.34
+1.12–1.60
+0.001
+Table 3.  Multivariable cox proportional hazard regression analysis for 5-year all-cause death and 
+hospitalization for heart failure. CI confidence interval, DM diabetes mellitus, HR hazard ratio, LVEF left 
+ventricular ejection fraction, LVGLS left ventricular global longitudinal strain, RAS renin-angiotensin system.
+ 
+Model 1 (LVGLS)
+Model 2 (ECG-GLS)
+HR
+95% CI
+P value
+HR
+95% CI
+P value
+Age (years)
+1.04
+1.03–1.05
+< 0.001
+1.04
+1.03–1.05
+< 0.001
+Male sex
+1.08
+0.89–1.31
+0.434
+1.08
+0.89–1.31
+0.445
+DM
+1.32
+1.09–1.59
+0.004
+1.34
+1.11–1.61
+0.003
+Creatinine (mg/dL)
+1.09
+1.04–1.13
+< 0.001
+1.08
+1.04–1.13
+< 0.001
+Beta-blocker
+0.70
+0.57–0.84
+< 0.001
+0.69
+0.57–0.84
+< 0.001
+RAS blocker
+0.71
+0.59–0.85
+< 0.001
+0.69
+0.57–0.83
+< 0.001
+LVEF ≤ 30%
+1.21
+0.97–1.50
+0.090
+1.24
+1.00-1.53
+0.052
+LVGLS ≤ 12%
+1.43
+1.14–1.79
+0.002
+ECG-GLS 
+score ≤ 12
+1.38
+1.11–1.73
+0.005
+Table 2.  Multivariable cox proportional hazard regression analysis for 5-year all-cause death. CI confidence 
+interval, DM diabetes mellitus, HR hazard ratio, LVEF left ventricular ejection fraction, LVGLS left ventricular 
+global longitudinal strain, RAS renin-angiotensin system.
+ 
+Scientific Reports | (2024) 14:26458 
+8
+| https://doi.org/10.1038/s41598-024-78268-8
+www.nature.com/scientificreports/
+
+validation cohort included patients with HF, which made the predictive ability of our ECG-GLS score lower than 
+expected. Further studies are needed to demonstrate the utility of the ECG-GLS score in various populations.
+Conclusions
+The ECG-GLS score, estimated from ECG features using an AI-based algorithm, shows a meaningful correlation 
+with the LVGLS measured on echocardiography and is effective in risk stratification for the long-term prognosis 
+after acute HF. While ECG-GLS score is not a direct substitute for echocardiographic LVGLS, it offers a practical 
+and accessible alternative, particularly in settings where echocardiography is not readily available. With further 
+refinement and inclusion of additional datasets, the ECG-GLS score has the potential to become a valuable tool 
+in clinical practice, complementing traditional imaging modalities.
+Data availability
+The data used in the present study cannot be made publicly available owing to ethical restrictions set by the 
+Seoul National University Bundang Hospital Institutional Review Board (https://e-irb.snubh.org), as patient and 
+participant privacy would be compromised. A minimally anonymized dataset can be requested by contacting 
+the corresponding authors.
+Received: 20 May 2024; Accepted: 29 October 2024

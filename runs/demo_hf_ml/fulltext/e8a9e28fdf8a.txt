@@ -1,0 +1,1066 @@
+RESEARCH
+Open Access
+© The Author(s) 2024. Open Access This article is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 
+International License, which permits any non-commercial use, sharing, distribution and reproduction in any medium or format, as long as you 
+give appropriate credit to the original author(s) and the source, provide a link to the Creative Commons licence, and indicate if you modified the 
+licensed material. You do not have permission under this licence to share adapted material derived from this article or parts of it. The images or 
+other third party material in this article are included in the article’s Creative Commons licence, unless indicated otherwise in a credit line to the 
+material. If material is not included in the article’s Creative Commons licence and your intended use is not permitted by statutory regulation or 
+exceeds the permitted use, you will need to obtain permission directly from the copyright holder. To view a copy of this licence, visit ​h​t​t​p​:​/​/​c​r​e​a​t​i​
+v​e​c​o​m​m​o​n​s​.​o​r​g​/​l​i​c​e​n​s​e​s​/​b​y​-​n​c​-​n​d​/​4​.​0​/​.​
+Liu et al. Cardiovascular Diabetology (2024) 23:407 
+https://doi.org/10.1186/s12933-024-02503-9
+Cardiovascular Diabetology
+†Xiaozhu Liu, Zulong Xie and Yang Zhang contributed equally to this 
+article.
+*Correspondence:
+Niying Yin
+YIN_20240701@163.com
+Xiaoqian Zhou
+tudoumei1988@163.com
+Jie Yu
+ssforward@163.com
+Full list of author information is available at the end of the article
+Abstract
+Background  Heart failure combined with hypertension is a major contributor for elderly patients (≥ 65 years) to 
+in-hospital mortality. However, there are very few models to predict in-hospital mortality in such elderly patients. We 
+aimed to develop and test an individualized machine learning model to assess risk factors and predict in-hospital 
+mortality in in these patients.
+Methods  From January 2012 to December 2021, this study collected data on elderly patients with heart failure 
+and hypertension from the Chongqing Medical University Medical Data Platform. Least absolute shrinkage and 
+the selection operator was used for recognizing key clinical variables. The optimal predictive model was chosen 
+among eight machine learning algorithms on the basis of area under curve. SHapley Additive exPlanations and Local 
+Interpretable Model-agnostic Explanations was employed to interpret the outcome of the predictive model.
+Results  This study ultimately comprised 4647 elderly individuals with hypertension and heart failure. The Random 
+Forest model was chosen with the highest area under curve for 0.850 (95% CI 0.789–0.897), high accuracy for 0.738, 
+recall 0.837, specificity 0.734 and brier score 0.178. According to SHapley Additive exPlanations results, the most 
+related factors for in-hospital mortality in elderly patients with heart failure and hypertension were urea, length of stay, 
+neutrophils, albumin and high-density lipoprotein cholesterol.
+Conclusions  This study developed eight machine learning models to predict in-hospital mortality in elderly patients 
+with hypertension as well as heart failure. Compared to other algorithms, the Random Forest model performed 
+Machine learning for predicting in-hospital 
+mortality in elderly patients with heart failure 
+combined with hypertension: a multicenter 
+retrospective study
+Xiaozhu Liu1,2†, Zulong Xie1†, Yang Zhang3†, Jian Huang4, Lirong Kuang5, Xiujuan Li6, Huan Li7, Yuxin Zou8, 
+Tianyu Xiang9, Niying Yin10*, Xiaoqian Zhou11* and Jie Yu6*
+
+Page 2 of 13
+Liu et al. Cardiovascular Diabetology (2024) 23:407 
+Background
+Heart failure (HF), characterized by impairment of ven­
+tricular filling or ejection capacity, is a major contribu­
+tor to cardiovascular morbidity and mortality. It poses 
+a serious burden on public health and finance, with an 
+estimated annual per capita cost of approximately US 
+$4406.8 [1]. The Global Burden of Disease study reported 
+approximately 56  million individuals globally afflicted 
+with HF, 50.3% were women and 69.2% reside in mid­
+dle- and low-income countries [2]. Epidemiological data 
+reveals a correlation between age and HF incidence, with 
+prevalence rates of 3.86% for ages 65 to 79, and 7.55% for 
+those 80 years and older [1]. Studies have reported that 
+HF is the primary cause of hospitalization in patients 
+(≥ 65 years), with 21% of patients being readmitted within 
+a month of release [3]. This may be attributed to ageing 
+and changes in lifestyle [4]. In addition, there are gender 
+disparities in individuals with HF. Hypertension and isch­
+emic heart disease are the leading causes in women and 
+men, respectively [2].
+Globally, hypertension is the most prevalent cardio­
+vascular illness, affecting 1.28  billion individuals. In 
+industrialized nations, hypertension affects about 60% 
+of those over the age of 65 [5]. Previous studies have 
+shown that the incidence of hypertension increases with 
+age [6–8]. Brent M estimates that the number of patients 
+aged 60 ~ 79 with high blood pressure will increase from 
+760 million in 2015 to 1,646 million in 2050 [9]. In addi­
+tion, the occurrence of hypertension is related to gen­
+der, and it is more prevalent in men. However, systolic 
+blood pressure rises dramatically after menopause, mak­
+ing hypertension more frequent in women (≥ 65 years) 
+[10]. Normal aging is characterised by gradual increase 
+in blood pressure. When systolic pressure increases, 
+diastolic pressure first rises and then falls, resulting in 
+increased pulse pressure [11]. This is the result of arte­
+rial stiffness and changes in arterial compliance with 
+age. These changes foster the development of heart fail­
+ure and hypertension in the elderly [12]. Hypertension 
+is an important risk predictor for many cardiovascular 
+diseases, including heart failure. It is the primary factor 
+influencing the onset and progression of HF [13]. Con­
+temporary research indicates that 76% of individuals 
+with HF exhibit hypertension [14]. Elderly patients with 
+hypertension complicated with HF may lead to higher 
+adverse events and morbidity [15]. The 5-year mortal­
+ity rates for men and women were 76% and 69%, respec­
+tively. Moreover, the risk of death increased with age [16]. 
+These patients are treated differently than other patients 
+with HF. These patients tend to use angiotensin II block­
+ers more frequently [17]. Efficient control of hyperten­
+sion has been demonstrated to mitigate several heart 
+failure-related clinical symptoms and lower the risk of 
+cardiovascular events [18].
+With the aging of the Chinese population, the increase 
+of obesity, diabetes mellitus and coronary heart dis­
+ease, the risk factors and in-hospital mortality of elderly 
+patients with hypertension combined with HF have 
+increased. Therefore, it is crucial to identify the fac­
+tors that influence in-hospital mortality and to adopt an 
+individualized approach to treatment. Machine learning 
+(ML) algorithms have been gradually applied to the pre­
+diction of cardiovascular diseases [19–22]. Several ML 
+predictive models have been built for assessing mortal­
+ity in patients with HF [23, 24]. However, there are few 
+studies on prediction models based on real-world data to 
+estimate risk factors and in-hospital mortality in elderly 
+Chinese patients with HF combined with hypertension. 
+In this study, we aimed to develop a ML model to assess 
+risk factors and predict in-hospital mortality in elderly 
+patients with both hypertension and HF based on Chi­
+nese data. Furthermore, to cope with the opaque nature 
+of ML algorithms, we apply SHAP and LIME to shed 
+light on the predictions made by the most efficient mod­
+els [25–27].
+Methods
+Study population and data source
+De-identified electronic health record (EHR) data were 
+methodically gathered for this retrospective research 
+from the Medical Research Workstation Big Data Plat­
+form of Chongqing Medical University. The dataset for 
+this study were sourced from six major medical centers 
+in Chongqing, including the Second and Third Affiliated 
+Hospitals of Chongqing Medical University (CQMU), 
+Yongchuan Hospital, University Town Hospital, Tongli­
+ang District People’s Hospital and Chongqing Southeast 
+Hospital. The study’s cohort included elderly patients 
+aged 65 years and above, diagnosed primarily with HF 
+between January 1, 2012 and December 31, 2021. Diag­
+nosis validation involved a meticulous manual review 
+of the International Classification of Diseases, 9th Revi­
+sion (ICD-9) and 10th Revision (ICD-10) coding systems. 
+Exclusion criteria were rigorously defined to include: 
+([1]) patients without hypertension ([2]) patients suffer­
+ing from serious liver illness ([3]) patients suffering from 
+carcinomas. We excluded variables with more than 30% 
+missing values. The analysis commenced from the initial 
+significantly better. Our study successfully predicted in-hospital mortality and identified the factors most associated 
+with in-hospital mortality.
+Keywords  Heart failure, Hypertension, Mortality, Machine learning, Predictive model
+
+Page 3 of 13
+Liu et al. Cardiovascular Diabetology (2024) 23:407 
+hospitalization and concluded at the last recorded sta­
+tus in the database, focusing on survival or mortality. 
+In-hospital mortality was evaluated at discharge as the 
+primary outcome. The data application is hosted at the 
+following URL: ​h​t​t​p​s​:​/​/​d​e​m​o​.​y​i​d​u​c​l​o​u​d​.​c​o​m​.​c​n​/​p​u​b​/​#​/​r​e​
+g​i​s​t​e​r​. This study was reviewed and approved by the Eth­
+ics Committee of Chongqing Medical University with the 
+approval number: 2,024,033(dated Apr.24.2024), adher­
+ing to ethical standards despite exempting informed 
+consent due to its retrospective observational nature. 
+Methodologically, the study aligns with the guidelines 
+of the Transparent Reporting of a multivariable predic­
+tion model for Individual Prognosis Or Diagnosis (TRI­
+POD) declaration [28]. Researcher Yang Zhang obtained 
+approval to access data platform information using the 
+account zy2021110902.
+Data preprocessing and feature selection
+In the process of selecting features, we based on the clini­
+cal experience and relevant frontier literature on the eti­
+ology, pathology and treatment of HF and hypertension. 
+Then, combined with the inclusion and exclusion cri­
+teria, the final 44 variables were included in our study. 
+These variables were integral in establishing models and 
+facilitating the process of feature screening. Data acqui­
+sition for these variables was systematically carried out 
+from the EHR. Our analysis primarily focused on patient 
+outcomes, categorizing them into survival or death. 
+In addition, we examined demographic characteristics 
+such as gender, age, length of hospitalization (LOS) and 
+comorbidities such as diabetes, hyperlipidemia, cerebral 
+infarction and so on. Some laboratory indices were also 
+considered, including N-terminal pro-B-type natriuretic 
+peptide (NT-proBNP), neutrophils (Neu), low-density 
+lipoprotein cholesterol (LDL cholesterol), lymphocytes 
+(LYM), urea, CI, uric acid, leukocytes (LEU), fibrinogen, 
+creatinine, albumin, Ca, Na, K, high-density lipoprotein 
+cholesterol (HDL cholesterol), hemoglobin, triglyceride 
+glucose (TyG) and other variables. Among the variables, 
+the TyG index emerged as a novel biomarker, demon­
+strating predictive capabilities for diabetes and adverse 
+cardiac events. This index is computed applying the for­
+mula: Ln [fasting triglycerides (mg/dL) × fasting plasma 
+glucose (mg/dL)/2] [29]. Previous studies have shown 
+that TyG index was associated with all-cause mortal­
+ity in hospitalized patients with HF [30–34]. When TyG 
+index increased, all-cause mortality also increased. In 
+addition, subgroup analysis showed that TyG index was 
+strongly associated with mortality in elderly patients 
+(≥ 65) [35]. A study involving 3,026 patients showed a 
+1.19-fold increase in the risk of death during hospitaliza­
+tion when the TyG index increased by one unit [36]. In 
+addition, TyG index is not only positively associated with 
+the incidence of HF, but also with an increased incidence 
+of hypertension [37]. Furthermore, integrating the TyG 
+index into baseline risk models greatly enhances mortal­
+ity prediction accuracy [33]. Consequently, the inclusion 
+of the TyG index in our analysis was deemed essential for 
+this study.
+In this study, the proportion of missing data across all 
+variables was maintained below 30%. To mitigate the 
+impact of these data gaps on the classification process, 
+a refined approach was adopted, leveraging a K-Nearest 
+Neighbors (KNN) classification algorithm. The KNN 
+is generated by finding K samples from the dataset that 
+are near to the Euclidean distance of the missing value 
+and subsequently utilizing the weighted average to esti­
+mate the missing value [38]. Consequently, this approach 
+works well when handling datasets with a large per­
+centage of missing values [39]. Furthermore, the study 
+employed the Least absolute shrinkage and selection 
+operator (LASSO) technique to pick out key clinical fac­
+tors, while simultaneously discarding extraneous data 
+[40]. This approach enhances the prediction precision 
+of the ML model and safeguards against overfitting. The 
+primary outcome of the research was in-hospital mortal­
+ity, which was the patient’s status at discharge, alive or 
+dead. Consequently, patients lacking discharge records 
+were excluded from the final analysis cohort. These char­
+acteristics were then combined into a single dataset for 
+subsequent analysis.
+Model development, evaluation and interpretation
+In this research, we meticulously partitioned the dataset 
+into two groups using randomly stratified sampling: a 
+training set comprising 70% of the data and a test set with 
+the remanent 30%. The primary purpose of the training 
+set was to construct ML models, while the test set was 
+reserved exclusively for assessing the models’ predic­
+tive capabilities. This study focused on the application 
+of eight prevalent ML algorithms—Random Forest(RF), 
+Exterme 
+Gradient 
+Boosting(XGBoost), 
+Categorical 
+Boosting (CatBoost), Light Gradient Boosting Machine 
+(LightGBM), Support Vector Mac(SVM), Decision 
+Tree, Gradient Boosting Classifier and Artificial Neural 
+Networks(ANN)—for predicting in-hospital mortality 
+in patients with HF combined with hypertension. Five 
+cross-validations were conducted in order to determine 
+the optimal hyperparameters for eight ML models. The 
+test set is not utilized during model tuning phase. It 
+applies merely to model evaluation following the comple­
+tion of the model selection and training procedures. The 
+training set is preprocessed applying a mix of random 
+undersampling and Synthetic Minority Over-sampling 
+Technique (SMOTE) oversampling to address the issue of 
+positive and negative sample imbalance [41].
+In assessing our model’s performance, we employed 
+confusion matrix metrics, including accuracy, Receiver 
+
+Page 4 of 13
+Liu et al. Cardiovascular Diabetology (2024) 23:407 
+Operating Characteristic (ROC) curve’s Area Under the 
+Curve (AUC), recall, specificity, and Brier score. Brier 
+score is a measure of the degree of deviation between the 
+predicted and actual results. A lower Brier score indicates 
+a better performance of the prediction model [42]. By 
+constructing ROC curves and comparing AUC values, we 
+identified the model with the highest prediction perfor­
+mance. Furthermore, feature ranking evaluation serves 
+as a method to quantify the significance of individual 
+features within a dataset, gauging their influence on the 
+final outcome. The contribution of every input variable 
+to the model’s output was determined using the Shapley 
+value, derived from coalitional game theory [43, 44]. To 
+deal with the opaque nature of ML algorithms and facili­
+tate clinical interpretation, we applied SHAP and Local 
+Interpretable Model-agnostic Explanations (LIME) to 
+elucidate predictions made by the most effective model. 
+The global SHAP value is plotted as a bar chart to show 
+the average importance of each feature. LIME is used to 
+analyze the most effective model locally.
+Statistical analysis
+Patients with HF and hypertension were categorized 
+into two groups based on outcomes: survival or death. 
+Continuous data adhering to normal distribution was 
+depicted by mean ± standard deviation, whereas non-nor­
+mally distributed data were depicted using median values 
+and interquartile ranges. For statistical analysis, Stu­
+dent’s t-test was employed for continuous variables with 
+normal distribution and the Mann-Whitney U-test was 
+employed for those with skewed distributions. Categori­
+cal variables were represented as percentages or frequen­
+cies and group comparisons were conducted utilizing the 
+chi-squared test. A two-sided p-value of under 0.05 was 
+considered as indicative of statistical significance. The 
+prediction model was built implementing eight ML algo­
+rithms. All analysis and computations were carried out 
+with R V4.1.2 and Python V3.7.0.
+Results
+Baseline characteristics of study population. 
+As shown in the flow chart in Fig. 1, we downloaded 
+data about 8945 patients from Medical Research Work­
+station Big Data Platform of Chongqing Medical Univer­
+sity. According to the inclusion and exclusion criteria, 
+4647 elderly patients with HF combined with hyperten­
+sion entered our study. In the included patients with HF 
+and hypertension, there were 3252 patients in the train­
+ing set and 1395 patients in the test set. Table 1 shows 
+the baseline characteristics of patients aged 65 years and 
+older diagnosed with HF concomitant with hyperten­
+sion. Specifically, it includes demographic details, labora­
+tory indicators, comorbidities, drugs for treatment and 
+statistical data. The baseline characteristics are mostly 
+balanced and comparable in both the training and test 
+sets. In this study, the overall number of survivors was 
+4495 and the number of deaths was 152. The number 
+of survival and death in the training set is 3143 and 109, 
+respectively. The median age was 80 and 79 years, and the 
+median LOS was 10 days for both datasets. The endpoint 
+event rates were 3.082% and 3.352%, respectively.
+Features selected in models
+LASSO regression was employed in the training set to 
+recognize features automatically (Fig. 2). LASSO regres­
+sion effectively reduces the loss function (binomial devia­
+tion) by adjusting the regularization coefficient, lambda 
+(λ), ultimately yielding a zero coefficient for certain 
+variables.
+Nine of 44 features were chosen as the best predictive 
+to be included in the ML model. These were identified at 
+a shrinkage parameter (lambda.1se) of 0.01914052. The 
+nine features were age, LOS, Neu, urea, Cl, APTT, LEU, 
+albumin and HDL cholesterol.
+Development and comparison of prediction models
+We developed eight prevalent ML models-RF, CatBoost, 
+XGBoost, LightGBM, SVM, Decision Tree, Gradient 
+Boosting Classifier and ANN-aimed at predicting inhospital mortality for HF patients with hypertension. 
+After tuning the hyperparameters, these ML models were 
+trained employing the entire training dataset. Their per­
+formance was subsequently evaluated employing the test 
+set. To forecast in-hospital mortality, ROC curves were 
+generated from the eight ML models. The RF model 
+had the highest AUC with 0.850 (95% CI: 0.789–0.897), 
+as seen in Fig. 3. The AUCs of the XGboost, CatBoost, 
+LightGBM, SVM, Decision Tree, Gradient Boosting Clas­
+sifier and ANN models were 0.845 (95% CI: 0.787–0.894), 
+0.849 (95% CI: 0.793–0.898), 0.840 (95% CI: 0.788–0.889), 
+0.845 (95% CI: 0.783–0.894), 0.718 (95% CI: 0.648–0.781), 
+0.841 (95% CI: 0.789–0.889) and 0.807 (95% CI: 0.731–
+0.871), respectively (Fig.  3; Supplementary Fig.  1). To 
+fully assess the model’s performance, the accuracy, recall, 
+specificity and brier score were computed, as indicated 
+in Table 2 and Supplementary Table 1. Table 3 shows the 
+optimal parameters of the eight ML models for predict­
+ing in-hospital mortality. The RF model was ultimately 
+chosen to predict in-hospital mortality for patients with 
+hypertension and HF because of the highest AUC values. 
+Its accuracy, specificity, recall and brier score were 0.738, 
+0.734, 0.837 and 0.178, respectively.
+Model interpretation
+The SHAP method was implemented to ascertain the 
+importance of every predictive feature. The importance 
+graphs were presented the characteristics in descending 
+order (Fig. 4). The SHAP values indicated the impact of 
+
+Page 5 of 13
+Liu et al. Cardiovascular Diabetology (2024) 23:407 
+every characteristic to the final prediction result and aid 
+in clarifying the results for specific patient [45]. In these 
+8 models, the most related factors for in-hospital mor­
+tality were urea, LOS, Neu, albumin, HDL cholesterol, 
+with slight differences in importance ranking. Figure  4 
+displays the SHAP summary plots regarding the highest 
+9 clinical variables that have influenced our study. The 
+outcomes of the independent test set (Fig.  5A) agreed 
+with what Fig.  4A displayed. Meanwhile, Fig.  5 dis­
+plays the SHAP explanation force diagram from the RF 
+model’s test set. Red bars showed that the listed charac­
+teristics increased in-hospital mortality our study popu­
+lation and blue bars showed that the listed characteristics 
+decreased in-hospital mortality. The following variables 
+raise the risk of mortality in our study: urea, Neu, LOS, 
+APTT, age, and LEU (Fig. 5B). Conversely, when albumin, 
+HDL cholesterol and Cl rise, the risk of death falls. Fig­
+ure 5C shows a patient with LOS of 16 days, whose urea, 
+albumin, Neu and HDL cholesterol concentrations were 
+7.7 mmol/L, 36.8 mmol/L, 81.91 mmol/L, 0.82 mmol/L, 
+respectively. For this patient, the estimated likelihood of 
+in-hospital death was 65.92% and the SHAP value was 
+0.66. Moreover, the local interpretability analysis of the 
+RF model was also performed using LIME and the results 
+are shown in the Supplementary Figs. 2–3.
+Discussion
+HF continues to represent a major public health burden, 
+characterized by high morbidity, mortality and health 
+care costs [46]. Clinical outcomes tend to be worse when 
+patients suffer from both heart failure and hypertension. 
+Several studies have suggested that endothelial dysfunc­
+tion and circulating protein markers can be used for iden­
+tification and prognostic prediction for these patients [47, 
+48]. However, these indicators are not readily available, 
+which limits their application. Compared with young 
+Fig. 1  A concise flow chart illustrating the steps for subject selection
+ 
+
+Page 6 of 13
+Liu et al. Cardiovascular Diabetology (2024) 23:407 
+Characteristic
+Overall
+Test-set
+Training-set
+P
+N = 4647
+N = 1395
+N = 3252
+Status (%)
+0.702
+survival
+4495 (96.729)
+1352 (96.918)
+3143 (96.648)
+death
+152 (3.271)
+43 (3.082)
+109 (3.352)
+Smoking (%)
+0.072
+no
+3121 (67.162)
+910 (65.233)
+2211 (67.989)
+yes
+1526 (32.838)
+485 (34.767)
+1041 (32.011)
+Drinking (%)
+0.208
+no
+3391 (72.972)
+1000 (71.685)
+2391 (73.524)
+yes
+1256 (27.028)
+395 (28.315)
+861 (26.476)
+Gender (%)
+0.046
+female
+2696 (58.016)
+778 (55.771)
+1918 (58.979)
+male
+1951 (41.984)
+617 (44.229)
+1334 (41.021)
+Age (median [IQR])
+80.000 [73.000, 84.000]
+79.000 [73.000, 84.500]
+80.000 [74.000, 84.000]
+0.909
+LOS (median [IQR])
+10.000 [6.000, 15.000]
+10.000 [7.000, 15.000]
+10.000 [6.000, 14.000]
+0.253
+Diabetes (%)
+0.236
+no
+3004 (64.644)
+920 (65.950)
+2084 (64.084)
+yes
+1643 (35.356)
+475 (34.050)
+1168 (35.916)
+Ischemic Cardiomyopathy (%)
+0.414
+no
+4037 (86.873)
+1221 (87.527)
+2816 (86.593)
+yes
+610 (13.127)
+174 (12.473)
+436 (13.407)
+Atrial Fibrillation (%)
+0.554
+no
+3228 (69.464)
+960 (68.817)
+2268 (69.742)
+yes
+1419 (30.536)
+435 (31.183)
+984 (30.258)
+Hyperlipidemia (%)
+0.564
+no
+4242 (91.285)
+1279 (91.685)
+2963 (91.113)
+yes
+405 (8.715)
+116 (8.315)
+289 (8.887)
+Cerebral.infarction (%)
+0.772
+no
+3580 (77.039)
+1079 (77.348)
+2501 (76.907)
+yes
+1067 (22.961)
+316 (22.652)
+751 (23.093)
+NT-proBNP (median [IQR])
+2419.952 [882.703, 5716.097]
+2382.000 [918.410, 5785.142]
+2435.696 [878.050, 5704.750]
+0.808
+D.dimer (median [IQR])
+0.300 [0.112, 0.700]
+0.300 [0.115, 0.700]
+0.300 [0.107, 0.700]
+0.936
+GGT (median [IQR])
+33.070 [22.000, 56.155]
+33.809 [22.000, 59.000]
+33.000 [22.000, 55.315]
+0.473
+ALT (median [IQR])
+17.000 [12.000, 25.211]
+17.000 [12.000, 25.992]
+17.000 [12.000, 25.000]
+0.622
+Neu (median [IQR])
+73.010 [65.188, 80.610]
+72.900 [64.800, 80.300]
+73.100 [65.300, 80.700]
+0.273
+LDL.cholesterol (median [IQR])
+2.050 [1.550, 2.661]
+2.027 [1.540, 2.596]
+2.060 [1.560, 2.680]
+0.224
+Prothrombin Time (median [IQR])
+13.300 [12.300, 14.400]
+13.300 [12.300, 14.400]
+13.300 [12.300, 14.381]
+0.363
+Thrombin Time (median [IQR])
+17.000 [15.600, 17.964]
+16.991 [15.500, 17.900]
+17.000 [15.600, 18.000]
+0.617
+AST (median [IQR])
+21.921 [17.000, 29.600]
+22.100 [17.023, 29.681]
+21.603 [17.000, 29.411]
+0.247
+Urea (median [IQR])
+7.371 [5.590, 10.710]
+7.290 [5.495, 10.800]
+7.400 [5.620, 10.652]
+0.805
+Uric.acid (median [IQR])
+387.900 [308.217, 489.441]
+384.975 [307.900, 483.750]
+389.193 [308.679, 491.624]
+0.264
+Total Cholesterol (median [IQR])
+3.870 [3.170, 4.660]
+3.810 [3.140, 4.630]
+3.900 [3.180, 4.670]
+0.097
+Cl (median [IQR])
+104.100 [100.500, 107.100]
+104.000 [100.600, 107.100]
+104.100 [100.454, 107.100]
+0.995
+APTT (median [IQR])
+33.600 [28.900, 37.791]
+33.200 [28.700, 37.611]
+33.800 [29.100, 37.878]
+0.071
+LYM (median [IQR])
+17.820 [11.900, 25.000]
+17.700 [12.010, 25.070]
+17.930 [11.800, 25.000]
+0.979
+LEU (median [IQR])
+6.600 [5.270, 8.491]
+6.500 [5.215, 8.400]
+6.635 [5.300, 8.517]
+0.073
+Albumin (median [IQR])
+38.000 [34.900, 41.131]
+38.000 [35.100, 41.300]
+37.959 [34.800, 41.037]
+0.224
+Phosphorus (median [IQR])
+1.119 [0.982, 1.260]
+1.111 [0.980, 1.250]
+1.120 [0.985, 1.260]
+0.204
+Red Blood Cell(median [IQR])
+3.990 [3.540, 4.400]
+3.990 [3.520, 4.395]
+3.994 [3.550, 4.400]
+0.544
+Hematocrit (median [IQR])
+36.600 [32.200, 40.100]
+36.600 [32.000, 40.100]
+36.600 [32.300, 40.100]
+0.732
+Fibrinogen (median [IQR])
+3.430 [2.870, 4.220]
+3.390 [2.860, 4.180]
+3.450 [2.870, 4.220]
+0.383
+Creatinine (median [IQR])
+88.600 [69.549, 126.900]
+87.800 [68.900, 124.450]
+88.900 [69.760, 128.457]
+0.261
+Platelet Count, (median [IQR])
+171.000 [134.000, 215.000]
+170.000 [130.000, 214.000]
+171.000 [134.750, 215.000]
+0.494
+Table 1  Baseline characteristics of patients with heart failure combined with hypertension
+
+Page 7 of 13
+Liu et al. Cardiovascular Diabetology (2024) 23:407 
+people, elderly patients with hypertension and HF have 
+a higher risk of in-hospital death. Frailty, age, comorbidi­
+ties, lifestyle and medication compliance are the potential 
+influencing factors. Consequently, early identification of 
+risk factors and in-hospital mortality in elderly patients 
+with hypertension combined with HF can help to adopt 
+personalized management and improve quality of life. 
+Various ML models have been constructed to evalu­
+ate in-hospital mortality in HF patients. Angraal et al. 
+evaluated five ML algorithms, of which RF performed 
+best in predicting in-hospital mortality for HF with an 
+average C-statistic of 0.72; BUN levels are closely related 
+to mortality [42]. A study of in-hospital mortality in 2798 
+patients with HF found that the XGBoost model had the 
+highest prediction performance among the four mod­
+els, with AUC of 0.824, while the SVM model had poor 
+generalization ability (AUC = 0.701) [49]. Currently, there 
+are few articles applying ML models with real-world 
+Fig. 2  LASSO binary logistic regression model was employed to choose demographic information and clinical characteristics.A Graph of coefficient 
+paths for LASSO regressionB Cross-validation plot for LASSO regression
+ 
+Characteristic
+Overall
+Test-set
+Training-set
+P
+N = 4647
+N = 1395
+N = 3252
+Hemoglobin (median [IQR])
+121.000 [106.000, 132.000]
+121.000 [105.000, 132.000]
+120.923 [106.000, 132.000]
+0.779
+Ca (median [IQR])
+2.220 [2.130, 2.307]
+2.230 [2.139, 2.310]
+2.220 [2.130, 2.304]
+0.137
+Na (median [IQR])
+140.707 [138.200, 142.700]
+140.718 [138.400, 142.700]
+140.703 [138.138, 142.700]
+0.672
+K (median [IQR])
+4.043 [3.780, 4.400]
+4.030 [3.780, 4.373]
+4.056 [3.780, 4.410]
+0.242
+HDL.cholesterol (median [IQR])
+1.160 [0.970, 1.370]
+1.160 [0.972, 1.370]
+1.160 [0.962, 1.370]
+0.637
+Diuretics (%)
+0.127
+no
+1856 (39.940)
+581 (41.649)
+1275 (39.207)
+yes
+2791 (60.060)
+814 (58.351)
+1977 (60.793)
+Spironolactone (%)
+0.83
+no
+2894 (62.277)
+865 (62.007)
+2029 (62.392)
+yes
+1753 (37.723)
+530 (37.993)
+1223 (37.608)
+ACEI (%)
+no
+3880 (83.495)
+1172 (84.014)
+2708 (83.272)
+0.561
+yes
+767 (16.505)
+223 (15.986)
+544 (16.728)
+ARB (%)
+no
+3162 (68.044)
+963 (69.032)
+2199 (67.620)
+0.362
+yes
+1485 (31.956)
+432 (30.968)
+1053 (32.380)
+TyG (median [IQR])
+4.670 [4.470, 4.900]
+4.660 [4.470, 4.870]
+4.670 [4.480, 4.910]
+0.117
+ LOS, Length of hospital stay; IQR, Interquartile range; N-terminal proB-type Natriuretic Peptide, NT-proBNP; gamma glutamyltransferase, GGT; alanine 
+aminotransferase ALT; neutrophils(Neu); low density lipoprotein cholesterol, LDL cholesterol; lymphocyte, LYM; aspartate aminotransferase, AST; high density 
+lipoprotein cholesterol, HDL cholesterol; activated partial thromboplastin time, APTT; Angiotensin II receptor blocker, ARB; angiotensin converting enzyme I, ACEI; 
+triglyceride glucose, TyG
+Table 1  (continued)
+ 
+
+Page 8 of 13
+Liu et al. Cardiovascular Diabetology (2024) 23:407 
+data to predict risk factors and in-hospital mortality in 
+elderly patients with HF combined with hypertension. 
+Peng et al. applied 4 ML models to predict the mortal­
+ity of patients with HF and hypertension in ICU. The 
+neural networks (NN) model showed the best predictive 
+performance with AUC of 0.764 in the test cohort [50]. 
+The study looked at adults of all ages who were hospital­
+ized in the ICU. Accordingly, we performed a multicenter 
+retrospective study to analyze clinical characteristics of 
+elderly patients with HF and hypertension and used ML 
+algorithms to investigate factors affecting in-hospital 
+mortality. In the 8 ML prediction models, RF demon­
+strated the highest performance, with an AUC of 0.850, 
+surpassing than other 7 models. Furthermore, SHAP 
+and LIME were adopted to explain the prediction model 
+to lessen its opaqueness and enhance its interpretability 
+[43]. In addition, this study also has several advantages. 
+Table 2  Predictive performances of the four ML models for 
+predicting in-hospital mortality
+Model
+AUC(95%CI) Accuracy Recall
+Specificity
+Brier 
+score
+Random 
+Forest
+0.850(0.789–
+0.897)
+0.738
+0.837
+0.734
+0.178
+XGboost
+0.845(0.787–
+0.894)
+0.739
+0.791
+0.737
+0.198
+CatBoost
+0.849(0.793–
+0.898)
+0.743
+0.790
+0.742
+0.201
+LightGBM 0.840(0.788–
+0.889)
+0.733
+0.744
+0.733
+0.224
+Table 3  Optimal parameters of four ML models in predicting 
+in-hospital mortality rates
+Model
+Optimal parameter
+Random Forest
+n_estimators = 1000, min_samples_split = 2,
+max_features = 6, max_depth = 16
+XGboost
+n_estimators = 140, max_depth = 3, 
+min_child_weight = 2,
+gamma = 0.58, colsample_bytree = 0.5, 
+subsample = 0.7,
+objective=’binary: logistic’,reg_
+alpha = 0.01,nthread = 4, scale_pos_weight = 1
+CatBoost
+depth = 6, learning_rate = 0.03, l2_leaf_reg = 3, 
+iterations = 1000
+LightGBM
+learning_rate = 0.15, max_depth = 4, 
+n_estimators = 200
+Fig. 3  ROC curves for four ML models to predict in-hospital mortality in patients with HF and hypertension
+ 
+
+Page 9 of 13
+Liu et al. Cardiovascular Diabetology (2024) 23:407 
+Firstly, it is a multicenter study with data from six affili­
+ated medical institutions in China. Secondly, this study 
+has a large sample and includes generally available and 
+more comprehensive indicators. Then the results of this 
+study can be easily applied to patient care and assist 
+physicians in determining in-hospital mortality. It can 
+also help physicians manage patients more efficiently 
+with limited resources, thereby reducing hospitalization 
+and medical costs. The study could also help increase 
+people’s health awareness and adopt a healthy lifestyle.
+Fig. 5  SHAP interpretation of the Random Forest model. A Importance score ranking of the model prediction characteristics. B Every feature’s impact on 
+the model’s output. Every dot in a row symbolizes a patient, and its color denotes the feature value—red denotes a value that is greater and blue denotes 
+a value that is lower. The more dispersed the points of the graph represent the greater the impact of the variables on the model. C Personalized predic­
+tions for a patient. The protective and risk variables are symbolized by the blue and red bars. Higher functional significance is indicated by longer bars
+ 
+Fig. 4  Importance score ranking of characteristics in 4 in-hospital mortality prediction models.A RFB XGboostC CatBoostD LightGBM
+ 
+
+Page 10 of 13
+Liu et al. Cardiovascular Diabetology (2024) 23:407 
+Specifically, clinical characteristics such as demo­
+graphic features, laboratory indices and comorbidities 
+were included. Nine key characteristics were identified. 
+Meanwhile, the SHAP values increase the interpretability 
+of crucial characteristics. The summary graphs and force 
+maps of RF can give clinicians a visual understanding of 
+these result. In addition, this study uses more sophisti­
+cated ML techniques such as KNN-based missing value 
+filling and random undersampling with SMOTE overs­
+ampling techniques to handle sample imbalance. The 
+results suggest that these techniques are effective.
+As shown in Fig. 5, this study identified closely related 
+factors for in-hospital mortality. Among them, the risk 
+factors were Urea, Neu, LOS, APTT, age and LEU. And 
+the protective factors were albumin, HDL cholesterol 
+and Cl, respectively. In patients with cardiovascular dis­
+ease, the assessment of renal function is critical to prog­
+nosis [51]. Urea is commonly used in the assessment of 
+renal function as one of the outcome indicators of HF. 
+Elevated urea levels indicate an elevated risk of prerenal 
+injury, which may be associated with diminished renal 
+blood flow due to HF. In this study, urea was considered 
+the most significant predictor and in-hospital mortality 
+increased with elevated levels.
+Previous studies have shown that variables such as age, 
+LOS, serum creatinine, body mass index, NT-proBNP 
+and diabetes were linked to mortality in patients with HF 
+[42, 52–54]. Consistent with previous studies, we found 
+that increased age and LOS resulted in higher in-hospital 
+mortality. Especially for the elderly, when HF worsens, 
+it can lead to severe ischemia, myocardial necrosis and 
+finally death. Furthermore, LOS may be utilized during 
+the patient’s hospitalization as an indicator of the sever­
+ity of HF [55]. A retrospective cohort analysis found that 
+an elevated leukocyte count (> 9 × 103/mm3) was an inde­
+pendent indicator of in-hospital mortality in HF patients 
+[56]. Another study found that leukocyte count, espe­
+cially neutrophil count, was an independent indicator of 
+myocardial infarction [57]. Recent studies have shown 
+that neutrophil-mediated immunothrombotic dysregula­
+tion is a key mechanism causing the onset and progres­
+sion of HF [58]. Our study found that when the increase 
+of leukocytes, especially neutrophils, the in-hospital mor­
+tality is increased in patients with HF and hypertension.
+Several scholars have found a correlation between 
+decreased levels of serum albumin and higher cardiovas­
+cular disease death [56, 59]. Israel G et al. also identified 
+that decreased albumin was an independent indicator 
+of HF mortality [56, 60]. This is in line with our study’s 
+findings. Low serum albumin may lead to lower colloid 
+osmotic pressure influencing HF symptoms and survival 
+status [30]. Findings from 2 big cohorts and a Mende­
+lian randomization study indicated that an increased 
+TyG index was an independent indicator of HF [61]. A 
+systematic review and meta-analysis and several other 
+research have found that TyG index is a predictor for 
+assessing the onset and prognosis of HF [62, 63]. Based 
+on clinical importance, the TyG index was incorporated 
+in our study. However, the TyG index was not incorpo­
+rated in the final prediction model. The reason is not 
+entirely clear, currently. Nevertheless, routine addition 
+of the TyG index to clinical models could improve car­
+diovascular risk stratification and facilitate individualized 
+treatment or preventative strategies [64, 65]. The sample 
+of this study was elderly patients with hypertension and 
+HF, whose in-hospital mortality rate was 3.27% (n = 152). 
+This is lower than the in-hospital death rate of 15.3% 
+found by Peng et al. in patients admitted to the ICU [50]. 
+Previous studies have shown that patients with HF admit­
+ted to the ICU have a much greater in-hospital death rate 
+than those admitted to the ward only [66]. According to 
+the RO-AHFS registry, the deathrate for ICU patients 
+was 17.3%, while the death rate for any hospitalized HF 
+patients was 6.5% [67].
+Current research has several limitations. First, the 
+data utilized was derived from a limited dataset of elec­
+tronic medical records from various Chongqing hospi­
+tals, which had some missing data. Second, this study 
+is missing several important parameters, such as those 
+connected to echocardiography. In addition, the data 
+were acquired from the patient’s EHR and ultimate 
+performance of the predictive model depends on the 
+accuracy of the records. Finally, prospective validation 
+from outside is required for the model’s future clinical 
+applicability.
+Conclusions
+We construct and test an interpretable ML model to 
+evaluate risk factors and predict hospital mortality in 
+elderly patients with hypertension and HF based Chinese 
+data. Firstly, the model can quickly identify patients with 
+higher in-hospital mortality, based on available variables. 
+In addition, we identified urea, Neu, LOS, APTT, age 
+and LEU as risk factors in the study population. Finally, 
+SHAP and LIME is used to interpret predictive models to 
+enhance interpretability and utility. This study may pro­
+vide a valuable instrument for the identification and early 
+intervention of in-hospital mortality in elderly patients 
+with HF and hypertension. The study could also help 
+increase people’s health awareness and adopt a healthy 
+lifestyle. It can also help physicians manage patients more 
+efficiently with limited resources, thereby reducing hos­
+pitalization and medical costs.
+Abbreviations
+HF 
+Heart failure
+ML 
+Machine learning
+RF 
+Random forest
+XGBoost 
+Exterme gradient boosting
+
+Page 11 of 13
+Liu et al. Cardiovascular Diabetology (2024) 23:407 
+CatBoost 
+Categorical boosting 
+LightGBM 
+Light gradient boosting machine
+AUC 
+Area under the curve
+LOS 
+Length of hospital stay
+IQR 
+Interquartile range
+SHAP 
+Shapley additive explanations
+EHR 
+Electronic health record
+LYM 
+Lymphocytes
+LEU 
+Leukocytes
+Neu 
+Neutrophils
+TyG 
+Triglyceride glucose
+KNN 
+K-nearest neighbors
+FPG 
+Fasting plasma glucose
+ICD 
+International classification of diseases
+ROC 
+Receiver operating characteristic
+GGT 
+Gamma glutamyltransferase
+ALT 
+Alanine aminotransferase
+AST 
+Aspartate aminotransferase
+APTT 
+Activated partial thromboplastin time
+ARB 
+Angiotensin II receptor blocker
+ACEI 
+Angiotensin converting enzyme I
+eICU 
+Emergency intensive care unit
+NT-proBNP 
+N-terminal proB-type natriuretic peptide
+LDL cholesterol 
+Low density lipoprotein cholesterol
+HDL cholesterol 
+High density lipoprotein cholesterol
+LASSO 
+Least absolute shrinkage and selection operator
+SMOTE 
+Synthetic minority over-sampling technique
+TRIPOD 
+Transparent reporting of a multivariable prediction model 
+for individual prognosis or diagnosis
+Supplementary Information
+The online version contains supplementary material available at ​h​t​t​p​s​:​/​/​d​o​i​.​o​r​
+g​/​1​0​.​1​1​8​6​/​s​1​2​9​3​3​-​0​2​4​-​0​2​5​0​3​-​9 .
+Supplementary Material 1.
+Supplementary Material 2.
+Acknowledgements
+We would like to thank all the participants of this project and investigators for 
+collecting the data.
+Author contributions
+Jie Yu designed the research. Xiaozhu Liu, Zulong Xie and Yang Zhang drafted 
+the manuscript.Jian Huang, Lirong Kuang, Xiujuan Li, Huan Li, Yuxin Zou and 
+Tianyu Xiang collected and analyzed the data. Niying Yin, Xiaoqian Zhou 
+and Jie Yu contributed to the critical revision of the manuscript. All authors 
+contributed to the manuscript. All authors read and approved the final 
+manuscript.
+Funding
+This research was supported by Kuanren Talents Program of the Second 
+Affiliated Hospital of Chongqing Medical University (grant No. kryc-yq-2201).
+Data availability
+No datasets were generated or analysed during the current study.
+Declarations
+Conflict of interest
+The authors declare no competing interests.
+Ethical approval and consent to participate
+The Ethics Committee of Chong Qing Medical University approved the 
+study with the approval number: 2024033(dated Apr.24.2024). Written 
+informed consent for participation was not required for this study due to 
+its retrospective design, and the study was undertaken in accordance with 
+national legislation and institutional requirements.
+Consent for publication
+All authors gave consent for the publication of the article.
+Author details
+1Department of Cardiology, The Second Affiliated Hospital of Chongqing 
+Medical University, Chongqing, China
+2Emergency and Critical Care Medical Center, Beijing Shijitan Hospital, 
+Capital Medical University, Beijing, China
+3College of Medical Informatics, Chongqing Medical University, 
+Chongqing, China
+4Department of Diagnostic Ultrasound, Sir Run Run Shaw Hospital, 
+Zhejiang University College of Medicine, Hangzhou, China
+5Department of Ophthalmology, Wuhan Wuchang Hospital (Wuchang 
+Hospital Affiliated to Wuhan University of Science and Technology), 
+Wuhan, China
+6Department of Radiology, The Affiliated Taian City Central Hospital of 
+Qingdao University, Taian, China
+7Chongqing College of Electronic Engineering, Chongqing, China
+8The Second Clinical College, Chongqing Medical University, Chongqing, 
+China
+9Information Center, The University-Town Hospital of Chongqing Medical 
+University, Chongqing, China
+10Department of blood transfusion, Suqian First Hospital, Suqian, China
+11Department of Cardiovascular, The Third Affiliated Hospital of Wenzhou 
+Medical University, Wenzhou, China
+Received: 5 September 2024 / Accepted: 4 November 2024

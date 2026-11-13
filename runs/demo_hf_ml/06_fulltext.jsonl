@@ -30,3 +30,11 @@
 {"id": "d331d78c3781", "retrieved": true, "source": "oa_pdf", "n_chars": 44538}
 {"id": "440a1d4995bf", "retrieved": false, "source": "europepmc:empty;oa_pdf:empty;unpaywall:empty", "n_chars": 0}
 {"id": "ea51338eee66", "retrieved": false, "source": "unpaywall:empty", "n_chars": 0}
+{"id": "126604c7579c", "retrieved": true, "source": "unpaywall", "n_chars": 34033}
+{"id": "66c950d5f3e3", "retrieved": true, "source": "unpaywall", "n_chars": 40988}
+{"id": "e7fe99fc9be2", "retrieved": false, "source": "europepmc:TypeError;unpaywall:empty", "n_chars": 0}
+{"id": "2747680856cc", "retrieved": true, "source": "unpaywall", "n_chars": 38200}
+{"id": "3cf8cdbb1084", "retrieved": true, "source": "unpaywall", "n_chars": 29810}
+{"id": "a7d331875153", "retrieved": false, "source": "europepmc:TypeError;unpaywall:empty", "n_chars": 0}
+{"id": "9677ef943998", "retrieved": false, "source": "unpaywall:empty", "n_chars": 0}
+{"id": "e8a9e28fdf8a", "retrieved": true, "source": "unpaywall", "n_chars": 42427}

@@ -1,0 +1,1013 @@
+RESEARCH
+Open Access
+© The Author(s) 2025. Open Access This article is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 
+International License, which permits any non-commercial use, sharing, distribution and reproduction in any medium or format, as long as you 
+give appropriate credit to the original author(s) and the source, provide a link to the Creative Commons licence, and indicate if you modified the 
+licensed material. You do not have permission under this licence to share adapted material derived from this article or parts of it. The images or 
+other third party material in this article are included in the article’s Creative Commons licence, unless indicated otherwise in a credit line to the 
+material. If material is not included in the article’s Creative Commons licence and your intended use is not permitted by statutory regulation or 
+exceeds the permitted use, you will need to obtain permission directly from the copyright holder. To view a copy of this licence, visit ​h​t​t​p​:​/​/​c​r​e​a​t​i​
+v​e​c​o​m​m​o​n​s​.​o​r​g​/​l​i​c​e​n​s​e​s​/​b​y​-​n​c​-​n​d​/​4​.​0​/​.​
+Li et al. Cardiovascular Diabetology (2025) 24:10 
+https://doi.org/10.1186/s12933-025-02577-z
+Cardiovascular Diabetology
+*Correspondence:
+Qi Liu
+fccliux@zzu.edu.cn; qi.liu@vip.163.com
+Full list of author information is available at the end of the article
+Abstract
+Chronic heart failure (CHF) poses a significant threat to human health. The stress hyperglycemia ratio (SHR) is a 
+novel metric for accurately assessing stress hyperglycemia, which has been correlated with adverse outcomes in 
+various major diseases. However, it remains unclear whether SHR is associated with 28-day mortality in patients 
+with pre-existing CHF who were admitted to intensive care units (ICUs). This study retrospectively recruited patients 
+who were admitted to ICUs with both acute critical illness and pre-existing CHF from the Medical Information Mart 
+for Intensive Care (MIMIC) database. Characteristics were compared between the survival and non-survival groups. 
+The relationship between SHR and 28-day all-cause mortality was analyzed using restricted cubic splines, receiver 
+operating characteristic (ROC) curves, Kaplan–Meier survival analysis, and Cox proportional hazards regression 
+analysis. The importance of the potential risk factors was assessed using the Boruta algorithm. Prediction models 
+were constructed using machine learning algorithms. A total of 913 patients were enrolled. The risk of 28-day 
+mortality increased with higher SHR levels (P < 0.001). SHR was independently associated with 28-day all-cause 
+mortality, with an unadjusted hazard ratio (HR) of 1.45 (P < 0.001) and an adjusted HR of 1.43 (P < 0.001). Subgroup 
+analysis found that none of the potential risk factors, such as demographics, comorbidities, and drugs, affected 
+the relationship (P for interaction > 0.05). The area under the ROC (AUC) curve for SHR was larger than those for 
+admission blood glucose and HbA1c; the cut-off for SHR was 0.57. Patients with SHR higher than the cut-off had 
+a significantly lower 28-day survival probability (P < 0.001). SHR was identified as one of the key factors for 28day mortality by the Boruta algorithm. The predictive performance was verified through four machine learning 
+algorithms, with the neural network algorithm being the best (AUC 0.801). For patients with both acute critical 
+illness and pre-existing CHF, SHR was an independent predictor of 28-day all-cause mortality. Its prognostic 
+performance surpasses those of HbA1c and blood glucose, and prognostic models based on SHR provide clinicians 
+with an effective tool to make therapeutic decisions.
+Predicting 28-day all-cause mortality 
+in patients admitted to intensive care units 
+with pre-existing chronic heart failure using 
+the stress hyperglycemia ratio: a machine 
+learning-driven retrospective cohort analysis
+Xiao-han Li1,2, Xing-long Yang1, Bin-bin Dong1 and Qi Liu1*
+
+Page 2 of 13
+Li et al. Cardiovascular Diabetology (2025) 24:10 
+Introduction
+Heart failure (HF) is a clinical syndrome characterized 
+by cardinal symptoms such as shortness of breath and 
+fatigue, with or without signs like peripheral edema, 
+pulmonary crackles, and elevated jugular venous pres­
+sure, it can be artificially divided into chronic HF (CHF) 
+and acute HF based on whether the patient's symptoms 
+and signs have acutely worsened to the point where they 
+require urgent medical treatment [1]. CHF makes a sig­
+nificant threat to human health and places immense pres­
+sure on healthcare resources [2]. The global prevalence of 
+HF ranges from 1 to 3% of the total population, depend­
+ing on definitions, patient age, nations, and diagnostic 
+capabilities. There are approximately 56.2 million HF 
+patients worldwide [3, 4] In the last few decades, a pla­
+teau in incidence rates has been reached, and the number 
+of new diagnoses is substantially decreasing in devel­
+oped countries. Meanwhile, in developing countries, an 
+increasing number of people are at risk of developing HF 
+due to an increased prevalence associated with the aging 
+population and changes in lifestyle [2]. The prognosis for 
+CHF patients is typically poor with a high mortality, even 
+in the most developed country, North America, 5-year 
+mortality ranges from 45 to 75% [4]. Furthermore, the 
+progressive decline in cardiac function not only severely 
+impacts patients' quality of life, limits their daily activi­
+ties, but also increases the risk of serious complications 
+such as arrhythmias and renal failure [5, 6]. Addition­
+ally, CHF is associated with high treatment costs, which 
+imposes a heavy economic burden on both families and 
+society [2, 4]. These factors highlight the urgency and 
+importance of CHF research, with significant value in 
+exploring effective treatments and prognostic indicators.
+Transient hyperglycemia due to stress is advanta­
+geous to enhance the ability of struggling with the acute 
+severe illness, [7] that is, an essential survival response 
+[8] However, long-term or continuous hyperglycemia 
+adversely affects the cardiovascular system by impair­
+ing vascular endothelial function, promoting the forma­
+tion and progression of atherosclerosis, and exacerbating 
+coronary artery narrowing and blockage. In patients with 
+CHF, stress hyperglycemia reduces cardiac blood sup­
+ply, disrupt the normal metabolism of myocardial cells, 
+and increases the workload of the heart, further deterio­
+rates cardiac function, leads to a decrease in myocardial 
+contractility and finally worsens HF [9, 10]. Moreover, 
+stress hyperglycemia increases the body's inflamma­
+tory and oxidative stress responses, further damaging 
+cardiac tissue [11–13]. Blood glucose levels have been 
+incorporated into the Intermountain Risk Score, which 
+has significant predictive value for both short-term and 
+long-term mortality in patients with cardiovascular dis­
+eases, such as cardiogenic shock [14], and ST-segment 
+elevation myocardial infarction [15]. These findings fur­
+ther corroborate the harm of hyperglycemia to the heart. 
+For patients with CHF, they might face prolonged stress 
+due to poor heart function and recurrent acute events, 
+which induce a hyperglycemic state and oxidative stress 
+[16–19] that may contribute to poor clinical outcomes 
+[20]. Stress hyperglycemia at admission has been inde­
+pendently associated with poor prognosis in various dis­
+eases including stroke, [21, 22] sepsis, [23, 24] and acute 
+coronary syndrome [25].
+However, admission blood glucose (ABG) cannot dif­
+ferentiate whether hyperglycemia is induced by stress or 
+is a result of a chronic high blood sugar status. Therefore, 
+the stress hyperglycemia ratio (SHR), a relative hypergly­
+cemia, was introduced as a new metric to assess stress 
+hyperglycemia more accurately, and additionally, to elim­
+inate the impact of chronic blood sugar levels on acute 
+hyperglycemia [26] Multiple studies have demonstrated 
+higher SHR levels were associated with the increased risk 
+of adverse outcomes in patients with cardiovascular dis­
+eases such as acute coronary syndrome [27–29], acute 
+decompensated HF [30] and sepsis [31].
+Patients with pre-existing CHF are prone to be admit­
+ted to the intensive care units (ICUs) due to various acute 
+critical illnesses, which pose a significant threat to the 
+patients' lives [3, 32]. However, it is still unclear whether 
+SHR is associated with the poor prognosis in patients 
+admitted to ICUs with both acute critical illness and 
+pre-existing CHF. Therefore, we conducted this study to 
+explore the value of SHR in the prediction of mortality in 
+this kind of patient.
+Methods
+Study design and participant
+This is a retrospective study based on the clinical data of 
+patients with CHF from MIMIC-IV version 2.2, which 
+includes information on over 65,000 ICU admissions 
+and more than 200,000 emergency department admis­
+sions at Beth Israel Deaconess Medical Center (BIDMC) 
+in Boston, Massachusetts, between 2008 and 2019 [33]. 
+The Institutional Review Board of BIDMC waived the 
+requirement for informed consent and approved the 
+sharing of research resources. The authors obtained 
+access to the database (Certificate No.: 56073040). The 
+participants were included according to the prespeci­
+fied criteria: (1) age > 18  years, (2) patients diagnosed 
+with Pre-existing CHF on International Classification of 
+Diseases 10th Revision, (3) Admitted to the ICU regard­
+less of the reason. The exclusion criteria were as follows: 
+Keywords  Stress hyperglycemia ratio, Chronic heart failure, Mortality, Risk factor, Machine learning
+
+Page 3 of 13
+Li et al. Cardiovascular Diabetology (2025) 24:10 
+(1) patients who had not been tested blood glucose and 
+glycated hemoglobin A1c (HbA1c) in the first labora­
+tory test, (2) patients with a follow-up time of less than 
+28 days, (3) patients with incomplete data may severely 
+affect the analysis of results. The primary outcome was 
+the value of SHR in prediction of the 28-day in-hospital 
+mortality.
+Data extraction
+Data was extracted using Navicat software. Characteris­
+tics were collected at the time of the patients' admission 
+including age, gender, vital signs [heart rate, systolic blood 
+pressure, diastolic blood pressure, mean arterial pressure 
+(MAP), respiratory rate, body temperature, pulse oxy­
+gen saturation (SpO2)], medical comorbidities (such as 
+diabetes, liver disease, renal disease, and congestive HF), 
+laboratory tests (such as white blood cell count, platelet 
+count, serum electrolytes, pH, ABG, and HbA1c), com­
+monly used drugs as well as the 28-day clinical outcome, 
+survival or all-cause of death. In addition, the Oxford 
+acute illness severity (OASIS) score was extracted to assess 
+disease severity. SHR was calculated as ABG (mg/dL) / 
+(28.7 × HbA1c [%]−46.7) [26].
+Statistical analysis
+For continuous outcomes, normally distributed data are 
+expressed as mean ± standard deviation and compared 
+using t-test, non-normally distributed data are expressed 
+as medians (interquartile range) and compared by Wil­
+coxon signed-rank non-parametric tests. The normal 
+distribution was tested for by Kolmogorov–Smirnov test. 
+Missing continuous data were imputed using linear inter­
+polation. Categorical data were expressed as frequency 
+and percentage n (%) and compared between groups 
+using the chi-square test. Restricted cubic splines (RCS) 
+analysis was used to examine the relationship between 
+SHR and mortality. The receiver operating characteristic 
+(ROC) curve and the corresponding area under the ROC 
+curve (AUC) were used to compare the predictive power 
+of SHR, blood glucose, and HbA1c for 28-day mortality. 
+Kaplan–Meier (KM) regression analysis was conducted 
+to compare prognosis between groups with high and low 
+SHR levels. Subgroup analysis was performed to further 
+investigate whether the potential confounders affected 
+the relationship between SHR and mortality. Cox propor­
+tional hazards regression was used to determine prog­
+nostic risk factors for CHF. Hazard ratios (HR) and 95% 
+confidence intervals (95% CI) were reported as effect 
+sizes. The Boruta algorithm in machine learning was used 
+to rank the features according to its importance of pre­
+dictive ability of 28-day mortality. Acceptable variables 
+were subsequently integrated into the machine learning 
+algorithm. The Cox proportional hazards survival learner 
+(coxph), K-Nearest Neighbors (KNN), Bayesian, and 
+Neural Network algorithms were employed to assess the 
+28-day death risk in CHF patients, respectively. The data­
+set of the included patients was randomly grouped into 
+development and validation sets at a 7:3 ratio. The ROC 
+curves and AUCs were utilized to assess model perfor­
+mance. Decision curve analysis (DCA) was implemented 
+to evaluate clinical effectiveness, while calibration curves 
+were employed to measure the accuracy of absolute risk 
+predictions. A p-value < 0.05 was considered statistically 
+significant. Statistical analyses were conducted using R 
+software (version 4.0.5) and SPSS (version 26.0, IBM Cor­
+poration, USA).
+Results
+Participant inclusion and baseline characteristics
+There were 12,861 cases with CHF and older than 
+18  years being recorded in MIMIC-IV. 11,948 patients 
+were excluded because the HbA1c was not reported, 
+and 2821 cases were excluded because of short followup time (< 28 days). Finally, 913 patients were recruited 
+with 425 in survivor group and 488 in non-survivor 
+group (Fig. 1). Among them, 539 (59%) participants were 
+male; Within the 28-day follow-up, 488 (53.5%) patients 
+died, while 425 (46.5%) patients survived. There were 
+Fig. 1  Inclusion flow in this study. CHF Chronic heart failure, HbA1C Gly­
+cosylated hemoglobin
+ 
+
+Page 4 of 13
+Li et al. Cardiovascular Diabetology (2025) 24:10 
+significant differences between the survivor group and 
+the non-survivor group in the age, vital signs (blood pres­
+sure, respiratory rate and body temperature), laboratory 
+examinations (such as ABG, HbA1c and the other indica­
+tors). More patients met with congestive HF (25% versus 
+19.1%, P = 0.031) and less frequency of furosemide (42.2% 
+versus 59.1%, P = 0.000) was used in non-survivors than 
+those in the survivors. There were more patients in the 
+survival group who had infection diseases (sepsis and 
+pneumonia) and therefore received antibiotics. There was 
+no significant difference in gender and the other comor­
+bidities between the two groups. More characteristics 
+were reported in Table 1.
+SHR levels and its relation to 28-day in-hospital mortality 
+analyzed by RCS
+The SHR levels were significantly higher in the non-sur­
+vivor group [1.2 (0.9, 1.6) vs. 1.1 (0.9, 1.4), P = 0.002]. RCS 
+analysis revealed a significant relationship between SHR 
+and 28-day mortality (P for overall < 0.001, Fig. 2A). The 
+risk of 28-day mortality in CHF patients increased with 
+higher SHR levels. After adjusting for potential risk fac­
+tors (all the indicators with significant differences in 
+Table  1, such as age, comorbid sepsis, pneumonia and 
+congestive heart failure, vital signs, OASIS score, labora­
+tory test indicators and drugs), the association between 
+SHR and 28-day mortality remained significant (Fig. 2B).
+COX proportional hazards regression and the subgroup 
+analysis
+COX proportional hazards regression analysis with and 
+without adjustment (the characteristics with significant 
+differences between the survivors and non-survivors) 
+was performed to explore the relationship between SHR 
+and 28-day in-hospital mortality. The results showed 
+that the unadjusted HR was equal to 1.45 with 95% CI 
+1.32–1.59 (P < 0.001), and the adjusted HR was equal to 
+1.43 with 95% CI 1.29–1.58 (P < 0.001), which indicated 
+that SHR were independently associated with 28-day allcause mortality. Subgroup analysis was performed for the 
+potential impact factors such as demographics (gender, 
+age), comorbidities (diabetes, liver disease, renal disease, 
+congestive HF, pneumonia, cerebral infarction, and sep­
+sis), OASIS score, and drugs (furosemide, atorvastatin, 
+aspirin and vancomycin). The results indicated that none 
+of the aforementioned factors affected the prognostic 
+prediction of SHR for patients with CHF (Fig. 3 and Sup­
+plementary Table S1). Higher SHR was associated with 
+increased risk of 28-day mortality in CHF in each sub­
+group (both unadjusted HR and adjusted HR were above 
+1, P < 0.05, P for interaction > 0.05), meaning the baseline 
+demographics, comorbidities, OASIS score and the com­
+monly used drugs did not sway the relationship between 
+SHR and 28-day mortality.
+ROC curves of SHR, ABG, and HbA1c
+The ROC curves were plotted for SHR, ABG, and HbA1c 
+(Fig. 4) to predict 28-day all-cause mortality in patients 
+with CHF. SHR had an AUC of 0.924 (95% CI: 0.904–
+0.943, P < 0.001), outperforming both ABG [AUC: 0.910 
+(95% CI: 0.889–0.932), P < 0.001] and HbA1c [AUC: 0.917 
+(95% CI: 0.899–0.935), P < 0.001], which indicated that 
+SHR offered a significant advantage in prediction over 
+ABG and HbA1c. Additionally, we determined a cut-off 
+value of 0.57 for SHR, with a sensitivity of 0.80 and speci­
+ficity of 0.98. KM curves were plotted for patients divided 
+by the cut-off of SHR.
+KM analysis to compare the 28-day survival in subgroups 
+with low versus high SHR
+The participants were allocated into low-SHR and highSHR subgroups for K-M analysis (Fig.  5). Compared to 
+the low-SHR group, patients with higher SHR levels had 
+significantly lower 28-day survival probability (P = 0.011).
+Importance of factors in the impact on 28-day mortality 
+ranked by Boruta algorithm
+In the report from Boruta algorithm, the variables includ­
+ing SHR in the green area are identified as important fac­
+tors, which have important roles in the model. SHR was 
+one of the key factors in predicting 28-day hospital mor­
+tality in patients with CHF. The variables in the yellow 
+area are suspected factors, which may be related to the 
+adverse outcome to a certain extent, and the variables in 
+the red area are unimportant factors (Fig. 6).
+Establishment and validation of the machine learning 
+prediction model
+According to the pre-specified protocol, patients 
+were assigned to development (n = 640) and validation 
+(n = 273) groups, no significant differences were detected 
+in the characteristics, suggesting that the two groups of 
+patients originate from the same population and pos­
+sess good comparability (Supplementary Table S2). The 
+ROC curves of machine learning prediction model were 
+shown in Fig. 7A. The AUC of Coxph, KNN, Bayes and 
+Neutral Network were 0.793, 0.774, 0.786, 0.801, respec­
+tively, which indicated that the best performance was 
+in the Neutral Network algorithm prediction model. 
+The DCA curves demonstrated the KNN algorithm 
+model presented a large net benefit and beard strong 
+clinical effectiveness (Fig.  7B). Moreover, the calibra­
+tion curve of KNN was highly in good agreement with 
+the reference line, indicating excellent prediction per­
+formance (Fig.  7C). The characteristics of patients in 
+the development set and validation set are reported in 
+Supplementary Table S2. This table indicates that no sig­
+nificant differences were detected in as many as 62 char­
+acteristics, suggesting that the two groups of patients 
+
+Page 5 of 13
+Li et al. Cardiovascular Diabetology (2025) 24:10 
+Overall (n = 913)
+Survivors (n = 425)
+Non-survivors (n = 488)
+z(χ2)/p
+Demographics
+ Age, years
+66.7 (65.7, 67.7)
+63.0 (53.5, 72.0)
+72.0 (61.0, 82.0)
+− 8.3/0.000
+ Male, n (%)
+539 (59.0)
+256 (60.2)
+283 (58.0)
+0.5/0.492
+Comorbidities, n (%)
+ Diabetes
+364 (39.9)
+164 (38.6)
+200 (41.0)
+0.5/0.461
+ Renal diseases
+324 (35.5)
+151 (35.5)
+173 (35.5)
+0.0/0.980
+ Liver diseases
+291 (31.9)
+140 (32.9)
+151 (30.9)
+0.4/0.518
+ COPD
+34 (3.7)
+11 (2.6)
+23 (4.7)
+2.9/0.091
+ Sepsis
+306 (33.5)
+163 (38.4)
+143 (29.3)
+8.4/0.004
+ Pneumonia
+254 (27.8)
+142 (33.4)
+112 (23)
+12.4/0.000
+ Asthma
+71 (7.8)
+39 (9.2)
+32 (6.6)
+2.1/0.140
+ SAP or UAP
+67 (7.3)
+32 (7.5)
+35 (7.2)
+0.0/0.836
+ AMI
+12 (1.3)
+5 (1.2)
+7 (1.4)
+0.1/0.733
+ ARDS
+10 (1.1)
+6 (1.4)
+4 (0.8)
+0.7/0.391
+ Cerebral infarction
+126 (13.8)
+65 (15.3)
+61 (12.5)
+1.5/0.222
+ Intracerebral hemorrhage
+13 (1.4)
+8 (1.9)
+5 (1.0)
+1.2/0.275
+ Congestive heart failure
+203 (22.2)
+81 (19.1)
+122 (25.0)
+4.6/0.031
+ Acute heart failure
+84 (9.2)
+38 (8.9)
+46 (9.4)
+0.1/0.800
+Vital signs, median (IQR)
+ Systolic pressure, mmHg
+109.6 (108.6, 110.6)
+109.6 (102.0, 119.8)
+105.9 (97.7, 114.7)
+− 4.7/0.000
+ Diastolic pressure, mmHg
+59.2 (58.6, 59.9)
+59.2 (53.7, 65.5)
+57.4 (51.6, 63.9)
+− 3.3/0.001
+ MAP, mmHg
+73.3 (72.6, 73.9)
+73.2 (68.0, 80.0)
+71.3 (65.0, 76.8)
+− 4.3/0.000
+ Respiratory rate, breathes per minute
+21.4 (21.1, 21.7)
+20.3 (17.4, 23.9)
+21.6 (18.3, 24.8)
+− 3.4/0.001
+ Body temperature, ℃
+36.9 (36.8, 36.9)
+36.9 (36.7, 37.3)
+36.8 (36.5, 37.1)
+− 4.7/0.000
+ Heart rate, beats per minute
+91.8 (90.7, 93.0)
+91.4 (79.4, 103.7)
+91.2 (78.5, 103.8)
+− 0.3/0.801
+ SpO2, %
+96.4 (96.2, 96.6)
+97.2 (96.0, 98.6)
+96.5 (94.7, 98.1)
+− 4.7/0.000
+Score, median (IQR)
+ OASIS
+39.5 (38.8, 40.1)
+37.0 (29.0, 44.0)
+41.0 (35.0, 48.0)
+− 6.4/0.000
+Laboratory examination, median (IQR)
+ ABG, mg/dl
+168.1 (161.9, 174.3)
+137.0 (113.8, 170.0)
+144.2 (115.0, 212.8)
+− 3.3/0.001
+ HbA1c, %
+6.3 (6.2, 6.4)
+6.0 (5.0, 7.0)
+6.0 (5.3, 7.0)
+− 5.8/0.000
+ Hemoglobin, g/dl
+9.9 (9.7, 9.9)
+9.2 (8.1, 10.6)
+9.7 (8.5, 11.4)
+− 4.0/0.000
+ PLT, 109/L
+199.4 (190.9, 208.0)
+183.0 (112.3, 262.0)
+173.3 (103.6, 246.0)
+− 1.5/0.132
+ WBC, 109/L
+15.0 (14.1, 16.0)
+12.6 (8.1, 17.9)
+14.1 (9.0, 19.4)
+− 2.7/0.008
+ BUN, mg/dl
+39.9 (38.0, 41.7)
+30.0 (19.0, 46.0)
+35.3 (22.0, 54.9)
+− 3.4/0.001
+ Calcium, mmol/L
+8.2 (8.1, 8.3)
+8.2 (7.7, 8.7)
+8.2 (7.6, 8.7)
+− 1.2/0.226
+ Chloride, mmol/L
+103.0 (102.6, 103.5)
+103.0 (99.0, 107.0)
+103.0 (98.0, 107.5)
+− 0.1/0.915
+ Creatinine, mg/dl
+2.1 (2.0, 2.2)
+1.4 (0.9, 2.3)
+1.8 (1.1, 2.7)
+− 3.8/0.000
+ Sodium, mmol/L
+37.9 (137.5, 138.3)
+138.0 (134.5, 141.0)
+138.0 (134.0, 141.5)
+− 0.2/0.814
+ Potassium, mmol/L
+4.4 (4.3, 4.4)
+4.2 (3.9, 4.7)
+4.4 (3.9, 4.9)
+− 2.9/0.004
+ INR
+1.9 (1.8, 1.9)
+1.5 (1.2, 1.8)
+1.6 (1.3, 2.2)
+− 3.5/0.001
+ PT, s
+20.2 (19.4, 21.0)
+15.7 (13.5, 20.2)
+17.2 (13.9, 23.2)
+− 3.4/0.001
+ PTT, s
+45.4 (44.0, 46.9)
+35.9 (29.6, 45.4)
+42.2 (30.8, 56.4)
+− 4.1/0.000
+ ALT, U/L
+172.3 (138.8, 205.8)
+52.0 (21.5, 172.0)
+51.0 (22.0, 172.0)
+− 0.3/0.796
+ ALP, U/L
+135.4 (128.6, 142.1)
+130.0 (74.5, 135.0)
+122.5 (82.0, 141.5)
+− 1.0/0.360
+ AST, U/L
+384.8 (287.6, 482.0)
+75.0 (31.5, 385.0)
+97.5 (36.3, 385.0)
+− 1.7/0.096
+ pH
+7.3 (7.3, 7.3)
+7.0 (7.0, 7.0)
+7.0 (7.0, 7.0)
+− 1.5/0.000
+ SHR
+1.3 (1.3, 1.3)
+1.1 (0.9, 1.4)
+1.2 (0.9, 1.6)
+− 3.1/0.002
+Drugs, n (%)
+Antiplatelet drugs
+ Clopidogrel
+108 (11.8)
+44 (10.4)
+64 (13.1)
+1.7/0.197
+ Aspirin
+419 (45.9)
+194 (45.6)
+225 (46.1)
+0.0/0.889
+Lipid regulating drugs
+Table 1  Baseline characteristics of patients with chronic heart failure
+
+Page 6 of 13
+Li et al. Cardiovascular Diabetology (2025) 24:10 
+originate from the same population and possess good 
+comparability.
+Power of the study
+The sample size was estimated using a method specifi­
+cally designed for developing clinical prediction mod­
+els, as put forward by biostatistics professors [34]. To 
+achieve the expected power of test (a significance level of 
+0.05,two-tailed, and a desired power of 0.80) in the four 
+machine learning algorithms used in this study, at least 
+439 participants were required for the sample (includ­
+ing 220 positive events) based on preliminary analysis 
+(mortality of 0.53) and the top 15 important factors in the 
+green zone (Fig. 6) ranked by Boruta algorithm, the cal­
+culations were performed by the R package (pmsampsize) 
+[34]. In the current research, 913 patients were included 
+in the sample, which included 488 positive events. This 
+sample size exceeded the calculated sample size, provid­
+ing sufficient power to detect the effects.
+Discussion
+This retrospective study exclusively investigated the rela­
+tionship between the SHR and the mortality in patients 
+with CHF. The study ultimately found that the SHR was 
+an independent prognostic risk factor, regardless of the 
+baseline demographics, comorbidities and drugs, which 
+was validated by a variety of statistical methods and from 
+multiple dimensions in this study.
+The estimates of mortality rates in CHF varied greatly 
+due to the differences in the study design, study popula­
+tion, definition for CHF, and cut-off values for left ven­
+tricular ejection fraction [4, 35]. Patients who suffered 
+from pre-existing CHF only have an overall median sur­
+vival of 2.1 years even if admitted to the hospital solely 
+for HF (mostly non-ICU) [36] The patients included in 
+this study also met with at least one acute critical illness 
+at the time of ICU admission, such as sepsis, pneumo­
+nia, cardiovascular events, and liver and kidney diseases, 
+which jointly contribute to poor prognosis, these are also 
+the reasons why we chose the 28-day all-cause mortality 
+rate. The mortality is consistent with the results of previ­
+ous related studies. [37, 38]. The relatively high rates of 
+hospital readmission and mortality have brought an enor­
+mous economic burden to society and families [4, 35]. 
+Therefore, establishing early prediction models for prog­
+nosis and identifying patients at high risk of death can 
+assist clinicians in formulating more proactive and rea­
+sonable treatment plans, serving to reduce risk of death. 
+Overall (n = 913)
+Survivors (n = 425)
+Non-survivors (n = 488)
+z(χ2)/p
+ Atorvastatin
+216 (23.7)
+101 (23.8)
+115 (23.6)
+0.0/0.944
+ Simvastatin
+115 (12.6)
+48 (11.3)
+67 (13.7)
+1.2/0.269
+Diuretics
+ Spironolactone
+89 (9.7)
+38 (8.9)
+51 (10.5)
+0.6/0.443
+ Furosemide
+457 (50.1)
+251 (59.1)
+206 (42.2)
+25.8/0.000
+Antibacterial drugs
+ Amoxicillin-clavulanic acid
+12 (1.3)
+6 (1.4)
+6 (1.2)
+0.1/0.809
+ Ampicillin sodium
+27 (3.0)
+19 (4.5)
+8 (1.6)
+6.3/0.012
+Piperacillin tazobactam
+196 (21.5)
+113 (26.6)
+83 (17.0)
+12.4/0.000
+ Cefazolin
+85 (9.3)
+53 (12.5)
+32 (6.6)
+9.4/0.002
+ Ceftazidime
+46 (5.0)
+33 (7.8)
+13 (2.7)
+12.4/0.000
+ Ceftriaxone
+99 (10.8)
+51 (12.0)
+48 (9.8)
+1.1/0.294
+ Meropenem
+126 (13.8)
+87 (20.5)
+39 (8.0)
+29.7/0.000
+ Imipenem
+5 (0.5)
+3 (0.7)
+2 (0.4)
+0.4/0.545
+ Azithromycin
+73 (8.0)
+40 (9.4)
+33 (6.8)
+2.2/0.141
+ Erythromycin
+29 (3.2)
+19 (4.5)
+10 (2.0)
+4.3/0.037
+ Ciprofloxacin
+191 (20.9)
+114 (26.8)
+77 (15.8)
+16.8/0.000
+ Levofloxacin
+87 (9.5)
+49 (11.5)
+38 (7.8)
+3.7/0.055
+ Metronidazole
+137 (15.0)
+77 (18.1)
+60 (12.3)
+6.0/0.014
+ Vancomycin
+436 (47.8)
+237 (55.8)
+199 (40.8)
+20.4/0.000
+Vasodilator drugs
+ Nitroglycerin
+129 (14.1)
+78 (18.4)
+51 (10.5)
+11.7/0.001
+Anti-arrhythmic drugs
+ Amiodarone
+107 (11.7)
+60 (14.1)
+47 (9.6)
+4.4/0.036
+COPD Chronic obstructive pulmonary disease, SAP Stable angina pectoris, UAP Unstable angina pectoris, AMI Acute myocardial infarction, ARDS Acute respiratory 
+distress syndrome, ABG Admission blood glucose, HbA1c Glycosylated hemoglobin, OASIS Oxford acute illness severity score, MAP Mean arterial pressure, SpO2 Pulse 
+oxygen saturation, PLT Platelet count, WBC White blood cell count, BUN Blood urea nitrogen, INR International normalized ratio, PT Prothrombin time, PTT Partial 
+thromboplastin time, ALT Alanine aminotransferase, ALP Alkaline phosphatase, AST Aspartate aminotransferase, SHR Stress hyperglycemia ratio
+Table 1  (continued)
+ 
+
+Page 7 of 13
+Li et al. Cardiovascular Diabetology (2025) 24:10 
+The Meta-Analysis Global Group in Chronic Heart Fail­
+ure (MAGGIC) pooled the data from 30 cohort studies ( 
+involving 39 372 patients) and identified 13 independent 
+predictors of mortality with various predictive strength 
+in patients with CHF [39]. One observational study has 
+externally validated the MAGGIC risk score could be 
+considered as a powerful and simple method to stratify 
+the risk of mortality [40]. Another retrospective cohort 
+analysis constructed a nomogram prediction model of inhospital mortality with similar 13 risk factors [41]. With 
+an increasing understanding of the relationship between 
+inflammation and CHF [42] some scholars have estab­
+lished a clinical outcome risk stratification model based 
+on multiple plasma biomarkers [43]. However, these 
+models involve too many parameters and are complex 
+to operate. Therefore it needs simple and easy-to-use 
+parameters to assess the risk of mortality, such as heart 
+rate [44], echocardiography [45] and the combination 
+of several commonly used laboratory indicators in clini­
+cal practice [46]. In critically ill patients, SHR has been 
+concerned because it eliminates the influence of baseline 
+glucose on stress hyperglycemia regardless of whether 
+the patient has diabetes or not [26, 47]. Considering 
+that stress hyperglycemia can occur in all populations, 
+this study includes patients with and without diabetes to 
+reflect the universality of SHR.
+In this study, RCS analysis clearly demonstrated that 
+the risk of 28-day mortality gradually rose with the 
+increase of SHR. This relationship remains stable after 
+adjusting for confounding factors. Meanwhile it was 
+validated by proportional hazards regression and the 
+subgroup analysis based on the potential impact factors, 
+which demonstrated the broad applicability and stability 
+of the relationship between SHR and the mortality. This 
+finding might have important clinical implications, as 
+physicians can calculate SHR early in the patient's admis­
+sion to quickly assess their prognostic risk and develop 
+more personalized and targeted treatment protocols. 
+This result aligns with previous research in other criti­
+cal illnesses including acute myocardial infarction [21], 
+stroke [26], sepsis [27]. These results further emphasize 
+the importance of SHR in prognostic assessment for CHF 
+patients.
+Another finding was the cut-off of SHR, it is 0.57 
+according to the ROC analysis, which was lower than 
+those for long-term prognosis in patients with CHF [48] 
+and poor prognosis acute coronary syndrome [29]. The 
+results of KM analysis based on the cut-off also strongly 
+support this view point. The 28-day survival rate in 
+patients with SHR level larger than 0.57 was significantly 
+lower than in those with SHR lower than 0.57, which 
+indicated that SHR could be used as an effective stratifi­
+cation tool to differentiate prognostic risk. Additionally, 
+the AUC of SHR was superior to both admission glucose 
+and HbA1c, which suggested that SHR could more accu­
+rately reflect the severity and prognosis of the patient's 
+condition, potentially provide more comprehensive and 
+precise information compared to traditional blood glu­
+cose markers. The strength of SHR might be attributed to 
+the fact that SHR takes into account both acute glucose 
+elevation and chronic glucose levels, therefore SHR bet­
+ter reflects the patient's glucose metabolism during stress 
+and its impact on prognosis [26].
+It is well-known that the poor prognosis might not be 
+driven by only one factor. As shown in Table 1, there are 
+significant differences between survivors and non-sur­
+vivors in multiple characteristics involving age, comor­
+bidities, vital signs, laboratory test indicators, and clinical 
+medication use, although it is not possible to make defin­
+itive judgments relying solely on basic statistical meth­
+ods. Therefore, the Boruta algorithm was adopted to 
+determine the importance of various factors in the influ­
+ence on the poor prognosis, which showed that SHR 
+played an important role in the model and was identified 
+Fig. 2  The association between SHR and 28-day mortality by restricted 
+cubic spline method A The unadjusted evaluation; B The adjusted evalua­
+tion. CI Confidence interval, SHR Stress hyperglycemia ratio
+ 
+
+Page 8 of 13
+Li et al. Cardiovascular Diabetology (2025) 24:10 
+as a critical feature within the green zone. Important 
+characteristics also include age and indicators of disease 
+severity, such as pH, OASIS, SpO2, and MAP. Merope­
+nem is the only drug categorized as a significant influenc­
+ing factor, possibly since the patients in this study were 
+Fig. 5  Kaplan–Meier survival curve for mortality according to SHR cut-off 
+SHR: stress hyperglycemia ratio
+ 
+Fig.  4  Prediction performance for 28-day all-cause mortality by ROC 
+curves. SHR Stress hyperglycemia ratio, ABG Admission blood glucose, 
+HbA1C Glycosylated hemoglobin
+ 
+Fig. 3  COX proportional hazards regression and the subgroup analysis. OASIS Oxford acute illness severity score, HR Hazard ratio
+ 
+
+Page 9 of 13
+Li et al. Cardiovascular Diabetology (2025) 24:10 
+Fig. 6  Importance of potential risk factors of 28-day mortality ranked by Boruta algorithm. The horizontal axis is the name of each variable, and the verti­
+cal axis is the Z value of each variable. The box plot shows the Z value of each variable during model calculation. The green boxes represent important 
+variables, the red boxes represent unimportant variables, and the yellow boxes represent potentially important variables. ABG Admission blood glucose, 
+HbA1c Glycosylated hemoglobin, OASIS Oxford acute illness severity score, MAP Mean arterial pressure, SpO2 Pulse oxygen saturation, SHR Stress hypergly­
+cemia ratio, MAP Mean arterial pressure, PTT Partial thromboplastin time, INR International normalized ratio, PT Prothrombin time, BUN Blood urea nitro­
+gen, HbA1C Glycosylated hemoglobin, AST Aspartate aminotransferase, ALT Alanine aminotransferase, COPD Chronic obstructive pulmonary disease, WBC 
+White blood cell count, SAP Stable angina pectoris, UAP Unstable angina pectoris, AMI: acute myocardial infarction, ARDS Acute respiratory distress disease
+ 
+
+Page 10 of 13
+Li et al. Cardiovascular Diabetology (2025) 24:10 
+from the ICU and had a relatively high prevalence of coexisting infectious diseases. Despite their clinical impor­
+tance, comorbidities (congestive HF, sepsis, diabetes and 
+pneumonia) and other medications were not listed in 
+the green area. As shown in Fig.  3 and Supplementary 
+Table  1, further subgroup analysis of Cox proportional 
+hazards regression based on important characteristics 
+also indicates that these characteristics do not signifi­
+cantly affect the relationship between SHR and 28-day 
+mortality. These findings further validate the relationship 
+between SHR and mortality in patients with CHF, while 
+also providing strong support for constructing a prog­
+nostic model based on SHR. However, we also observed 
+that variables in the yellow zone, marked as tentative 
+important features, may be somewhat related to adverse 
+outcomes in CHF patients. This suggests that in future 
+studies, we could further explore the potential interac­
+tions between these variables and SHR, as well as their 
+combined influence on the prognosis of CHF patients, to 
+gain a more comprehensive understanding of prognostic 
+factors in CHF.
+The prediction performance was acceptable when 
+tested by four commonly used machine learning models 
+(coxph, KNN, Bayes, Neutral Network) with the neural 
+network algorithm being the best (AUC 0.801). The cali­
+bration curve indicated that the fitted curve was close 
+to the reference curve, and the DCA curve showed that 
+the model had significant net benefit. These results sug­
+gest that the model had high accuracy and clinical prac­
+ticability. This prognostic model provided clinicians with 
+a practical and intuitive tool to make more informed 
+treatment decisions for patients with both acute critical 
+illness and pre-existing CHF more effectively. Just as in 
+coronary artery disease and atrial fibrillation, the predic­
+tive performance of machine learning algorithms was 
+especially important for cardiologists and experts in the 
+ICU who face challenges in trying to make optimal clini­
+cal decision-making [49].
+This study has several strengths. Various statistical 
+methods, including RCS analysis, Kaplan–Meier analy­
+sis, ROC curve analysis, the Boruta algorithm, subgroup 
+analysis, Cox regression analysis, and machine learning, 
+were employed to thoroughly investigate the relation­
+ship between the SHR and 28-day all-cause mortality in 
+patients with CHF from multiple dimensions. This com­
+prehensive use of multiple methods enhances the reliabil­
+ity and persuasiveness of the study results, allowing for a 
+more complete revelation of the role of SHR in the prog­
+nostic evaluation of CHF patients. Compared to other 
+similar studies, our research is methodologically more 
+rigorous and comprehensive [39–43]. For example, in the 
+variable selection process, we utilized difference analy­
+sis, univariate Cox regression, and the Boruta algorithm, 
+which not only identified SHR as an important feature 
+Fig. 7  Establishment and validation of the machine learning prediction 
+model. A ROC curve of the machine learning model. B DCA of the machine 
+learning model. C Calibration curve of the KNN algorithm model. KNN KNearest Neighbors, Coxph Cox proportional hazards survival
+ 
+
+Page 11 of 13
+Li et al. Cardiovascular Diabetology (2025) 24:10 
+but also revealed several potentially significant features, 
+providing directions for future research. Furthermore, we 
+predicted the 28-day all-cause mortality of CHF patients 
+using various machine learning models. Moreover, SHR 
+has several advantages, it is simple, easy to measure, fast, 
+non-invasive, and highly accurate [26].
+However, as a retrospective study, there are several 
+limitations, such as the potential for selection bias, which 
+may prevent the included patients from fully represent­
+ing all patients of this category. The sample size is limited 
+in the current database, and objectively, we cannot deter­
+mine its size. Since the outcomes of interest have already 
+occurred and exposure factors cannot be controlled, 
+the results of the study can only suggest a correlation 
+between SHR and mortality but cannot prove whether 
+there is a causal relationship between SHR and the prog­
+nosis. There is a small amount of incomplete data, and 
+the filled data may affect the results to a certain extent. 
+Additionally, the data for this study came from a single 
+database with racial limitations, meaning the findings 
+may only be applicable to the studied population. There­
+fore, these findings should provoke further multicenter 
+and prospective studies to validate the predictive value of 
+SHR in prognosis.
+Conclusion
+For patients admitted to ICUs with both acute critical 
+illness and pre-existing CHF, SHR was identified as an 
+independent predictor of 28-day all-cause mortality. Its 
+prognostic value surpasses those of HbA1c and blood 
+glucose, and prognostic models based on SHR were suc­
+cessfully constructed with machine learning algorithm, 
+which provide clinicians with an effective tool to make 
+therapeutic decisions. More multicenter clinical studies 
+are needed to provide stronger evidence.
+Abbreviations
+HF 
+Heart failure
+CHF 
+Chronic heart failure
+ABG 
+Admission blood glucose
+SHR 
+Stress hyperglycemia ratio
+BIDMC 
+Beth Israel Deaconess Medical Center
+ICD 
+International Classification of Diseases
+MAP 
+Mean arterial pressure
+SpO2 
+Pulse oxygen saturation
+HbA1c 
+Glycated hemoglobin
+OASIS 
+Oxford acute illness severity
+RCS 
+Restricted cubic splines
+ROC 
+Receiver operating characteristic
+AUC 
+Area under the curve
+KM 
+Kaplan–Meier
+HR 
+Hazard ratios
+CI 
+Confidence intervals
+Coxph 
+Cox proportional hazards
+KNN 
+K-Nearest Neighbors
+DCA 
+Decision curve analysis
+MAGGIC 
+Meta-Analysis Global Group in Chronic Heart Failure
+Supplementary Information
+The online version contains supplementary material available at ​h​t​t​p​s​:​/​/​d​o​i​.​o​r​
+g​/​1​0​.​1​1​8​6​/​s​1​2​9​3​3​-​0​2​5​-​0​2​5​7​7​-​z​.​
+Supplementary material 1.
+Author contributions
+Q.L. and H.L. conceived and designed the study, explained the results and 
+revised the manuscript. H.L. X.Y., and B.D. conducted the study, collected and 
+analyzed the data, drafted the manuscript. All authors reviewed and revised 
+the manuscript.
+Funding
+This work was supported by Leader Project of Henan Province Health 
+Young and Middle-aged Professor (HNSWJW2020013), National Science and 
+Technology Major Projects (2023ZD0505500 and 2023ZD0505501), and Henan 
+Province Medical Education Project (WJLX2023025).
+Data availability
+No datasets were generated or analysed during the current study.
+Declarations
+Ethics approval
+The study was conducted in accordance with the guidelines of the Helsinki 
+Declaration. As the MIMIC-IV database is publicly available, and all data are 
+de-identified to remove patients’ information. The approval was obtained 
+from the Institutional Review Board in advance, and ethical review was not 
+required.
+Author details
+1Department of Emergency Intensive Care Unit, The First Affiliated 
+Hospital of Zhengzhou University, No.1st, Jian She Eastern Road, 
+Zhengzhou 450052, Henan Province, People’s Republic of China
+2Faculty of Medicine, Khon Kaen University, No 123, Mittraphap Road, 
+Khon Kaen 40002, Thailand
+Received: 7 November 2024 / Accepted: 3 January 2025
