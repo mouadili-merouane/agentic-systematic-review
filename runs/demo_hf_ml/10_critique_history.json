@@ -699,5 +699,274 @@
       "overall_assessment": "The draft contains several factual inaccuracies, notably the miscount of PROBAST risk-of-bias classifications and inconsistent reporting of study a8d3bd592b84. Additionally, key PRISMA components such as heterogeneity and publication bias assessments are absent, and some numeric statements lack direct support from the evidence table."
     },
     "revision_requested": false
+  },
+  {
+    "rounds": 6,
+    "synthesis_hash": "467ca065f2",
+    "checks": {
+      "invalid_citations": [],
+      "uncited_studies": [],
+      "numbers_not_in_table": [
+        0.8,
+        0.9
+      ],
+      "evidence_quotes_total": 38,
+      "evidence_quotes_verified": 32,
+      "evidence_verification_rate": 0.842,
+      "unverified_quotes": [
+        {
+          "id": "8cccefac6109",
+          "field": "sample_size",
+          "quote": "our study included 50,630 patients with 93,552 HF ED visits and hospital readmission events with complete 1-year follow-"
+        },
+        {
+          "id": "8cccefac6109",
+          "field": "best_auc",
+          "quote": "At 1‑year follow‑up ... the AUC‑ROC for the combined endpoint ... was 76.80 (76.1–77.47) versus 69.52 (68.77–70.26)"
+        },
+        {
+          "id": "f1b754445d66",
+          "field": "sample_size",
+          "quote": "The final cohort contains 10 757 HF patients admitted to WA hospitals in 2003–2008."
+        },
+        {
+          "id": "d331d78c3781",
+          "field": "outcome",
+          "quote": "the system effectively and fast predicts four death types: death within 30 days, death within 180 days, death within 365"
+        },
+        {
+          "id": "a8d3bd592b84",
+          "field": "sample_size",
+          "quote": "203 out of the 299 instances ... and the rest of 96 instances represents patients deceased"
+        },
+        {
+          "id": "a8d3bd592b84",
+          "field": "best_auc",
+          "quote": "c-index of 0.714"
+        }
+      ]
+    },
+    "review": {
+      "issues": [
+        {
+          "severity": "high",
+          "section": "results_risk_of_bias",
+          "issue": "Study c7a75a2647c1 is reported as having unclear risk of bias, but the evidence table lists its overall risk of bias as high.",
+          "fix": "Correct the risk of bias classification for c7a75a2647c1 to 'high' and remove the statement that any study had unclear risk."
+        },
+        {
+          "severity": "high",
+          "section": "results_risk_of_bias",
+          "issue": "The manuscript states that one study had unclear risk of bias, but no study in the evidence table is marked as unclear.",
+          "fix": "Delete the claim of an unclear‑risk study or replace it with the correct number of high‑risk and low‑risk studies."
+        },
+        {
+          "severity": "high",
+          "section": "results_performance",
+          "issue": "A weighted F1 score of 0.80 is presented as a performance metric, but the evidence table only provides AUC values; 0.80 is not in the table.",
+          "fix": "Either report the F1 score as a separate metric with appropriate citation or remove the numeric claim that is not supported by the table."
+        },
+        {
+          "severity": "high",
+          "section": "results_performance",
+          "issue": "The deep learning system is described as having AUC 0.91 versus logistic regression, yet the evidence table lists comparator_auc as null for that study.",
+          "fix": "Revise the statement to reflect that the comparator AUC was not reported, or cite a source that provides the comparative AUC."
+        },
+        {
+          "severity": "high",
+          "section": "results_performance",
+          "issue": "The claim that the PP cloglog GAM outperformed other ML models is not supported; the table only compares it to a Cox model and provides no comparative ML AUCs.",
+          "fix": "Remove the unsupported superiority claim or qualify it to reflect only the comparison presented in the source."
+        },
+        {
+          "severity": "medium",
+          "section": "results_risk_of_bias",
+          "issue": "The same study (c7a75a2647c1) is cited both for high risk and for unclear risk, creating a citation inconsistency.",
+          "fix": "Ensure each citation is used consistently; replace the duplicate unclear‑risk citation with the correct study or delete it."
+        },
+        {
+          "severity": "high",
+          "section": "methods",
+          "issue": "The manuscript lacks a Methods section describing the systematic search strategy, eligibility criteria, data extraction, PROBAST assessment process, and registration details.",
+          "fix": "Add a comprehensive Methods section that includes database searched, search strings, inclusion/exclusion criteria, screening process, data extraction protocol, risk‑of‑bias assessment, and registration information."
+        },
+        {
+          "severity": "medium",
+          "section": "methods",
+          "issue": "No PRISMA flow diagram or description of study selection numbers (records identified, screened, excluded) is provided.",
+          "fix": "Insert a PRISMA flowchart and report the numbers of records at each stage of selection."
+        },
+        {
+          "severity": "medium",
+          "section": "discussion",
+          "issue": "Heterogeneity is mentioned qualitatively but there is no quantitative assessment (e.g., I²) or discussion of its impact on synthesis.",
+          "fix": "Include a quantitative heterogeneity assessment or explicitly state that it could not be calculated due to the narrative synthesis."
+        },
+        {
+          "severity": "low",
+          "section": "results_characteristics",
+          "issue": "Citation formatting errors (extra spaces) and missing citations for statements about calibration metrics.",
+          "fix": "Standardize citation formatting (e.g., remove leading spaces) and add citations for any claims about calibration or other performance details."
+        }
+      ],
+      "overall_assessment": "The draft contains several high‑severity factual errors, notably misclassifying risk of bias and presenting performance claims not supported by the evidence table. Additionally, key PRISMA components such as a Methods section, flow diagram, and quantitative heterogeneity assessment are missing, requiring substantial revision before the review can be considered complete."
+    },
+    "revision_requested": true
+  },
+  {
+    "rounds": 7,
+    "synthesis_hash": "072febe9bd",
+    "checks": {
+      "invalid_citations": [],
+      "uncited_studies": [],
+      "numbers_not_in_table": [
+        0.8
+      ],
+      "evidence_quotes_total": 38,
+      "evidence_quotes_verified": 32,
+      "evidence_verification_rate": 0.842,
+      "unverified_quotes": [
+        {
+          "id": "8cccefac6109",
+          "field": "sample_size",
+          "quote": "our study included 50,630 patients with 93,552 HF ED visits and hospital readmission events with complete 1-year follow-"
+        },
+        {
+          "id": "8cccefac6109",
+          "field": "best_auc",
+          "quote": "At 1‑year follow‑up ... the AUC‑ROC for the combined endpoint ... was 76.80 (76.1–77.47) versus 69.52 (68.77–70.26)"
+        },
+        {
+          "id": "f1b754445d66",
+          "field": "sample_size",
+          "quote": "The final cohort contains 10 757 HF patients admitted to WA hospitals in 2003–2008."
+        },
+        {
+          "id": "d331d78c3781",
+          "field": "outcome",
+          "quote": "the system effectively and fast predicts four death types: death within 30 days, death within 180 days, death within 365"
+        },
+        {
+          "id": "a8d3bd592b84",
+          "field": "sample_size",
+          "quote": "203 out of the 299 instances ... and the rest of 96 instances represents patients deceased"
+        },
+        {
+          "id": "a8d3bd592b84",
+          "field": "best_auc",
+          "quote": "c-index of 0.714"
+        }
+      ]
+    },
+    "review": {
+      "issues": [
+        {
+          "severity": "high",
+          "section": "Results - Performance",
+          "issue": "The reported median AUC of 0.69 is incorrect; the median of the eight reported AUCs (0.602, 0.602, 0.618, 0.628, 0.628, 0.768, 0.91, 0.9228) is 0.623.",
+          "fix": "Recalculate and report the correct median AUC (0.62) and adjust any derived statements accordingly."
+        },
+        {
+          "severity": "high",
+          "section": "Results - Performance",
+          "issue": "The counts of studies with higher, lower, or no comparator AUCs are inaccurate (should be higher in 4 studies, lower in 1, no comparator in 5).",
+          "fix": "Revise the summary to reflect the correct numbers: higher AUC in four studies, lower in one, and no comparator reported in five studies."
+        },
+        {
+          "severity": "medium",
+          "section": "Methods/Protocol",
+          "issue": "The review does not report a registration of its protocol (e.g., PROSPERO) nor provide a link to a pre‑specified protocol, which is a required PRISMA element.",
+          "fix": "Add a statement indicating whether the review was registered, including registration number and platform, or explicitly state that no registration was performed."
+        },
+        {
+          "severity": "medium",
+          "section": "Methods/Statistical Synthesis",
+          "issue": "The manuscript mentions that I² could not be calculated but does not describe the planned approach for assessing heterogeneity or criteria for deciding against meta‑analysis.",
+          "fix": "Include a brief description of the intended heterogeneity assessment (e.g., visual inspection, qualitative synthesis) and justification for not performing a quantitative meta‑analysis."
+        },
+        {
+          "severity": "low",
+          "section": "Discussion",
+          "issue": "The statement that ML models “often surpass” traditional models uses causal language without meta‑analytic evidence.",
+          "fix": "Rephrase to a more cautious interpretation, e.g., “ML models frequently showed higher AUCs than traditional models in the sampled studies.”"
+        }
+      ],
+      "overall_assessment": "The draft contains several factual inaccuracies regarding summary statistics and study counts, which undermine the credibility of the performance synthesis. After correcting these errors and adding missing PRISMA elements (protocol registration and heterogeneity assessment), the review would meet the required standards for systematic reporting."
+    },
+    "revision_requested": true
+  },
+  {
+    "rounds": 7,
+    "synthesis_hash": "b49c46e1ab",
+    "checks": {
+      "invalid_citations": [],
+      "uncited_studies": [],
+      "numbers_not_in_table": [],
+      "evidence_quotes_total": 38,
+      "evidence_quotes_verified": 32,
+      "evidence_verification_rate": 0.842,
+      "unverified_quotes": [
+        {
+          "id": "8cccefac6109",
+          "field": "sample_size",
+          "quote": "our study included 50,630 patients with 93,552 HF ED visits and hospital readmission events with complete 1-year follow-"
+        },
+        {
+          "id": "8cccefac6109",
+          "field": "best_auc",
+          "quote": "At 1‑year follow‑up ... the AUC‑ROC for the combined endpoint ... was 76.80 (76.1–77.47) versus 69.52 (68.77–70.26)"
+        },
+        {
+          "id": "f1b754445d66",
+          "field": "sample_size",
+          "quote": "The final cohort contains 10 757 HF patients admitted to WA hospitals in 2003–2008."
+        },
+        {
+          "id": "d331d78c3781",
+          "field": "outcome",
+          "quote": "the system effectively and fast predicts four death types: death within 30 days, death within 180 days, death within 365"
+        },
+        {
+          "id": "a8d3bd592b84",
+          "field": "sample_size",
+          "quote": "203 out of the 299 instances ... and the rest of 96 instances represents patients deceased"
+        },
+        {
+          "id": "a8d3bd592b84",
+          "field": "best_auc",
+          "quote": "c-index of 0.714"
+        }
+      ]
+    },
+    "review": {
+      "issues": [
+        {
+          "severity": "medium",
+          "section": "Methods",
+          "issue": "The review does not describe how the PROBAST risk of bias tool was applied (e.g., number of reviewers, consensus process).",
+          "fix": "Add a brief description of the PROBAST assessment procedure, including reviewer numbers and resolution of disagreements."
+        },
+        {
+          "severity": "medium",
+          "section": "Results/Discussion",
+          "issue": "XGBoost is described as a deep learning approach, which is inaccurate; it is a gradient‑boosted tree method.",
+          "fix": "Revise the wording to correctly classify XGBoost as a tree‑based ensemble method, not deep learning."
+        },
+        {
+          "severity": "medium",
+          "section": "Discussion",
+          "issue": "No assessment of heterogeneity (e.g., I²) or justification for not performing a meta‑analysis is provided, which is a required PRISMA element when multiple effect estimates are reported.",
+          "fix": "Include a statement on heterogeneity assessment (e.g., calculate I²) and explain why a quantitative synthesis was not undertaken."
+        },
+        {
+          "severity": "low",
+          "section": "Results",
+          "issue": "The median AUC of 0.62 is calculated only from studies reporting an AUC; studies with missing AUC values are excluded, which may bias the estimate.",
+          "fix": "Acknowledge in the limitations that the median AUC is based on a subset of studies with available AUCs."
+        }
+      ],
+      "overall_assessment": "The draft accurately reflects the evidence table for most reported findings, but it lacks key methodological details required by PRISMA, misclassifies XGBoost, and does not address heterogeneity. Addressing these issues will improve transparency and compliance with systematic review standards."
+    },
+    "revision_requested": false
   }
 ]

@@ -1,11 +1,11 @@
 ref,study_id,outcome,model,auc,auc_ci,n,comparator,comparator_auc
-[1],663c237b3f19,mortality,XGBoost,0.9228,0.8748 - 0.9613,1177,Logistic Regression,0.8739
-[2],d331d78c3781,"death within 30 days, death within 180 days, death within 365 days and death after 365 days",Deep Learning System (DLS-MSM),0.91,not reported,10311,Logistic Regression (LR),
-[3],8cccefac6109,"30‑day and 1‑year HF‑related emergency department visit, HF hospital readmission or all‑cause mortality",CatBoost,76.8,76.1-77.47,50630,logistic regression,69.52
-[4],98592436c077,180-day mortality,PP cloglog GAM,0.76,not reported,299,Cox proportional hazards,
+[1],8cccefac6109,"30‑day and 1‑year HF‑related emergency department visit, HF hospital readmission or all‑cause mortality",CatBoost,0.768,76.1-77.47,50630,logistic regression,0.695
+[2],9d44a809594c,30-day all-cause readmission,random forests,0.628,not reported,,traditional logistic regression,0.533
+[3],f1b754445d66,30‑day heart failure readmission or death,multilayer perceptron (MLP),0.628,not reported,10757,LACE score,0.551
+[4],663c237b3f19,mortality,XGBoost,0.9228,0.8748 - 0.9613,1177,Logistic Regression,0.8739
 [5],744836f8e48f,30-day all-cause readmission,tree-augmented naive Bayesian network,0.618,not reported,56477,logistic regression,0.624
-[6],9d44a809594c,30-day all-cause readmission,random forests,0.628,not reported,,traditional logistic regression,0.533
+[6],a8d3bd592b84,death,Extra Trees,,not reported,299,none,
 [7],c7a75a2647c1,readmission within one year,support vector machine,0.602,not reported,,none,
-[8],f1b754445d66,30‑day heart failure readmission or death,multilayer perceptron (MLP),0.628,not reported,10757,LACE score,0.551
-[9],501d2f7aff10,30-day readmission,MLP (multi-view),,not reported,30,clinical EHR model,
-[10],a8d3bd592b84,death,Extra Trees,,not reported,299,none,
+[8],98592436c077,180-day mortality,PP cloglog GAM,0.76,not reported,299,Cox proportional hazards,
+[9],d331d78c3781,"death within 30 days, death within 180 days, death within 365 days and death after 365 days",Deep Learning System (DLS-MSM),0.91,not reported,10311,Logistic Regression (LR),
+[10],501d2f7aff10,30-day readmission,MLP (multi-view),,not reported,30,clinical EHR model,

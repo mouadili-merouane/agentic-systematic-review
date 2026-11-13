@@ -1,15 +1,10 @@
 {
-  "rounds": 5,
-  "synthesis_hash": "958642c968",
+  "rounds": 7,
+  "synthesis_hash": "b49c46e1ab",
   "checks": {
     "invalid_citations": [],
     "uncited_studies": [],
-    "numbers_not_in_table": [
-      0.69,
-      0.77,
-      0.8,
-      0.9
-    ],
+    "numbers_not_in_table": [],
     "evidence_quotes_total": 38,
     "evidence_quotes_verified": 32,
     "evidence_verification_rate": 0.842,
@@ -49,31 +44,31 @@
   "review": {
     "issues": [
       {
-        "severity": "high",
-        "section": "Results_Risk_of_Bias",
-        "issue": "Incorrect PROBAST risk-of-bias counts: the evidence table shows 7 studies with high risk, 1 with low risk, and 1 with unclear risk, but the draft reports high in six, low in one, and unclear in three.",
-        "fix": "Recalculate and correct the risk-of-bias summary to reflect 7 high, 1 low, and 1 unclear studies."
+        "severity": "medium",
+        "section": "Methods",
+        "issue": "The review does not describe how the PROBAST risk of bias tool was applied (e.g., number of reviewers, consensus process).",
+        "fix": "Add a brief description of the PROBAST assessment procedure, including reviewer numbers and resolution of disagreements."
       },
       {
         "severity": "medium",
-        "section": "Results_Performance",
-        "issue": "Numeric claims 0.77, 0.8, and 0.9 are not directly reported in the evidence table; they are derived or rounded values without explicit citation.",
-        "fix": "Either cite the original values (e.g., 0.768, 0.80 F1, 0.90 threshold) or qualify the statements as approximations derived from the reported data."
+        "section": "Results/Discussion",
+        "issue": "XGBoost is described as a deep learning approach, which is inaccurate; it is a gradient‑boosted tree method.",
+        "fix": "Revise the wording to correctly classify XGBoost as a tree‑based ensemble method, not deep learning."
       },
       {
         "severity": "medium",
-        "section": "Methods/Discussion",
-        "issue": "Missing PRISMA elements: no assessment of heterogeneity, no evaluation of publication bias, and no certainty of evidence (e.g., GRADE) assessment.",
-        "fix": "Add sections describing heterogeneity assessment (e.g., I²), publication bias evaluation (e.g., funnel plot), and certainty of evidence using GRADE."
+        "section": "Discussion",
+        "issue": "No assessment of heterogeneity (e.g., I²) or justification for not performing a meta‑analysis is provided, which is a required PRISMA element when multiple effect estimates are reported.",
+        "fix": "Include a statement on heterogeneity assessment (e.g., calculate I²) and explain why a quantitative synthesis was not undertaken."
       },
       {
-        "severity": "medium",
-        "section": "Results_Risk_of_Bias",
-        "issue": "Inconsistent citation of study a8d3bd592b84: listed as both high risk and unclear risk.",
-        "fix": "Verify the correct risk-of-bias rating for study a8d3bd592b84 and ensure it is reported consistently."
+        "severity": "low",
+        "section": "Results",
+        "issue": "The median AUC of 0.62 is calculated only from studies reporting an AUC; studies with missing AUC values are excluded, which may bias the estimate.",
+        "fix": "Acknowledge in the limitations that the median AUC is based on a subset of studies with available AUCs."
       }
     ],
-    "overall_assessment": "The draft contains several factual inaccuracies, notably the miscount of PROBAST risk-of-bias classifications and inconsistent reporting of study a8d3bd592b84. Additionally, key PRISMA components such as heterogeneity and publication bias assessments are absent, and some numeric statements lack direct support from the evidence table."
+    "overall_assessment": "The draft accurately reflects the evidence table for most reported findings, but it lacks key methodological details required by PRISMA, misclassifies XGBoost, and does not address heterogeneity. Addressing these issues will improve transparency and compliance with systematic review standards."
   },
   "revision_requested": false
 }
