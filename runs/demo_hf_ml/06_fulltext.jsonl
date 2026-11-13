@@ -38,3 +38,11 @@
 {"id": "a7d331875153", "retrieved": false, "source": "europepmc:TypeError;unpaywall:empty", "n_chars": 0}
 {"id": "9677ef943998", "retrieved": false, "source": "unpaywall:empty", "n_chars": 0}
 {"id": "e8a9e28fdf8a", "retrieved": true, "source": "unpaywall", "n_chars": 42427}
+{"id": "67e4eeae85b2", "retrieved": false, "source": "unpaywall:ConnectTimeout", "n_chars": 0}
+{"id": "d5f82b14da47", "retrieved": false, "source": "unpaywall:empty", "n_chars": 0}
+{"id": "0d791414b725", "retrieved": false, "source": "europepmc:TypeError;unpaywall:empty", "n_chars": 0}
+{"id": "76e77e015c43", "retrieved": false, "source": "unpaywall:empty", "n_chars": 0}
+{"id": "9fef738b7377", "retrieved": false, "source": "europepmc:TypeError;unpaywall:empty", "n_chars": 0}
+{"id": "d186aeddb84c", "retrieved": false, "source": "europepmc:TypeError;unpaywall:empty", "n_chars": 0}
+{"id": "dd2b6dc9633b", "retrieved": false, "source": "unpaywall:empty", "n_chars": 0}
+{"id": "c03836dedba8", "retrieved": false, "source": "unpaywall:empty", "n_chars": 0}
