@@ -1,3 +1,4 @@
 {
-  "screening_title_abstract": true
+  "screening_title_abstract": true,
+  "screening_full_text": true
 }

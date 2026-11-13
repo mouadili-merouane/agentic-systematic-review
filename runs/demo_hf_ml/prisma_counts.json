@@ -16,5 +16,17 @@
     "unpaywall": 11,
     "oa_pdf": 13,
     "arxiv": 11
-  }
+  },
+  "reports_assessed": 88,
+  "reports_excluded_ft": 17,
+  "reports_excluded_reasons": {
+    "I3": 1,
+    "I4": 8,
+    "E1": 2,
+    "I1": 2,
+    "E3": 1,
+    "I2": 3
+  },
+  "studies_included": 71,
+  "assessed_on_abstract_only": 53
 }

@@ -16,3 +16,4 @@
 {"ts": "2026-11-13T11:02:27+00:00", "agent": "retrieval_agent", "action": "rag_index_built", "papers": 35, "chunks": 1783}
 {"ts": "2026-11-13T11:09:46+00:00", "agent": "coordinator", "action": "model_switch", "old": "openai/gpt-oss-120b", "new": "qwen/qwen3.6-27b", "reason": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01m6btzacgexpv3wqanwhg758d` service tier `on_demand` on tokens per day (TPD): Limit 200"}
 {"ts": "2026-11-13T11:09:46+00:00", "agent": "coordinator", "action": "model_switch", "old": "qwen/qwen3.6-27b", "new": "openai/gpt-oss-20b", "reason": "Error code: 404 - {'error': {'message': 'The model `qwen/qwen3.6-27b` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'code': 'model_not_found'}}"}
+{"ts": "2026-11-13T11:31:45+00:00", "agent": "human", "action": "review_screening_full_text", "approve": true, "feedback": "ok"}
