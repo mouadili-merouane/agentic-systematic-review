@@ -160,8 +160,18 @@ Metrics required by the project, computed by `sr_agent/evaluation.py`:
 | **Completeness** | Pipeline stages completed, full-text retrieval rate, field fill rate per extraction field, PRISMA 2020 key items present in the manuscript, decisions with rationale |
 | **Time savings** | Active pipeline time (from audit timestamps) vs a manual estimate for dual screening and extraction; benchmark: 67.3 weeks mean duration of a published systematic review (Borah et al., 2017) |
 
-**Results of the demonstration review:** see [`runs/demo_hf_ml/eval/evaluation_report.md`](runs/demo_hf_ml/eval/evaluation_report.md).
-Title/abstract screening: 272 records, κ(A,B) = 0.837, raw agreement 0.923, 50 disagreements arbitrated.
+**Results of the demonstration review** (full report: [`runs/demo_hf_ml/eval/evaluation_report.md`](runs/demo_hf_ml/eval/evaluation_report.md)):
+
+| Dimension | Result |
+|---|---|
+| Records | 285 identified → 272 after deduplication → 88 to full text → **71 included**; 10 extracted (reproducible sample) |
+| Inter-agent consistency | Screeners A vs B: **κ = 0.837**, raw agreement 0.923; 18.4 % of decisions arbitrated |
+| Grounding / transparency | **84.2 %** of extraction evidence quotes found verbatim in the source text; 0 invalid citations and 0 uncited included studies in the final manuscript; 100 % of decisions carry a rationale |
+| Quality-assurance loop | 7 critic revision rounds; the critic detected count errors and a percentage-scale AUC (76.8 → 0.768), which were corrected and logged |
+| Completeness | 8/8 pipeline stages; **16/16** key PRISMA 2020 items present; full-text retrieval rate 39.8 %; mean extraction field fill rate 0.68 |
+| Screening vs blinded reference (n = 30, stratified random sample) | **accuracy 0.90, sensitivity 0.83, specificity 1.00, precision 1.00, κ = 0.80**. Reference established by the student assisted by a second LLM (Claude), blinded to the pipeline's decisions; all 3 disagreements are records the reference included and the pipeline excluded |
+| Extraction vs human | verification module demonstrated (1 field checked, correct); full field-by-field verification not performed for lack of time |
+| Time | **2.3 h** of active pipeline time vs ≈ 43 h estimated for manual dual screening and extraction (**≈ ×19**); reference: 67.3 weeks mean for a published systematic review (Borah et al., 2017) |
 
 ## 9. Demo interface
 `sr_agent/demo_app.py` (Gradio), 7 tabs: architecture and replay of the audit trail · protocol and queries ·
@@ -184,7 +194,8 @@ The 3-minute video script is in [`docs/video_script.md`](docs/video_script.md).
 - Retrieval is capped per database for the demonstration (top-N by relevance), so recall is not exhaustive.
 - LLM decisions can be wrong; human validation points and the critic agent mitigate but do not remove this risk. The manuscript is a **draft that requires expert verification**.
 - No quantitative pooling (narrative synthesis); data are exported for meta-analysis.
-- Free-tier LLMs (open-weight models via Groq) were used; results may differ with other models.
+- Free-tier LLMs (open-weight `gpt-oss` models via Groq and Cerebras) were used; results may differ with other models.
+- The screening reference (30 records) was produced by one student assisted by a second LLM, not by two independent expert reviewers; accuracy should be re-estimated against a dual human reference. A first, rapid unassisted labelling gave much lower agreement (κ = 0.13), illustrating the sensitivity of this metric to the quality of the reference.
 
 ## 12. Team and individual contributions
 | Member | Contribution |
