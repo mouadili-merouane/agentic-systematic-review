@@ -1,0 +1,2060 @@
+Neural networks versus Logistic regression for 30
+days all-cause readmission prediction
+Ahmed Allam∗1,2, Mate Nagy†3, George Thoma‡5, and Michael Krauthammer§1,2,3,4
+1Department of Quantitative Biomedicine, University of Zurich
+2Biomedical Informatics Group, University Hospital of Zurich
+3Program in Computational Biology and Bioinformatics, Yale University
+4Department of Pathology, Yale School of Medicine
+5Lister Hill National Center for Biomedical Communications, National Library of Medicine
+Abstract
+Heart failure (HF) is one of the leading causes of hospital admissions
+in the US. Readmission within 30 days after a HF hospitalization is both
+a recognized indicator for disease progression and a source of considerable
+ﬁnancial burden to the healthcare system. Consequently, the identiﬁcation of patients at risk for readmission is a key step in improving disease
+management and patient outcome.
+In this work, we used a large administrative claims dataset to (1) explore the systematic application of
+neural network-based models versus logistic regression for predicting 30
+days all-cause readmission after discharge from a HF admission, and (2)
+to examine the additive value of patients’ hospitalization timelines on prediction performance. Based on data from 272,778 (49% female) patients
+with a mean (SD) age of 73 years (14) and 343,328 HF admissions (67% of
+total admissions), we trained and tested our predictive readmission models following a stratiﬁed 5-fold cross-validation scheme. Among the deep
+learning approaches, a recurrent neural network (RNN) combined with
+conditional random ﬁelds (CRF) model (RNNCRF) achieved the best
+performance in readmission prediction with 0.642 AUC (95% CI, 0.6400.645). Other models, such as those based on RNN, convolutional neural networks and CRF alone had lower performance, with a non-timeline
+based model (MLP) performing worst. A competitive model based on logistic regression with LASSO achieved a performance of 0.643 AUC (95%
+CI, 0.640-0.646). We conclude that data from patient timelines improve
+30 day readmission prediction for neural network-based models, that a
+logistic regression with LASSO has equal performance to the best neural
+network model and that the use of administrative data result in competitive performance compared to published approaches based on richer
+clinical datasets.
+∗ahmed.allam@uzh.ch
+†mate.nagy@yale.edu
+‡gthoma@mail.nih.gov
+§michael.krauthammer@uzh.ch
+1
+arXiv:1812.09549v1 [cs.LG] 22 Dec 2018
+
+1
+Introduction
+Heart failure (HF) is one of the leading causes for hospital admissions in the
+US [1–4] with high numbers of readmissions within 30 days of discharge [2–4].
+Based on multiple hospitalization data sources, the yearly rate of 30 days allcause readmission after an HF hospitalization is approximately 23-24% [1,2,5],
+posing a huge burden on the healthcare system with an estimated cost of $17
+billions of total Medicare expenditure [4, 6]. Beyond the associated expenses
+and costs, readmissions have negative consequences on patients’ health status,
+leading to complications and increased risk of disease progression [6]. Eﬀorts
+toward quality improvement such as introducing programs that incentivize and
+penalize hospitals based on the yearly readmission rate have been the focus of
+researchers and policy makers [2,7]. Likewise, there has been increasing interest in developing predictive models and/or monitoring systems that allow for
+prevention and preemptive steps, such as the prediction of 30 days all-cause
+readmission for patients hospitalized with HF for which many challenges remain [8,9].
+In this paper, we aim at exploring the systematic application of neural network
+models for predicting 30 days all-cause readmission after discharge from a HF
+hospitalization (which we call index event below). Concretely, given a set of sequences of hospitalization admissions with their corresponding 30 days all-cause
+readmission outcome, we seek to predict the 30 days all-cause readmission of the
+last HF admission (i.e. the last index event) in each sequence. The sequence of
+hospitalization events for each patient will be referred to as “timeline” and “trajectory” interchangeably throughout the paper. Published approaches chieﬂy
+use data from the index event for predicting hospital readmission, paying less
+attention to a patient’s trajectory leading to the current heart failure admission. Intuitively, a patient’s history may add much additional information that
+may be informative of whether a patient is subject to early readmission. For
+example, a history of multiple readmissions in the past may be a risk factor for
+future readmissions. Consequently, one speciﬁc aim of this study is to examine the value of including a patient’s trajectory data in a 30 day readmission
+prediction model. To this end, we examine three approaches for modeling the
+problem of which two use the temporal information encoded in the patients’
+trajectories (sequence labeling and sequence classiﬁcation), and one that does
+not (index event classiﬁcation). Particularly, we implemented multiple neural
+network models with varying architectures and objective functions such as recurrent neural networks (RNN), and convolutional neural networks (CNN) as
+examples of sequence labeling and classiﬁcation approaches, and multilayer perceptron (MLP) along with logistic regression as baseline models representing the
+index event classiﬁcation approach. We conducted these studies with a large administrative claims dataset, which lacks the detailed clinical information found
+in datasets typically used for this problem. As claims data are readily available
+and can be robustly harmonized, they pose less privacy concerns and are ideally
+suited for tacking the HF readmission problem.
+2
+
+2
+Methods
+2.1
+Dataset
+The HF dataset was derived from the Healthcare Cost and Utilization Project
+(HCUP), Nationwide Readmission Database (NRD), issued by the Agency for
+Healthcare Research and Quality (AHRQ) [10]. It includes patients’ discharges
+(i.e. hospital claims) of all-payer hospital inpatient stays over the 2013 period
+that are contributed by twenty one states and accounting for 49.1% of all US
+hospitalizations [10]. Each claim in the dataset is associated with a corresponding patient who is identiﬁed by a uniquely generated linkage number (“visitlink”)
+that tracks the patient’s visits across hospitals within a state. Each claim represents a summary of an inpatients hospitalization event, including information
+about the hospitalization event such as the time of admission and discharge, the
+diagnosis, procedures, comorbidity and chronic conditions, length of stay, along
+other clinical ﬁelds associated with the event (a detailed description of the data
+elements can be found at [11]). Moreover, as each claim is linked to a patient
+identiﬁer, it also includes patient’s socio-demographic information such as age,
+gender, income category and place location based on the National Center for
+Health Statistics (NCHS) classiﬁcation scheme for US counties.
+2.1.1
+Timeline/trajectory building and processing
+We built timelines/sequences out of the claims, allowing us to preserve the
+temporal progression and the history of hospitalization events for every patient.
+Patients were included in the HF dataset if they met the following conditions:
+1. had at least one hospitalization event between January and November
+period with HF as the primary diagnosis (i.e. congestive heart failure;
+code = 108) as determined by Clinical Classiﬁcation Software (CCS) that
+groups International Classiﬁcation of Diseases, Version 9 (ICD-9) codes
+[12]
+2. were ≥18 years old when they had an HF hospitalization event
+Formally, we denote each claim (i.e. hospitalization event) by a feature vector
+xt describing the characteristics and attributes of the hospitalization event and
+the corresponding patient. Moreover, we denote its corresponding label by yt ∈
+{0, 1}, representing the 30 days all-cause readmission . The readmission outcome
+was computed based on the AHRQ HCUP 30-day readmission measure (see
+Appendix A in [15]).
+To determine if yt = 1 (i.e. the hospital admission of the future claim/event
+xt+1 occurs within 30 days from the current event xt), we traverse the patient’s
+timeline (temporally-ordered hospitalization events) from left to right and check
+if:
+1. the current event xt is an index event (i.e.
+an event where HF is the
+primary diagnosis as indicated by CCS diagnosis grouper; code = 108)
+and
+2. the diﬀerence between the admission of the next event xt+1 and the discharge of current event xt is ≤30 days (i.e. ∆t ≤30 days)
+3
+
+Figure 1: An example of a patient’s timeline with 30 days all-cause readmission
+labeling
+Figure 1 depicts the labeling process of a patient’s timeline. Notice the ﬁnal
+event will always be the last HF event in a patient’s timeline for which we can
+determine its readmission label.
+2.1.2
+Dataset features
+Each claim/event in a patient’s timeline was represented by a feature vector xt
+encoding the characteristics of the hospitalization event and the corresponding
+patient. The feature vector included most of the ﬁelds included in the NRD
+databases describing every inpatients hospitalization event such as the time of
+admission and discharge, the diagnosis, procedures, comorbidity and chronic
+conditions, length of stay, along other clinical ﬁelds associated with the event.
+A detailed description of all the used features is found in the supplementary
+material.
+2.2
+Models and notation
+2.2.1
+Sequence labeling and classiﬁcation
+In this section, we introduce the sequence labeling approach to 30 days allcause readmission prediction. Generally, given a patient’s temporally ordered
+sequence of claims x = [x1, ..., xt, ..., xT ], represented by a d-dimensional feature
+vector xt ∈Rd, we seek a labeling y = [y1, ..., yt, ..., yT ] representing the 30 days
+all-cause readmission outcomes where yt ∈{0, 1} and T is the patient-speciﬁc
+sequence length (i.e. equivalent to Ti where i refers to the i-th patient in training
+dataset). Given a training set Dtrain = {(xi, yi)}N
+i=1, the goal is to learn a
+model (i.e. function map f) by minimizing an objective function L(f, Dtrain)
+that measures the discrepancy between every sequence’s target labels yi and its
+corresponding predicted label sequence ˆyi in the training dataset. A common
+4
+
+approach is to use a parametrized function f(θ) such that learning the best
+function map (i.e. training a model) translates into ﬁnding the optimal weights
+θ where θ = arg minθ L(f, Dtrain). With the choice of a diﬀerentiable function,
+the optimal weights θ are obtained through an iterative process by using the
+gradient of the objective function ∇θL(f, Dtrain), scaling it with step size η, and
+subtracting the result from the current weights at each iteration. Intuitively,
+the weights update equation
+θk+1 = θk −η∇θkL(f, Dtrain)
+(1)
+is directing the new weights toward the steepest descent (i.e. the direction which
+minimizes L(f, Dtrain)) at each update iteration k. Sequence classiﬁcation is
+similar to sequence labeling but instead of assigning labels/classes to each event
+in the sequence, one assigns one single label/class to the whole sequence. Thus,
+in the sequence labeling setting, the trained model will predict an outcome for
+every event in the sequence, while in the sequence classiﬁcation setting, the
+model predicts the class of the whole sequence. In this work, the diﬀerence between both approaches is mainly in the training phase (learning the labels of all
+events versus one single label for the sequence), while during the testing phase,
+both models are used to predict the outcome/label of the last HF event. The
+latter is directly provided through sequence labeling. In sequence classiﬁcation,
+we are using the label of the last HF event as a substitute for the sequence label
+and a training loss that is associated with that event. To summarize, we use
+the term “labeling” and “classiﬁcation” to diﬀerentiate between models incorporating the labels of previous events in the training/learning of the model versus
+optimizing only on the last HF event label. In all cases, the testing/decoding
+phase is equivalent and is focused on the prediction of the label/class of the last
+HF event.
+2.2.2
+Recurrent neural network (RNN)
+Recurrent neural networks (RNN) is a connectionist model that is well suited
+for modeling sequential and temporal data with varying length [16–18]. A basic
+RNN is similar to feed-forward neural network but with additional support for
+cyclical connections (i.e. recurrent edges among the hidden layers at diﬀerent
+time steps) [17, 18]. RNNs computes a hidden vector at each time step (i.e.
+state vector ht at time t), representing a history or context summary of the
+sequence using the input and hidden states vector form the previous time step.
+This allows the model to learn long-range dependencies where the network is
+unfolded as many times as the length of the sequence it is modeling. To compute the outcome ˆyt at time t, an aﬃne transformation followed by non-linear
+activation function σ is applied to the state vector ht. The non-linear operator
+σ can be either the sigmoid function applied to a scalar input or its generalization to multi-class softmax function applied to vector. As a result, the
+outcome ˆyt represents a probability distribution over the set of possible labels
+at time t. Gradient descent (i.e. “vanilla” gradient descent as in Equation 1
+or any variant) is used for optimizing the weights of the network while the gradient is computed using back propagation through time [19]. Although RNNs
+are capable of handling and representing variable-length sequences, in practice,
+the learning process faces challenges due to the vanishing/exploding gradient
+problem [17, 20, 21]. To overcome these challenges, gradient clipping [22] and
+5
+
+gated memory cells approach as in long short-term memory (LSTM) and gated
+recurrent unit (GRU) [23–25] were proposed replacing the conventional nodes in
+the hidden layer and hence updating the computation mechanism of the hidden
+state vector ht.
+2.2.3
+RNN objective function
+We deﬁned the loss at each time step for an i-th sequence by the cross-entropy
+error/loss
+l(i)
+t
+= −
+|Vlabel|
+X
+c=1
+y(i)
+t,c × log(ˆy(i)
+t,c)
+(2)
+where Vlabel is set of admissible classes, |Vlabel| is the number of classes,
+yt,c ∈{0, 1} is equivalent to 1
+
+yt = c
+
+(i.e. a boolean indicator that is equal to 1
+when c is the reference/ground-truth class at time t), and ˆyt,c is the probability
+of the class c at time t. Four realizations/deﬁnitions of objective functions were
+tested in this study. Given that our focus is on the 30 days all-cause readmissions
+for the last HF hospitalization event, the ﬁrst loss (Convex_HF_lastHF) was
+deﬁned by a convex combination between the average loss from all HF events in
+patient’s timeline and the loss from the last HF event. The convex combination
+is parametrized by parameter α that was determined using a validation set inspired by the work done in [26]. The second loss function (LastHF) used the loss
+computed only from the last HF event while the third (Uniform_HF) uniformly
+averaged the loss from all HF events in a patient’s timeline. Lastly, the forth
+objective function (Convex_HF_NonHF) was based on a convex combination
+between the average loss contributed by all HF events in patient’s timeline and
+the average loss from the non HF events.
+The objective function for the whole training set Dtrain was deﬁned by the average loss Li across all the sequences in Dtrain plus a weight regularization term
+(i.e. l2-norm regularization) applied to the model parameters represented by θ
+Li = 1
+Ti
+Ti
+X
+t=1
+l(i)
+t
+(3)
+L(θ) = 1
+N
+N
+X
+i=1
+Li + λ
+2 ||θ||2
+2
+(4)
+In addition to the l2-norm regularization in the objective function, we also
+experimented with dropout [27] by deactivating neurons in the network layers
+using probability pdropoout in order to reduce the network’s chances of overﬁtting
+the training set .
+2.2.4
+RNN with scheduled sampling (RNNSS)
+Another variation of the RNN model that we experimented with is using a
+scheduled sampling approach (“teacher forcing”) [28] while training the RNN
+model. Again we used the same four deﬁnitions of the loss functions used in the
+RNN case.
+6
+
+2.2.5
+Conditional random ﬁelds (CRF)
+Although RNN models are suited for modeling temporal data, the outcome/label
+prediction for each event is preformed independently from each other. That
+is: the labeling decision is done locally (i.e. without considering any association/correlation between neighboring labels). In other words, there is a need for
+a joint modeling approach that is global by considering the whole sequence of
+labels when performing the optimization and inference. Linear-chain CRF suits
+this requirement well by modeling the probability of the whole labeled sequence
+(i.e. outcome sequence) given the input sequence. It is a class of undirected
+discriminative graphical models that uses a global feature function within a loglinear model formalism, making it well suited for structured prediction [29]. In
+this study, we applied CRF in two occasions with two variations (i.e. deﬁnition
+of potential functions).
+2.2.6
+CRF with RNN
+We ﬁrst experimented with combining the RNN model with a CRF layer by
+feeding the computed features from the RNN layer as inputs to the CRF layer as
+in [30]. We denote the output features of the RNN layer by z = [z1, z2, · · · , zT ]
+representing the sequence of output features computed from the input sequence
+x (both sequences have equal length). The potential functions in the CRF layer
+were computed using z along with label sequence y in two variations:
+1. RNNCRF (Unary) that computed unary potential by using only the RNN
+output feature vector to generate an output vector with dimension equal to
+the number of classes |Vlabel| for each zt. The pairwise potential is modeled
+using a transition parameters matrix A(yt−1, yt) of size |Vlabel| × |Vlabel|
+representing the transition score from one outcome class to another.
+2. RNNCRF (Pairwise) that computes pairwise potentials using both the
+RNN output feature vectors and the labels sequence such that it generates
+an output vector of size |Vlabel| × |Vlabel| at every time step t similar to
+the approach reported in [31].
+2.2.7
+CRF & Neural CRF
+We also tested a CRF approach without the RNN block. The ﬁrst used CRF
+only (i.e. ﬁrst-order linear chain CRF) model using the two variations of potential functions (i.e. unary and pairwise). The second model is combining CRF
+with neural model (i.e. using non-linear transformation for computing features)
+similar to the approach in [32] using the same two potential function variants.
+The objective function for models that incorporated CRF was deﬁned by the
+negative conditional log-likelihood L(θ) plus an l2-norm weight regularization
+term,
+L(θ) =
+"
+1
+N
+N
+X
+i=1
+−log(p(yi|xi))
+#
++ λ
+2 ||θ||2
+2
+(5)
+Estimating the optimal weights θ is typically done by applying a variant of
+gradient descent algorithm (as described in Equation 1) where the sum-product
+algorithm (i.e. performing a variation of the forward-backward algorithm [33])
+7
+
+is used. Decoding the sequence (i.e. ﬁnding the optimal labeling ˆyoptimal) is
+done through a variant of Viterbi algorithm [34,35].
+2.2.8
+Convolutional neural networks (CNN)
+The CNN models adopt the sequence classiﬁcation view by using the 2D arrangement of the patients’ timelines with an objective function deﬁned only for
+the last HF event (i.e. the loss function is deﬁned for the last HF event that
+we seek to predict its readmission outcome). A CNN model is a feed-forward
+neural network that typically consists of multiple layers of which convolutional
+layer is the building block. A convolutional layer is composed of ﬁlters/kernels
+(in our context, the kernel is a 2D arrangement of weights in matrix form) that
+are convolved with the features of the previous layer (such as the input layer)
+to produce feature maps. More formally, a patient’s timeline was arranged in a
+matrix form where the sequence of events are stacked (i.e. concatenated) to form
+a matrix X =
+x1
+x2
+· · ·
+xTmax
+⊺of size Tmax ×d where d is the dimension
+of an event vector xt and Tmax is the maximum length of a patient’s timeline in
+the training set – patients with shorter timelines are padded to have a common
+representation. A kernel F is a matrix of weights that is convolved with X to
+produce a feature map M such that an entry in M is computed by ﬁrst taking
+the sum of element-wise multiplication of the weights in the kernel F and the
+corresponding input of the previous layer, then adding a bias term followed by
+non-linear operation. Typically, multiple kernels are applied and the resulting
+feature maps are stacked on top of each other forming a 3D volume/tensor to
+be processed subsequently in the next layers. The elements of each kernel represent the shared parameters that we optimize during the training phase. Another
+type of layers in this network is a pooling layer that also includes kernels/ﬁlters
+but with no trainable weights, which slides over the input feature maps based
+on a deﬁned horizontal and vertical stride size and computes a summary score
+such as a maximum or average score for every region of overlap. As a result,
+in the pooling layer we can change the size of the generated feature maps by
+specifying the stride and padding size such that the size of the feature maps
+decreases as we progress into subsequent layers in the network (i.e. equivalent
+to subsampling). Another commonly used layer after the convolutional/pooling
+layers is the fully-connected layer (FC). FC takes an input vector from the
+reshaped feature maps generated in the last convolutional/pooling layers and
+applies an aﬃne transformation followed by non-linear element-wise operation.
+In this work, we experimented with two types of convolutional models:
+1. CNN model that describes a network inspired by commonly used models
+in computer vision and image processing research [40] that makes use of
+multiple small square convolutional and pooling kernels, where the generated feature maps are reduced in size as a function of the network depth
+(i.e. number of layers) until reaching to the fully-connected layer/s.
+2. CNN-Wide model that adapts the approach used by Kim [41] for sentence
+classiﬁcation where the convolutional kernels are wide/rectangular covering the whole input feature dimension. In other words, a kernel in this
+model would have varying sizes (such as 2 × d, 3 × d, 5 × d ) where the
+convolution is applied to the whole feature vector for two or more events
+for every possible window of events in the patient’s timeline (i.e. applied
+8
+
+to matrix X). After each convolution operation, the result is a vector of
+feature map for every kernel. In this network, the pooling layer reduces
+each generated feature map vector to a scalar (i.e. one feature) and then
+concatenates each one of them into one vector having number of elements
+equal to the number of applied convolutional kernels. Lastly, the resulting vector is passed into one or more FC layers before it is passed to the
+output layer.
+Both CNN models use an output layer where the computed vector of activations/feature map in the penultimate layer are passed to generate a probability
+distribution over the outcome labels (as in the RNN case). The deﬁned loss
+function for every sequence in both models is the loss computed for the last
+HF event as in the RNN case (see LastHF in Section 2.2.3) where the overall
+objective function for the training set is also equivalent to RNN case (Equation
+4).
+2.2.9
+Multilayer perceptron (MLP)
+A ﬁnal neural network-based model is the multilayer perceptrons which is also
+a feed-forward neural network (MLP). The MLP network is composed of an
+input layer then a set of multiple FC layers and lastly an output layer that
+generates a probability distribution over the outcome classes. The FC layers, as
+we discussed earlier, mainly consists of two operations; an aﬃne transformation
+followed by non-linear element-wise operation to generate new feature vectors
+(i.e. learned representations). The diﬀerence between this modeling approach
+and the previous ones is that MLP takes the event view of the problem by
+modeling the last index event xT only and discarding the sequence aspect of
+the patients’ timeline. The deﬁned loss and the overall objective function is
+equivalent to the ones deﬁned for the RNN case (LastHF) and Equation 4.
+2.2.10
+Logistic regression (LR)
+Logistic regression (LR) is a commonly used model for classiﬁcation problems
+due to its simplicity and model interpretability. Like MLP, LR supports the
+event view of the problem by modeling only the last index event. LR model
+can be considered as a neural network model with no hidden layers and one
+output neuron.
+In this setup, the input features are fully-connected to one
+output neuron where the sigmoid function is applied as a non-linear operation
+computing the probability of the outcome label to be equal to 1. In other words,
+the LR model computes p(ˆyT = 1|xT ) =
+1
+1+exp−(W1×dxT+b) where W1×d is the
+weight matrix that maps xT to a scalar value (i.e.
+using one neuron), b is
+the bias term and
+1
+1+exp−z is the sigmoid function representing the non-linear
+operation. The output represents the probability of a patient readmitting to
+hospital within 30 days after HF hospitalization event. In this work, LR was
+the baseline model that we compare its performance to the ones of the neural
+network-based models. The loss function for each patient’s last event is deﬁned
+by the conditional log-likelihood which is equivalent to the cross-entropy loss
+for the binary case (i.e 2-class classiﬁcation) and the overall objective function
+is based on the average conditional log-likelihood of the data (see Equation 4).
+Additionally, we experimented with two regularization schemes: (1) l1-norm
+regularization (LASSO) and (2) l2-norm regularization.
+9
+
+3
+Experimental setup
+We followed a stratiﬁed 5-fold cross-validation scheme, in which the HF dataset
+is split into 5 folds, each having a training and test set size of 80% and 20% of the
+data, respectively, and a validation set size of 10% of the training set in each fold
+(used for optimal epoch selection in case of neural models or hyperparameter
+selection in case of logistic regression).
+Moreover, due to the imbalance in
+outcome classes (i.e. no readmission vs. readmission), training examples were
+weighted inversely proportional to class/outcome frequencies in the training
+data. The models’ performance was evaluated using the last HF event in the
+patients’ timeline (i.e. 30 days all-cause readmission after hospitalization for
+HF event). We used the area under the ROC curve (AUC) as our performance
+measure with conﬁdence intervals computed using the approach reported in
+LeDell et al. [42]. Moreover, the evaluation of the trained models was based on
+their average performance on the test sets of the ﬁve folds.
+3.1
+Hyperparameter optimization for neural models
+Neural model hyperparameter selection is costly, particularly for ﬁnding the
+optimal architecture. To this end, we randomly chose one fold where 30% of
+the training set was further split into a training and validation set, each having
+90% and 10% of the data, respectively. We developed a multiprocessing module
+that used a uniform random search strategy [43] that randomly chose a set of
+hyperparameters conﬁgurations (i.e. layer depth, ﬁlter size and optimization
+methods, see supplementary materials for more details) from the set of all possible conﬁgurations. Then the best conﬁguration for each model (i.e. the one
+achieving best performance on the validation set) was used for the ﬁnal training
+and testing.
+4
+Results
+The HF dataset included 272,778 patients (49% female) with a mean (SD) age
+of 72.89 years (14). The total number of HF admissions was 343,328 (66.9%
+of all admissions) of which 81,087 (23.6%) were 30 days all-cause readmissions,
+corresponding to the oﬃcial rates published by HCUP [2]. Among the last HF
+hospitalizations in patients’ timelines, 45,183 (16.6%) resulted in readmissions.
+Table 1 reports a general overview of the characteristics of the dataset including
+socio-demographics, hospitalization events, top diagnosis and procedures and
+the payment source. Table 2 reports the models’ performance in predicting the
+30 days all-cause readmission for the last HF event in every patient’s timeline.
+Starting from RNN, the models trained with losses incorporating/emphasizing
+the loss from last HF event (i.e LastHF and Convex_HF_LastHF) achieved
+higher performance 0.636 and 0.635 AUC respectively compared to other loss
+deﬁnitions. Moreover, RNN models with all four loss deﬁnitions achieved higher
+performance than RNNSS counterparts. For models incorporating CRF, the
+RNNCRF model achieved the highest performance with 0.642, followed by Neural CRF 0.634 and CRF only model achieving 0.63 with the ﬁrst two models
+using pairwise potentials and the last one using unary potential. For convolutional models, CNN-Wide achieved better performance 0.632 compared to
+10
+
+Figure 2: Ranking of best models (upper panel). Performance of LASSO versus
+RNNCRF model as function of patients’ timeline length (lower panel)
+conventional CNN with 0.619. The MLP model achieved 0.628 placing it as the
+lowest performing model among the classes of neural models (see Figure 2 top
+panel). The baseline model LR with l1-norm regularization (LASSO) achieved
+higher performance 0.643 compared to LR with l2-norm regularization 0.637.
+The ranking of the best performing models is depicted in Figure 2 where the
+bottom panel compares the performance of the LASSO to the RNNCRF model
+as a function of the length of patients’ timeline. As the length of the timeline
+increases (i.e. more hospitalization events), the gap in last HF event prediction
+performance between both models decreases. The analysis of feature importance
+is reported in Figure 3, which shows the normalized coeﬃcients of the trained
+LASSO models averaged across all folds. For the best neural model (RNNCRF),
+we report the analysis of feature importance using a similar approach to the one
+in [44]. In short, we iterated over all features attached to the last HF event,
+and computed the probability of readmission with a feature present or absent.
+Computing the diﬀerence between both probabilities allowed us to quantify a
+feature’s importance across the ﬁve folds. In the supplementary material section, we present additional variations on this technique. Overall, the average
+overlap (using Jaccard similarity) of the top-100 features between LASSO and
+the RNNCRF model is 51% and 55% for increase and decrease of readmission
+probability, respectively.
+11
+
+Variables
+HF Dataset (n=272,778)
+Socio-demographics
+Age, mean (SD)
+72.89 (14)
+Gender female, count (%)
+133765 (49%)
+Pay source, count (%)
+Medicare
+391535 (76.4%)
+Private insurance
+47327 (9.23%)
+Medicaid
+47095 (9.19%)
+Self-pay
+13115 (2.55%)
+Other
+11859 (2.31%)
+No charge
+1514 (0.29%)
+Hospitalization events
+HF events, count (%)
+343328 (66.94%)
+30 days all-cause readmission, count (%)
+81087 (23.61%)
+Timeline length, mean (SD)
+1.88 (1.4)
+Top 5 diagnosis, count (%)
+Congestive heart failure; non-hypertensive
+777047 (10.29%)
+Coronary atherosclerosis and other heart disease
+547890 (7.25%)
+Residual codes
+305406 (4.04%)
+Cardiac dysrhythmias
+298823 (3.95%)
+Chronic kidney disease
+254593 (3.37%)
+Top 5 procedures, count (%)
+Diagnostic cardiac catheterization; coronary arteriography
+106428 (14.95%)
+Respiratory intubation and mechanical ventilation
+57202 (8.03%)
+Blood transfusion
+52251 (7.34%)
+Diagnostic ultrasound of heart (echocardiogram)
+41076 (5.77%)
+Hemodialysis
+38083 (5.35%)
+Table 1: Overview of HF dataset
+12
+
+Model name
+AUC
+CI - low
+CI - high
+CNN
+0.619
+0.616
+0.622
+CNN-Wide
+0.632
+0.629
+0.635
+RNN (Convex_HF_lastHF)
+0.635
+0.632
+0.638
+RNN (LastHF)
+0.636
+0.633
+0.638
+RNN (Uniform_HF)
+0.631
+0.628
+0.634
+RNN (Convex_HF_NonHF)
+0.627
+0.624
+0.630
+RNNSS (Convex_HF_lastHF)
+0.621
+0.618
+0.624
+RNNSS (LastHF)
+0.625
+0.623
+0.628
+RNNSS (Uniform_HF)
+0.617
+0.614
+0.619
+RNNSS (Convex_HF_NonHF)
+0.625
+0.622
+0.628
+Neural CRF (Pairwise)
+0.634
+0.631
+0.637
+Neural CRF (Unary)
+0.631
+0.629
+0.634
+CRF Only (Pairwise)
+0.628
+0.625
+0.631
+CRF Only (Unary)
+0.630
+0.627
+0.633
+RNNCRF (Pairwise)
+0.642
+0.640
+0.645
+RNNCRF (Unary)
+0.638
+0.635
+0.641
+MLP
+0.628
+0.625
+0.631
+Logistic regression (L2 reg.)
+0.637
+0.634
+0.640
+Logistic regression (L1 reg.)
+0.643
+0.640
+0.646
+Table 2: AUC models’ performance
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Number of hospitalization events in the timeline up to current admission (inclusive)
+length of stay
+[Count] chronic condition indicator body system: Infectious and parasitic disease 
+[Count diagnosis] Phlebitis; thrombophlebitis and thromboembolism
+disposition: Against medical advice (AMA)
+[Count] chronic condition indicator body system: Diseases of the skin and subcutaneous tissue 
+[Tertiary procedure] Bone marrow biopsy
+number of registered chronic conditions
+[Tertiary procedure] Contrast aortogram
+[Primary procedure] Gastrostomy; temporary and permanent
+Resident
+[Count] chronic condition indicator body system: Diseases of the genitourinary System 
+[Tertiary diagnosis] Lung disease due to external agents
+[Count diagnosis] Coronary atherosclerosis and other heart disease
+discharge month: Jan
+[Count diagnosis] Allergic reactions
+[Secondary procedure] Contrast aortogram
+[Tertiary diagnosis] Cancer of kidney and renal pelvis
+comorbidity: lymphoma
+[Secondary diagnosis] Other endocrine disorders
+comorbidity: solid tumor without metastasis
+[Count] chronic condition indicator body system: Symptoms, signs, and ill-defined conditions 
+comorbidity: metastatic cancer
+[Primary procedure] Contrast aortogram
+loc Missing
+discharge month: Nov
+[Secondary diagnosis] Coagulation and hemorrhagic disorders
+payment: Medicare
+[Primary procedure] Hemodialysis
+[Count diagnosis] Other nervous system disorders
+[Secondary diagnosis] Complications of surgical procedures or medical care
+[Tertiary diagnosis] Other and unspecified benign neoplasm
+comorbidity: chronic pulmonary disease
+[Tertiary procedure] Other OR procedures on vessels other than head and neck
+payment: Medicaid
+[Count diagnosis] Cardiac dysrhythmias
+[Tertiary diagnosis] Coagulation and hemorrhagic disorders
+discharge month: Feb
+[Secondary procedure] Hemodialysis
+comorbidity: liver disease
+[Tertiary diagnosis] Gastrointestinal hemorrhage
+[Tertiary diagnosis] Other nervous system disorders
+[Tertiary procedure] Other non-OR therapeutic cardiovascular procedures
+[Count diagnosis] Chronic obstructive pulmonary disease and bronchiectasis
+[Count] chronic condition indicator body system: Diseases of the digestive system 
+[Tertiary diagnosis] Anxiety disorders
+[Secondary diagnosis] Neoplasms of unspecified nature or uncertain behavior
+[Primary procedure] Enteral and parenteral nutrition
+elective_ Missing
+[Primary procedure] Other non-OR therapeutic procedures on skin and breast
+Figure 3: Top-50 features in LASSO models contributing to the increase of
+log-odds of readmission
+13
+
+5
+Discussion
+This work highlights the advantages and limitations of deep learning in the
+domain of HF readmission prediction. As a ﬁrst result, we observe that deep
+learning proﬁts from the incorporation of patients’ timeline / historical data for
+improving prediction performance. Particularly, sequence labeling (RNN, RNNCRF, CRF only, Neural CRF) and sequence classiﬁcation (CNN-Wide) overall
+perform better than event (non-timeline) classiﬁcation (MLP). This ﬁnding is
+noteworthy, as it reﬂects the ability of deep learning, with the help of fast
+and highly specialized hardware and software, to utilize vast data resources
+to produce increasingly state-of-the-art machine learning performances. In the
+medical ﬁeld, this amounts to a unique opportunity to allow machines to base
+their predictions not only on the current status of a patient, but also on the
+patient’s history, and, if possible, on the comparative analysis to all patient
+data (present and historical) in a hospital system. Our data supports this notion, showing that the detailed past history, reﬂected in a timeline of patient
+hospitalization events, indeed carries additional information that boosts deep
+learning prediction performance. Not all neural models are born equal though,
+and for our study, we ﬁnd that a scheduled sampling approach for RNN did
+not improve timeline-based predictions. Interestingly, pairing the RNN with a
+graphical model (CRF) resulted in the best performing neural model, an observation that mirrors previous results in the ﬁeld of NLP [30, 31]. Similarly,
+neural CRF performed better than CRF alone, hinting at the importance of
+adding nonlinear features to graphical models. While the actual performance
+numbers, with a maximal ROC score of 0.642 AUC (95% CI, 0.640-0.645), are
+inline with published machine-learning predictions of HF readmission [8, 9], it
+should be noted that they are based on administrative data, rather than rich
+EHR data as used in earlier studies. As such, our numbers represent the lower
+bound of achievable performance and deep learning on EHR data may eventually beat existing performance numbers for readmission prediction, as it did
+in other areas such as diagnosis and disease prediction [26, 45]. Nevertheless,
+the exact approach for attaining better performance remains an open research
+question. One obvious avenue is to use multi-modal learning, incorporating several clinical data sources (including images), to oﬀset the inherent issues with
+textual medical data, such as sparsity, missingness, and incompleteness. Our
+second result addresses the question of deep learning versus logistic regression
+for readmission prediction. Our face-oﬀshows that logistic regression with regularization matches the best neural network performance. Our study attempted
+to compare these two approaches as fairly as possible, allowing both methods
+to perform hyperparameter optimization in the training phase, and giving logistic regression, which uses data from the last hospitalization event only, access
+to a patient’s hospitalization history by adding timeline summary data as an
+additional feature of the hospitalization event. Nevertheless, the LASSO model
+had a couple of advantages over the neural models by (1) having access to the
+whole training set during the hyperparameter optimization, and (2) using l1norm regularization that served as feature-selection procedure while training
+the model. In contrast, the neural-based models had a very large set of hyperparameters to choose from (such as number of layers, dimensions of hidden
+vectors, etc.) that made it infeasible to explore the full hyperparameter space.
+We therefore opted for a random selection process for network conﬁgurations
+14
+
+and optimization settings, and tested those against a subset of the training
+data only. Interestingly, and supporting our results, research by Rajkomar et
+al. [46] on a more general hospital readmission problem (not focused on HF)
+also showed that logistic regression with regularization (LASSO) is competitive compared to an RNN model. Focusing on neural models, we show that
+data contained in a patient’s history boost prediction performance. Particularly, neural models showed higher performance with the length of a patient’s
+timeline. EHRs contain historical information spanning several decades, and
+we will test in future studies whether deep learning on timelines greater than
+11 month (the maximum used in this study) will succeed in besting the performance of logistic regression model. Finally, our study sheds light on which
+features from the current or past hospitalizations are essential in readmission
+prediction. Features such as number of hospitalization events, length of stay,
+thrombophlebitis/thromboembolism and discharge against medical advice are
+among the highest contributing features to the log-odds of readmission. Generally, diagnoses and administered procedures pertaining to heart problems, such
+as contrast aortograms, result in increased readmission probability, as does the
+number of comorbidities. Interestingly, particular payment sources (Medicare
+and Medicaid) are associated with increased, while self-pay is associated with
+decreased readmissions.
+In conclusion, we show that neural network models and logistic regression have
+comparable performance on HF readmission prediction using administrative
+data. We also demonstrate that the use of patient timeline data boosts the
+performance of neural models.
+Availability
+The data processing,
+model implementation,
+training and testing workﬂow
+in
+addition
+to
+the
+trained
+models
+are
+publicly
+available
+at
+https://bitbucket.org/A_2/hcup_research
+Acknowledgements
+We would like to thank Dr. Harlan Krumholz for his insights and discussions
+about the research topic.
+Competing Interests
+None.
+Funding
+AA was supported by a fellowship from the Intramural Research Program of
+the National Institutes of Health (NIH), National Library of Medicine (NLM),
+and Lister Hill National Center for Biomedical Communications (LHNCBC).
+Contributions
+AA and MK conceptualized and designed the experiments. MN and GT contributed in the design of the experiments. MK and GT supervised the project.
+AA worked on the development of processing and analysis workﬂow, algorithms
+and model implementation. MN contributed in the analysis workﬂow. AA and
+MK analyzed and interpreted the data. AA and MK wrote the manuscript.
+15
+
+6
+References
+[1] Fingar, K. & Washington, R. Trends in Hospital Readmissions for Four
+High-Volume Conditions, 2009-2013: Statistical Brief #196. HCUP Statistical Brief #196 1–17 (2006).
+[2] Fingar, K. R., Barrett, M. L. & Jiang, H. J. A Comparison of All-Cause 7Day and 30-Day Readmissions, 2014. HCUP Statistical Brief #230 (2017).
+[3] Bergethon, K. E. et al.
+Trends in 30-Day Readmission Rates for Patients Hospitalized with Heart Failure: Findings from the Get with the
+Guidelines-Heart Failure Registry. Circulation: Heart Failure 9, e002594
+(2016). 15334406.
+[4] Desai, A. S. & Stevenson, L. W. Rehospitalization for Heart Failure. Circulation 126, 501–506 (2012).
+[5] Ross, J. S. et al. Recent National Trends in Readmission Rates after Heart
+Failure Hospitalization. Circulation: Heart Failure (2009).
+[6] Arundel, C. et al. Association of 30-Day All-Cause Readmission with LongTerm Outcomes in Hospitalized Older Medicare Beneﬁciaries with Heart
+Failure. American Journal of Medicine 129, 1178–1184 (2016).
+[7] Ziaeian, B. & Fonarow, G. C. The Prevention of Hospital Readmissions in
+Heart Failure. Progress in Cardiovascular Diseases 58, 379–385 (2016).
+[8] Mortazavi, B. J. et al. Analysis of Machine Learning Techniques for Heart
+Failure Readmissions. Circulation: Cardiovascular Quality and Outcomes
+9, 629–640 (2016).
+[9] Frizzell, J. D. et al. Prediction of 30-Day All-Cause Readmissions in Patients Hospitalized for Heart Failure. JAMA Cardiology 2, 204 (2017).
+[10] HCUP
+Databases.
+HCUP
+Nationwide
+Readmission
+Database
+(NRD).Healthcare Cost and Utilization Project (HCUP). Agency for
+Healthcare Research and Quality (2013).
+[11] HCUP Nationwide Readmission Databaset (NRD). Description of Data
+Elements.
+[12] HCUP Software. HCUP Clinical Classiﬁcations Software (CCS) for ICD9-CM (2009).
+[13] HCUP Software. HCUP Chronic Condition Indicator (CCI) (2009).
+[14] HCUP Software. HCUP Comorbidity Software (2008).
+[15] Barrett, M., Raetzman, S. & Andrews, R. HCUP Methods Series Overview
+of Key Readmission Measures and Methods Report # 2012-04. Tech. Rep.,
+U.S. Agency for Healthcare Research and Quality (2012).
+[16] Elman, J. L. Finding Structure in Time. Cognitive Science 14, 179–211
+(1990).
+16
+
+[17] Graves, A. Supervised Sequence Labelling with Recurrent Neural Networks,
+vol. 385 of Studies in Computational Intelligence (Springer Berlin Heidelberg, Berlin, Heidelberg, 2012).
+[18] Lipton, Z. C., Berkowitz, J. & Elkan, C. A Critical Review of Recurrent
+Neural Networks for Sequence Learning (2015). 1506.00019.
+[19] Werbos, P. Backpropagation through time: what it does and how to do it.
+Proceedings of the IEEE 78, 1550–1560 (1990).
+[20] Hochreiter, S.
+Untersuchungen zu dynamischen neuronalen Netzen.
+Diploma thesis, Technische Universität München (1991).
+[21] Bengio, Y., Simard, P. & Frasconi, P. Learning long-term dependencies
+with gradient descent is diﬃcult. IEEE Transactions on Neural Networks
+5, 157–166 (1994).
+[22] Pascanu, R., Mikolov, T. & Bengio, Y. On the diﬃculty of training recurrent neural networks. In Proceedings of the 30th International Conference
+on Machine Learning (JMLR: W&CP volume 28, Atlanta, Georgia, 2013).
+[23] Hochreiter, S. & Schmidhuber, J. Long Short-Term Memory. Neural Computation 9, 1735–1780 (1997).
+[24] Cho, K. et al.
+Learning Phrase Representations using RNN EncoderDecoder for Statistical Machine Translation.
+In Proceedings of the
+2014 Conference on Empirical Methods in Natural Language Processing
+(EMNLP), 1724–1734 (Association for Computational Linguistics, Doha,
+Qatar, 2014).
+[25] Chung, J., Gulcehre, C., Cho, K. & Bengio, Y. Empirical Evaluation of
+Gated Recurrent Neural Networks on Sequence Modeling (2014). 1412.
+3555.
+[26] Lipton, Z. C., Kale, D. C., Elkan, C. & Wetzel, R. Learning to Diagnose
+with LSTM Recurrent Neural Networks (2015). 1511.03677.
+[27] Srivastava, N., Hinton, G., Krizhevsky, A., Sutskever, I. & Salakhutdinov,
+R. Dropout: A Simple Way to Prevent Neural Networks from Overﬁtting.
+Journal of Machine Learning Research 15, 1929–1958 (2014).
+[28] Bengio, S., Vinyals, O., Jaitly, N. & Shazeer, N.
+Scheduled Sampling
+for Sequence Prediction with Recurrent Neural Networks. In Cortes, C.,
+Lawrence, N. D., Lee, D. D., Sugiyama, M. & Garnett, R. (eds.) Advances
+in Neural Information Processing Systems 28, 1171–1179 (Curran Associates, Inc., 2015).
+[29] Laﬀerty, J., McCallum, A. & Pereira, F. C. N. Conditional random ﬁelds:
+Probabilistic models for segmenting and labeling sequence data. ICML ’01
+Proceedings of the Eighteenth International Conference on Machine Learning 8, 282–289 (2001). arXiv:1011.4088v1.
+[30] Lample, G., Ballesteros, M., Subramanian, S., Kawakami, K. & Dyer, C.
+Neural Architectures for Named Entity Recognition (2016). 1603.01360.
+17
+
+[31] Ma, X. & Hovy, E. End-to-end Sequence Labeling via Bi-directional LSTMCNNs-CRF. In Proceedings of the 54th Annual Meeting of the Association
+for Computational Linguistics, 1064–1074 (Association for Computational
+Linguistic, Berlin, Germany, 2016).
+[32] Peng, J., Bo, L. & Xu, J. Conditional neural ﬁelds. In Bengio, Y., Schuurmans, D., Laﬀerty, J. D., Williams, C. K. I. & Culotta, A. (eds.) Advances
+in Neural Information Processing Systems 22, 1419–1427 (Curran Associates, Inc., 2009).
+[33] Bishop, C. M. Pattern recognition and machine learning (Springer, 2006).
+[34] Viterbi, A. Error bounds for convolutional codes and an asymptotically
+optimum decoding algorithm. IEEE Transactions on Information Theory
+13, 260–269 (1967).
+[35] Collins, M. Log-Linear Models, MEMMs, and CRFs.
+[36] Ye, N., Lee, W. S., Chieu, H. L. & Wu, D. Conditional Random Fields with
+High-Order Features for Sequence Labeling. Neural Information Processing
+Systems 2, 2 (2009).
+[37] Cuong, N. V., Ye, N., Lee, W. S. & Chieu, H. L. Conditional Random Field
+with High-order Dependencies for Sequence Labeling and Segmentation.
+Journal of Machine Learning Research 15, 981–1009 (2014).
+[38] Vieira, T., Cotterell, R. & Eisner, J. Speed-Accuracy Tradeoﬀs in Tagging
+with Variable-Order CRFs and Structured Sparsity. In Emnlp, 1973–1978
+(Association for Computational Linguistics, Austin, Texas, 2016).
+[39] Allam, A. & Krauthammer, M. PySeqLab: an open source Python package
+for sequence labeling and segmentation.
+Bioinformatics 33, 3497–3499
+(2017).
+[40] Simonyan, K. & Zisserman, A.
+Very Deep Convolutional Networks for
+Large-Scale Image Recognition. In ICLR (2015). arXiv:1409.1556v6.
+[41] Kim, Y. Convolutional Neural Networks for Sentence Classiﬁcation. In
+EMNLP, 1746–1751 (Association for Computational Linguistics, 2014).
+[42] LeDell, E., Petersen, M. & van der Laan, M. Computationally eﬃcient
+conﬁdence intervals for cross-validated area under the ROC curve estimates.
+Electronic Journal of Statistics 9, 1583–1607 (2015).
+[43] Bergstra JAMESBERGSTRA, J. & Yoshua Bengio YOSHUABENGIO, U.
+Random Search for HyperParameter Optimization.
+Journal of Machine
+Learning Research (2012). 1504.05070.
+[44] Avati, A. et al. Improving palliative care with deep learning. In 2017 IEEE
+International Conference on Bioinformatics and Biomedicine (BIBM),
+311–316 (IEEE, 2017).
+[45] Choi, E., Schuetz, A., Stewart, W. F. & Sun, J. Using recurrent neural
+network models for early detection of heart failure onset. Journal of the
+American Medical Informatics Association 24, 361–370 (2017).
+18
+
+[46] Rajkomar, A. et al. Scalable and accurate deep learning with electronic
+health records. npj Digital Medicine 1, 18 (2018).
+19
+
+Supplementary Material for Neural networks versus
+Logistic regression for 30 days all-cause readmission
+prediction
+A
+Methods
+A.1
+Recurrent neural network (RNN)
+RNN computes a hidden vector at each time step (i.e. state vector ht at time t),
+representing a history or context summary of the sequence using the input and
+hidden states vector form the previous time step. This allows the model to learn
+long-range dependencies where the network is unfolded as many times as the
+length of the sequence it is modeling. Equation 6 shows the computation of the
+hidden vector ht using the input xt and the previous hidden vector ht−1 where
+φ is a non-linear transformation such as ReLU(z) = max(0, z) or tanh(z) =
+ez−e−z
+ez+e−z . To compute the outcome ˆyt at time t, an aﬃne transformation followed
+by non-linear function are applied to the state vector ht as described in Equation
+7. The non-linear operator σ can be either the sigmoid function σ(z) =
+1
+1+e−z
+applied to scalar input z ∈R, or its generalization the softmax function applied
+to vector z ∈RK, softmax(z)i =
+ezi
+PK
+j=1 ezj for i = 1, ..., K. As a result, the
+outcome ˆyt represents a probability distribution over the set of possible labels
+Vlabel at time t.
+ht = φ(Whxxt + Whhht−1 + bhx)
+(6)
+ˆyt = σ(WVlabelhht + bVlabel)
+(7)
+where Whh ∈RDh×Dh, Whx ∈RDh×d, WVlabelh ∈R|Vlabel|×Dh, bhx ∈RDh,
+bVlabel ∈R|Vlabel| representing the model weights θ to be optimized and Dh, d
+are the dimensions of ht and xt vectors respectively. Note that the weights are
+shared across all the network (see Figure 4 for RNN representation).
+A.1.1
+Long short-term memory (LSTM)
+Long short-term memory (LSTM) [17, 23] falls in the gated memory cells approach that modiﬁes the basic RNN by replacing the standard neurons/units in
+the hidden layer with gated/memory cells to generate the hidden state vector
+ht as described by the equations below. Moreover, LSTM introduces a new cell
+state vector ct that overall contributes in the decision mechanism on what part
+of the history to keep or forget. The computation of the output ˆyt at time t
+remains the same as explained in the RNN section.
+20
+
+Figure 4: Graphical representation of unfolded RNN
+it = σ(Wi
+hxxt + Wi
+hhht−1 + b
+i
+hx)
+(input gate)
+f t = σ(Wf
+hxxt + Wf
+hhht−1 + b
+f
+hx)
+(forget gate)
+ot = σ(Wo
+hxxt + Wo
+hhht−1 + b
+o
+hx)
+(output gate)
+˜ct = φ(W˜c
+hxxt + W˜c
+hhht−1 + b
+˜c
+hx)
+(new state/memory cell)
+ct = f t ⊙ct−1 + it ⊙˜ct
+(ﬁnal cell state)
+ht = ot ⊙φ(ct)
+(hidden state vector)
+where Wi
+hx, Wf
+hx, Wo
+hx, W˜c
+hx each ∈RDh×d and Wi
+hh, Wf
+hh, Wo
+hh, W˜c
+hh each
+∈RDh×Dh.
+The biases b
+i
+hx, b
+f
+hx, b
+o
+hx, b
+˜c
+hx each ∈RDh where Dh and d are
+the dimensions of ht and xt vectors respectively. The operator σ represents the
+sigmoid function, φ the tanh or ReLU function, and ⊙the element-wise product
+(i.e.
+Hadamard product) function.
+Compared to the standard/conventional
+RNN (see Equation 6), it can be noted the added complexity in terms of the
+number of weight matrices and biases required to compute the hidden state
+vector ht.
+A.1.2
+Gated recurrent unit (GRU)
+Gated recurrent unit (GRU) [24] presents similar approach to LSTM but with
+a simpler model that modiﬁes the computation mechanism of the hidden state
+vector ht through the speciﬁed equations below.
+21
+
+zt = σ(Wz
+hxxt + Wz
+hhht−1 + b
+z
+hx)
+(update gate)
+rt = σ(Wr
+hxxt + Wr
+hhht−1 + b
+r
+hx)
+(reset gate)
+˜ht = φ(W
+˜h
+hxxt + rt ⊙W
+˜h
+hhht−1 + b
+˜h
+hx)
+(new state/memory cell)
+ht = (1 −zt) ⊙˜ht + zt ⊙ht−1
+(hidden state vector)
+The model computes a reset gate rt that is used to modulate the eﬀect of the
+previous hidden state vector ht−1 when computing the new memory vector ˜ht.
+The update gate zt determines the importance/contribution of the newly generated memory vector ˜ht compared to the previous hidden state vector ht−1 when
+computing the current hidden vector ht. The weights Wz
+hx, Wr
+hx, W˜h
+hx each
+∈RDh×d and Wz
+hh, Wr
+hh, W˜h
+hh each ∈RDh×Dh. The biases b
+z
+hx, b
+r
+hx, b
+˜h
+hx each
+∈RDh where Dh and d are the dimensions of ht and xt vectors respectively. The
+operators notation have the same meaning as described in the LSTM section.
+A.1.3
+RNN objective function
+In our work, we use RNN to refer to RNN, LSTM and GRU models targeting the
+sequence labeling view of the problem. We deﬁned the loss for an i-th sequence
+at each time step by the cross-entropy error
+l(i)
+t
+= −
+|Vlabel|
+X
+c=1
+y(i)
+t,c × log(ˆy(i)
+t,c)
+(8)
+where the loss for the i-th sequence (i.e. i-th patient’s timeline/trajectory) is
+deﬁned by the average loss over the sequence length Ti
+Li = 1
+Ti
+Ti
+X
+t=1
+l(i)
+t
+(9)
+Given that our focus is on the 30 days all-cause readmissions after HF hospitalization, our model’s focus should be on the index events (i.e. claims/events
+where HF is the primary diagnosis of hospitalization).
+Hence, the objective
+function could be modiﬁed to reﬂect this requirement. We modify the deﬁned
+loss over i-th sequence (see Equation 9) by deﬁning an average loss for non-index
+and index events separately and then taking a convex combination between both
+losses parametrized by α. The parameter α is determined using a validation set.
+Our modiﬁcation is inspired by the work done in [26].
+LHF
+i
+=
+1
+PTi
+t=1 1[x(i)
+t,primaryHF = 1]
+Ti
+X
+t=1
+l(i)
+t 1[x(i)
+t,primaryHF = 1]
+LnonHF
+i
+=
+1
+PTi
+t=1 1[x(i)
+t,primaryHF = 0]
+Ti
+X
+t=1
+l(i)
+t 1[x(i)
+t,primaryHF = 0]
+22
+
+Li = (1 −α)LnonHF
+i
++ α(LHF
+i
+)
+(10)
+where 1[x(i)
+t,primaryHF = 1] is an indicator function that is equal to 1 when the
+feature vector x(i)
+t
+representing the event at time t for the i-th sequence has
+HF as the primary diagnosis (we refer to this loss by Convex_HF_NonHF). A
+second variation (Uniform_HF) to the ﬁrst objective function in Equation 10,
+is to consider only the index events in the patients’ timeline where we compute
+the average cross-entropy loss for the index events only.
+Li = LHF
+i
+(11)
+A third variation (Convex_HF_lastHF) is to take a convex combination between all index events and the last index event in the timeline.
+LHF
+i
+=
+1
+PTi
+t=1 1[x(i)
+t,primaryHF = 1]
+Ti
+X
+t=1
+l(i)
+t 1[x(i)
+t,primaryHF = 1]
+LlastHF
+i
+= l(i)
+T
+Li = (1 −α)LHF
+i
++ α(LlastHF
+i
+)
+(12)
+where LlastHF
+i
+is the cross-entropy loss for the last HF event (i.e. the last index
+event in the patient’s timeline) and l(i)
+T = −P|Vlabel|
+c=1
+y(i)
+T,c × log(ˆy(i)
+T,c).
+The previous variations consider the sequence labeling approach since the loss
+function for a sequence is deﬁned as a composite of losses from diﬀerent
+times/events in a patient’s timeline. A ﬁnal variation that uses the sequence
+classiﬁcation view of the problem is to deﬁne an objective function that focuses
+only on the last HF event (LastHF) by computing the loss at the last target
+event we aim to predict.
+Li = LlastHF
+i
+(13)
+Lastly, the objective function for the whole training set Dtrain is deﬁned by the
+average loss across all the sequences in Dtrain plus a weight regularization term
+(i.e. l2-norm regularization) applied to the model parameters represented by θ
+L(θ) = 1
+N
+N
+X
+i=1
+Li + λ
+2 ||θ||2
+2
+(14)
+In practice, the training occurs using mini-batches where computing the loss
+function and updating the parameters/weight occur after processing each minibatch of the training set.
+A.1.4
+RNN with conditional random ﬁelds (CRF)
+CRF models the conditional probability of a sequence y given its corresponding sequence of observation vectors x (i.e. p(y1, y2, ..., yT |x1, x2, ..., xT )) using
+23
+
+a parametrized global feature vector F(x,y) ∈RJ that takes input/output sequences to produce J-dimensional vector. As a result, the computation of the
+conditional probability of an output sequence given its input sequence of observations is equal to
+p(y|x) =
+eθ·F (x,y)
+P
+y′∈Y eθ·F (x,y′)
+(15)
+where Y is the set of all label sequences, the denominator represents the normalizer (commonly referred to the partition function Z), and θ is the weight vector
+corresponding to the global feature vector F(x,y). The common deﬁnition of
+the feature vector F uses the ﬁrst-order Markov assumption in order to make
+the inference and model training tractable [35]. That is
+F(x,y) =
+T
+X
+t=1
+f(x, t, yt−1, yt)
+(16)
+where the global feature vector F is the sum of a local feature vector f applied
+at each time step until the end of the sequence. The local vector f has the same
+dimension of F (i.e. ∈RJ) and has access to the whole observation sequence
+x, and the current and previous states/outputs yt−1 and yt [35]. Generally,
+increasing the model order k (i.e. k ≥2) would lead to exponential computational complexity in terms of k. However, recent work as in [36–38], showed
+under the assumption of label pattern sparsity, the use of higher-order models
+(i.e. models with k ≥2) is feasible without incurring an exponential complexity
+in the training and inference algorithms [39].
+We denote the output features of the RNN layer by z = [z1, z2, · · · , zT ] representing the sequence of output features computed from the input sequence x
+(both sequences have equal length). The potential functions in the CRF layer
+are computed using z along with label sequence y. In our work, we experimented
+with two potential functions:
+1. RNNCRF (Unary) that computes unary potentials ψyt(zt) by passing the
+RNN output feature vector zt at time t to a linear aﬃne map and applying a non-linear transformation resulting in a vector of size equal to the
+number of classes |Vlabel| for each zt. The pairwise potential is modeled
+using a transition parameters matrix A(yt−1, yt) of size |Vlabel| × |Vlabel|
+representing the transition score from one outcome class to another. The
+total score computation is equal to F(z,y) = PT
+t=1(ψyt(zt) + A(yt−1, yt)).
+2. RNNCRF (Pairwise) that computes pairwise potentials ψyt−1yt(zt) by
+using linear aﬃne map transformation followed by non-linear elementwise operation generating an output of size |Vlabel| × |Vlabel| similar
+to the approach reported in [31].
+The total score F(z, y) is equal to
+F(z,y) = PT
+t=1 ψyt−1yt(zt).
+24
+
+A.2
+Dataset features representation
+A.2.1
+Input features xt
+Each claim/event in a patient’s timeline is represented by a feature vector xt
+encoding the characteristics of the hospitalization event and the corresponding
+patient. The feature vector xt is composed of:
+• Diagnosis: every claim in the dataset includes 25 ordered ﬁelds, each registering patient’s diagnosis category based on CCS grouper [12] during the
+corresponding hospitalization event. We ﬁrst extracted set Vdiagnosis representing the diagnosis having at least 1000 counts/occurrences registered
+in the HF dataset. Then, we constructed the following vectors:
+1. xdiag1 a one-hot encoded vector ∈{0, 1}|Vdiagnosis| representing the
+diagnosis category registered for the primary diagnosis ﬁeld
+2. xdiag2 a one-hot encoded vector ∈{0, 1}|Vdiagnosis| representing the
+diagnosis category registered for the secondary diagnosis ﬁeld
+3. xdiag3 a one-hot encoded vector ∈{0, 1}|Vdiagnosis| representing the
+diagnosis category registered for the tertiary diagnosis ﬁeld
+4. xcountdiag a vector ∈R|Vdiagnosis| representing the count of diagnosis
+categories registered in all 25 diagnosis ﬁelds
+• Procedures: every claim in the dataset includes 15 ordered ﬁelds, each registering patient’s administered procedure category based on CCS grouper
+during the corresponding hospitalization event.
+We ﬁrst extracted set
+Vprocedures representing the top procedures having at least 1000 counts
+registered in HF dataset. Then, we constructed the following vectors:
+1. xproc1 a one-hot encoded vector ∈{0, 1}|Vprocedures| representing the
+procedure category registered for the primary procedure ﬁeld
+2. xproc2 a one-hot encoded vector ∈{0, 1}|Vprocedures| representing the
+procedure category registered for the secondary procedure ﬁeld
+3. xproc3 a one-hot encoded vector ∈{0, 1}|Vprocedures| representing the
+procedure category registered for the tertiary procedure ﬁeld
+4. xcountproc a vector ∈R|Vprocedures| representing the count of procedure
+categories registered in all 15 procedure ﬁelds
+• Body-system chronic condition: every claim in the dataset includes 25
+ordered ﬁelds, each representing body-system chronic condition indicators,
+categorizing ICD-9-CM diagnosis codes into chronic or not [13]. We refer
+to the list of body-system categories by set Vbchronic that includes 18
+categories. We constructed the following vectors:
+1. xbchronic1 a one-hot encoded vector ∈{0, 1}|Vbchronic| representing
+the body-system chronic condition indicator category listed in the
+primary ﬁeld
+2. xbchronic2 a one-hot encoded vector ∈{0, 1}|Vbchronic| representing
+the body-system chronic condition indicator category listed in the
+secondary ﬁeld
+25
+
+3. xbchronic3 a one-hot encoded vector ∈{0, 1}|Vbchronic| representing
+the body-system chronic condition indicator category listed in the
+tertiary ﬁeld
+4. xcountbchronic a vector ∈R|Vbchronic| representing the count of bodysystem chronic condition indicator categories registered in the 25
+ﬁelds
+• External cause of injury code: every claim in the dataset includes 4 ordered ﬁelds, each detailing an injury code (E-code) based on CCS software
+categorizing all ICD-9-CM diagnosis codes into 20 categories [13]. We refer to the list of E-code categories by set Vecode that includes 20 categories.
+We constructed the following vectors:
+1. xecode1 a one-hot encoded vector ∈{0, 1}|Vecode| representing the Ecode injury category listed in the primary ﬁeld
+2. xcountecode a vector ∈R|Vecode| representing the count of E-code injury
+categories registered in the 4 ﬁelds
+• Procedure classes: every claim in the dataset includes 15 ordered ﬁelds,
+each describing a broad category code (i.e. class) based on categorization
+of the ICD-9-CM procedure codes [13]. We refer to the list of procedure
+broad categories by set Vprocedureclass that includes 4 categories. We constructed the following vectors:
+1. xcountpclass a vector ∈R|Vprocedureclass| representing the count of procedure class categories registered in the 15 ﬁelds
+• Comorbidity condition: every claim in the dataset includes 29 binary ﬁelds
+∈{0, 1}, each representing an indicator of a speciﬁc comorbidity that was
+determined by the AHRQ comorbidity software [14]. The software determines comorbidities that are more likely present prior to hospitalization
+event [14]. We refer to the comorbidity categories encoded in the 29 binary
+variables by set Vcomorbid. We constructed the following vector:
+1. xcomorbid a vector ∈{0, 1}|Vcomorbid| where each component corresponds to one of the 29 binary ﬁelds representing the presence/absence of a comorbidity condition
+• Major diagnostic category (MDC) assigned by HCFA DRG Grouper algorithm during the processing of HCUP dataset [13]. We refer to the list of
+MDC categories by set Vmdc where we constructed the following vector:
+1. xmdc a one-hot encoded vector ∈{0, 1}|Vmdc| representing the MDC
+code/category
+• Risk of mortality subclass: every claim in the dataset includes a ﬁeld that
+measures risk of mortality subclass based on all patient reﬁned diagnosis
+related groups assigned using software developed by 3M Health Information System [13]. The measure consists of ﬁve categories which we refer
+to by the set Vriskmortal . We constructed the following vector:
+1. xriskmortal a one-hot encoded vector ∈{0, 1}|Vriskmortal| representing
+the risk of mortality subclass category
+26
+
+• Severity of illness subclass: every claim in the dataset includes a ﬁeld that
+measures severity of illness subclass based on all patient reﬁned diagnosis
+related groups assigned using software developed by 3M Health Information System [13]. The measure consists of ﬁve categories which we refer
+to set Vseverity . We constructed the following vector:
+1. xseverity a one-hot encoded vector ∈{0, 1}|Vseverity| representing the
+severity of illness subclass category
+• Major operating room procedure indicator: xorproc ∈{0, 1} a binary variable indicating whether a major operating room procedure was reported
+on discharge
+• Number of chronic conditions: xnchronic ∈R a variable representing the
+counts of unique chronic diagnosis reported on the discharge
+• Socio-demographics: every claim is associated with a patient and includes
+information regarding patient’s age, gender, income and place/location of
+residence. We constructed a vector xsociodem that represents the concatenation of the following variables:
+1. age: xage ∈R a variable representing the age of the patient
+2. gender: xgender ∈{0, 1} a binary variable representing the gender of
+a patient
+3. income: xincome ∈{0, 1}|Vincome| a one-hot encoded vector indicating
+the median household income quartile for patient’s zip code, where
+Vincome is the set of income categories
+4. place/location: xploc ∈{0, 1}|Vploc| a one-hot encoded vector describing patient’s location based on the National Center for Health Statistics (NCHS) classiﬁcation scheme for US counties, where Vploc is the
+set of location categories
+5. resident: xresident ∈{0, 1} a binary variable representing if the patient is resident in the state in which they were treated
+• Event/claim info: every claim included the length of stay of the hospitalization event, if the admission was on a weekend, and the discharge month.
+We also computed the time diﬀerence between the hospital admission of
+a current claim/event and the discharge of previous claim/event for all
+events in a patient’s timeline. We constructed a vector xevent that is the
+concatenation of the following variables:
+1. length of stay: xlos ∈R a variable representing the length of stay in
+days for each hospitalization event
+2. time diﬀerence between consecutive events: x∆t ∈R a variable representing the time diﬀerence in days between current admission and
+previous discharge events
+3. admission on weekend: xaweekend ∈{0, 1} a binary variable indicating if a patient was admitted on a weekend
+4. discharge month: xdmonth ∈{0, 1}|Vdmonth| a one-hot encoded vector
+indicating a patient’s discharge month where Vdmonth is the set of
+recorded months in the dataset
+27
+
+5. disposition of patient: xdispuniform ∈{0, 1}|Vdispuniform| a one-hot
+encoded vector indicating the disposition of the patient at discharge
+6. expected primary payer: xpaysrc ∈{0, 1}|Vpaysrc| a one-hot encoded
+vector indicating the expected primary payer (such as Medicare, private insurance, etc.)
+7. same-day event: xsameday ∈{0, 1}|Vsameday| a one-hot encoded vector
+identifying transfers and/or same-day stay collapsed records
+8. elective admission: xelective ∈{0, 1} a binary variable indicating elective versus non-elective admission
+9. rehab transfer: xrehab ∈{0, 1} a binary variable indicating if the
+claim is a combined record involving transfer to rehabilitation, evaluation, or other aftercare
+10. number of index events: xcountindex ∈R a variable representing the
+number of index events in the timeline of a patient up to the current
+admission event (inclusive)
+11. number of admission events: xcountevents ∈R a variable representing
+the number of admission events in the timeline of a patient up to the
+current admission event (inclusive)
+Hence, the feature vector xt is the concatenation of all these variables, encoding
+the characteristics of both the event and its corresponding patient at one time
+step of the patient’s trajectory.
+B
+Experiments
+B.1
+Hyperparameters optimization
+B.1.1
+RNN model
+The set of all possible hyperparameters conﬁguration (i.e. choice of values for
+hyperparameters) for RNN models is reported in Table 3. These hyperparameters controlled the network architecture design that is represented in Figure
+5.
+B.1.2
+RNNSS model
+The hyperparameters conﬁgurations for RNNSS model is reported in Table 4,
+which controlled the network architecture design depicted in Figure 5.
+Parameter name
+Set/range values
+Best/optimal value
+Embedding layer (Blue block) dimension
+{0, ⌊d/2⌋, ⌊d/3⌋, ⌊d/4⌋} where d is input dimension
+0
+RNN layer (Yellow block)
+RNN type
+{LSTM, GRU, Vanilla RNN}
+Vanilla RNN
+Hidden vector dimension Dh
+{8, 16, 32, 64, 128, 256}
+16
+Number of hidden layers
+{1, 2, 3}
+1
+Dropout probability pdropout
+{0.15, 0.35, 0.5}
+0.35
+Embedding layer (Orange block)
+{0, Dh, ⌊Dh/2⌋, ⌊Dh/3⌋, ⌊Dh/4⌋}
+0
+Non-linear function
+{tanh, ReLU}
+ReLU
+l2-norm regularization λ
+{10−3, 10−2, 10−1}
+10−2
+Convex combination parameter for the RNN objective function, α
+{0.65, 0.8, 0.95}
+0.8
+Batch size during training |B|
+{8, 16, 32, 64, 128}
+64
+Optimization algorithm
+{Adam}
+Adam
+Table 3: RNN hyperparameter options (see Figure 5)
+28
+
+Figure 5: RNN generic model/architecture
+Parameter name
+Set/range values
+Best/optimal value
+Embedding layer (Blue block) dimension
+{0, ⌊d/2⌋, ⌊d/3⌋, ⌊d/4⌋} where d is input dimension
+⌊d/2⌋
+RNN layer (Yellow block)
+RNN type
+{LSTM, GRU, Vanilla RNN}
+GRU
+Hidden vector dimension Dh
+{8, 16, 32, 64, 128, 256}
+128
+Number of hidden layers
+{1, 2, 3}
+1
+Dropout probability pdropout
+{0.15, 0.35, 0.5}
+0.15
+Embedding layer (Orange block)
+{0, Dh, ⌊Dh/2⌋, ⌊Dh/3⌋, ⌊Dh/4⌋}
+⌊Dh/3⌋
+Non-linear function
+{tanh, ReLU}
+tanh
+l2-norm regularization λ
+{10−3, 10−2, 10−1}
+10−2
+Convex combination parameter for the RNN objective function, α
+{0.65, 0.8, 0.95}
+0.8
+Batch size during training |B|
+{8, 16, 32, 64, 128}
+64
+Scheduled sampling parameter ρ
+{Linear, Exponential, Sigmoid}
+Exponential
+Optimization algorithm
+{Adam}
+Adam
+Table 4: RNNSS hyperparameter options (see Figure 5)
+29
+
+Parameter name
+Set/range values
+Best/optimal value
+Embedding layer (Blue block) dimension
+{0, ⌊d/2⌋, ⌊d/3⌋, ⌊d/4⌋} where d is input dimension
+⌊d/2⌋
+RNN layer (Yellow block)
+RNN type
+{LSTM, GRU, Vanilla RNN}
+GRU
+Hidden vector dimension Dh
+{8, 16, 32, 64, 128, 256}
+128
+Number of hidden layers
+{1, 2, 3}
+1
+Dropout probability pdropout
+{0.15, 0.35, 0.5}
+0.15
+Embedding layer (Orange block)
+{0, Dh, ⌊Dh/2⌋, ⌊Dh/3⌋, ⌊Dh/4⌋}
+⌊Dh/3⌋
+Non-linear function
+{tanh, ReLU}
+tanh
+l2-norm regularization λ
+{10−3, 10−2, 10−1}
+10−2
+Batch size during training |B|
+{8, 16, 32, 64, 128}
+64
+Optimization algorithm
+{Adam}
+Adam
+Table 5: RNNCRF hyperparameter options (see Figure 6)
+Parameter name
+Set/range values
+Best/optimal value
+l2-norm regularization λ
+{10−3, 10−2, 10−1}
+10−2
+Batch size during training |B|
+{8, 16, 32, 64, 128}
+64
+Optimization algorithm
+{Adam}
+Adam
+Table 6: CRF hyperparameter options (see Figure 7)
+B.1.3
+RNNCRF model
+Similar to RNN models, the set of all possible hyperparameters conﬁguration
+for models using RNN with CRF is reported in Table 5 along with the network
+architecture design in Figure 6.
+B.1.4
+CRF and Neural CRF models
+CRF only and Neural CRF models’ hyperparameters conﬁguration is reported
+in Tables 6 and 7 respectively along with the network architecture/design in
+Figure 7.
+B.1.5
+CNN model
+CNN model’s hyperparameters conﬁguration is reported in List 1 along with
+the network architecture/design in Figure 8.
+B.1.6
+CNN-Wide model
+CNN-Wide model’s hyperparameters conﬁguration is reported in List 2 along
+with the network architecture/design in Figure 9.
+Parameter name
+Set/range values
+Best/optimal value
+Embedding layer (Blue block) dimension
+{0, ⌊d/2⌋, ⌊d/3⌋, ⌊d/4⌋} where d is input dimension
+⌊d/2⌋
+Dropout probability pdropout
+{0.15, 0.35, 0.5}
+0.15
+Embedding layer (Orange block)
+{0, ⌊Dl/2⌋, ⌊Dl/3⌋, ⌊Dl/4⌋} where Dl is input dimension from previous layer l
+⌊Dl/3⌋
+Non-linear function
+{tanh, ReLU}
+tanh
+l2-norm regularization λ
+{10−3, 10−2, 10−1}
+10−2
+Batch size during training |B|
+{8, 16, 32, 64, 128}
+64
+Optimization algorithm
+{Adam}
+Adam
+Table 7: Neural CRF hyperparameter options (see Figure 7)
+30
+
+Figure 6: RNNCRF generic model/architecture
+31
+
+Figure 7: CRF generic model/architecture
+Figure 8: CNN generic model/architecture
+32
+
+List 1 CNN hyperparameter options (see Figure 8). Best parameters are colored
+in blue.
+CNN hyperparameters configuration
+Conv Block operations
+Conv Block J
+Conv Block I
+Square kernel size ............................{3 × 3, 5 × 5}
+Batch norm ....................................{True, False}
+Non-linear function ..........................{tanh, ReLU}
+Dropout .............................................{0, 0.15}
+Starting number of kernels ...................{64, 128, 256}
+Number of repeats for Conv Block I ...............{1, 2, 3}
+Pooling ................................... {AvgPool, MaxPool}
+Number of repeats for Conv Block J ....................{7, 8}
+FC Block operations
+Embedding layer dimension ............... {⌊Dl/3⌋, ⌊Dl/4⌋⌊Dl/5⌋}
+where Dl is the dimension of flattened feature vector from
+the last convolutional layer
+Batch norm ..........................................{True, False}
+Non-linear function ................................{tanh, ReLU}
+Dropout .......................................... {0, 0.15, 0.35, 0.5}
+Number of repeats for FC Block K ......................... {1, 2}
+l2-norm regularization λ ..........................{10−3, 10−2, 10−1}
+Batch size during training |B| ...........................{8, 16, 32}
+Optimization algorithm .....................................{Adam}
+Figure 9: CNN generic model/architecture
+33
+
+List 2 CNNWide hyperparameter options (see Figure 9). Best parameters are
+colored in blue.
+CNN-Wide hyperparameters configuration
+Conv Block operations
+Rectangular kernel size .....{2 × d, 3 × d, 5 × d} where d is the
+input dimension
+Batch norm ..........................................{True, False}
+Non-linear function ................................{tanh, ReLU}
+Dropout ...................................................{0, 0.15}
+Number of kernels .................................{16, 32, 64, 128}
+Apply padding .......................................{True, False}
+Pooling ...................................... {AvgPool, MaxPool}
+Number of kernel types used ...............................{2, 3}
+FC Block operations
+Embedding layer dimension ........... {Dl, ⌊Dl/2⌋, ⌊Dl/3⌋, ⌊Dl/4⌋}
+where Dl is the dimension of flattened feature vector from
+the last convolutional layer
+Batch norm ..........................................{True, False}
+Non-linear function ................................{tanh, ReLU}
+Dropout .......................................... {0, 0.15, 0.35, 0.5}
+Number of repeats for FC Block K ......................... {1, 2}
+l2-norm regularization λ ..........................{10−3, 10−2, 10−1}
+Batch size during training |B| ...........................{8, 16, 32}
+Optimization algorithm .....................................{Adam}
+Parameter name
+Set/range values
+Best/optimal value
+l1-norm regularization λ
+{10−3, 10−2, 10−1}
+10−1
+Optimization algorithm
+{Liblinear, Saga}
+Liblinear/Saga
+Weighting scheme (i.e. weighting training examples)
+{Balanced, None}
+Balanced
+Table 8: Logistic regression with l1-norm regularization (LASSO)
+B.1.7
+MLP model
+MLP model’s hyperparameters conﬁguration is reported in List 3 along with
+the network architecture/design in Figure 10.
+B.1.8
+Logistic regression
+Logistic regression models’ hyperparameters options are reported in Tables 8
+and 9 respectively.
+Parameter name
+Set/range values
+Best/optimal value
+l2/l1-norm regularization λ
+{10−3, 10−2, 10−1, 1}
+10−1
+Optimization algorithm
+{Liblinear, Saga}
+Liblinear/Saga
+Weighting scheme (i.e. weighting training examples)
+{Balanced, None}
+Balanced
+Table 9: Logistic regression with l2-norm regularization
+34
+
+List 3 NN hyperparameter options (see Figure 10). Best parameters are colored
+in blue.
+NN hyperparameters configuration
+FC Block operations
+Embedding layer dimension ...............{⌊Dl/2⌋, ⌊Dl/3⌋, ⌊Dl/4⌋}
+where Dl is the dimension of feature vector from the
+previous layer
+Batch norm ..........................................{True, False}
+Non-linear function ................................{tanh, ReLU}
+Dropout .......................................... {0, 0.15, 0.35, 0.5}
+Number of repeats for FC Block K ...................{1, 2, 3, 4, 5}
+l2-norm regularization λ ..........................{10−3, 10−2, 10−1}
+Batch size during training |B| .........................{32, 64, 128}
+Optimization algorithm .....................................{Adam}
+B.2
+Feature importance
+B.2.1
+Logistic regression
+The analysis of feature importance is reported in Figure 11, which shows the
+normalized coeﬃcients of the trained LASSO models averaged across all folds.
+B.2.2
+RNNCRF model
+For the best neural model (RNNCRF), we report the analysis of feature importance according to an approach previously reported in [44]. In short, we iterated
+over all features attached to the last HF event, and computed the probability
+of readmission with a feature present or absent. The diﬀerence between both
+probabilities allowed us to quantify a feature’s importance across the ﬁve folds
+(we call this metric diﬀ_prob see Fig. 12). Additionally, we computed another
+variation of the same metric by incorporating the percentage of occurrence of
+each feature (i.e. when the feature is present) in the computation. In other
+words, we weighted the computed diﬀerences by the percentage of time each
+feature was present in the dataset (referred to diﬀ_prob_weighted, see Fig. 13).
+A third variation, is computing a ratio (for every feature) dividing the average
+diﬀerence in probability (diﬀ_prob) by the average value of the feature when it
+was present and again weighted by the percentage of occurrence of the feature
+(ratio_diﬀ_prob_weighted, see Fig. 14).
+35
+
+Figure 10: NN generic model/architecture
+36
+
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Number of hospitalization events in the timeline up to current admission (inclusive)
+length of stay
+[Count] chronic condition indicator body system: Infectious and parasitic disease 
+[Count diagnosis] Phlebitis; thrombophlebitis and thromboembolism
+disposition: Against medical advice (AMA)
+[Count] chronic condition indicator body system: Diseases of the skin and subcutaneous tissue 
+[Tertiary procedure] Bone marrow biopsy
+number of registered chronic conditions
+[Tertiary procedure] Contrast aortogram
+[Primary procedure] Gastrostomy; temporary and permanent
+Resident
+[Count] chronic condition indicator body system: Diseases of the genitourinary System 
+[Tertiary diagnosis] Lung disease due to external agents
+[Count diagnosis] Coronary atherosclerosis and other heart disease
+discharge month: Jan
+[Count diagnosis] Allergic reactions
+[Secondary procedure] Contrast aortogram
+[Tertiary diagnosis] Cancer of kidney and renal pelvis
+comorbidity: lymphoma
+[Secondary diagnosis] Other endocrine disorders
+comorbidity: solid tumor without metastasis
+[Count] chronic condition indicator body system: Symptoms, signs, and ill-defined conditions 
+comorbidity: metastatic cancer
+[Primary procedure] Contrast aortogram
+loc Missing
+discharge month: Nov
+[Secondary diagnosis] Coagulation and hemorrhagic disorders
+payment: Medicare
+[Primary procedure] Hemodialysis
+[Count diagnosis] Other nervous system disorders
+[Secondary diagnosis] Complications of surgical procedures or medical care
+[Tertiary diagnosis] Other and unspecified benign neoplasm
+comorbidity: chronic pulmonary disease
+[Tertiary procedure] Other OR procedures on vessels other than head and neck
+payment: Medicaid
+0.07
+0.06
+0.05
+0.04
+0.03
+0.02
+0.01
+0.00
+[Count diagnosis] Peri-; endo-; and myocarditis; cardiomyopathy (except that caused by tuberculosis or sexually transmitted disease)
+disposition: Discharged alive, destination unknown, beginning in 2001
+[Count diagnosis] Residual codes; unclassified
+[Count diagnosis] Delirium, dementia, and amnestic and other cognitive disorders
+Number of days from last any hospitalization discharge
+[Count diagnosis] Other aftercare
+[Count diagnosis] Disorders of lipid metabolism
+[Count diagnosis] Congestive heart failure; nonhypertensive
+[Count] chronic condition indicator body system: Diseases of the respiratory system 
+[Count diagnosis] Conduction disorders
+[Tertiary procedure] Other diagnostic cardiovascular procedures
+Number of days from last event: not applicable (typically first event)
+[Secondary procedure] Electrocardiogram
+Age
+payment: Self-pay
+[Tertiary procedure] Diagnostic ultrasound of abdomen or retroperitoneum
+[Count] chronic condition indicator body system: Diseases of the circulatory system 
+severity of illness subclass: Minor loss of function (includes cases with no comorbidity or complications)
+[Primary procedure] CT scan abdomen
+[Count] chronic condition indicator body system: Endocrine, nutritional, and metabolic diseases and immunity disorders
+[Secondary diagnosis] Septicemia (except in labor)
+[Secondary diagnosis] Nephritis; nephrosis; renal sclerosis
+[Secondary procedure] Insertion; revision; replacement; removal of cardiac pacemaker or cardioverter/defibrillator
+[Tertiary diagnosis] Other ear and sense organ disorders
+[Tertiary diagnosis] Retinal detachments; defects; vascular occlusion; and retinopathy
+[Primary procedure] Magnetic resonance imaging
+[Primary procedure] Insertion; revision; replacement; removal of cardiac pacemaker or cardioverter/defibrillator
+Same-day stay involving two discharges at the same hospital
+comorbidity: alcohol abuse
+[Primary procedure] Electrocardiogram
+[Tertiary procedure] Diagnostic cardiac catheterization; coronary arteriography
+disposition: Routine
+[Secondary diagnosis] Other aftercare
+[Secondary diagnosis] Other diseases of kidney and ureters
+[Tertiary diagnosis] Asthma
+Figure 11: Top-35 features (normalized) in LASSO models contributing to the
+increase and decrease of log-odds of readmission
+37
+
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+disposition: Against medical advice (AMA)
+Resident
+discharge month: Jan
+discharge month: Nov
+comorbidity: solid tumor without metastasis
+comorbidity: lymphoma
+comorbidity: metastatic cancer
+comorbidity: chronic pulmonary disease
+comorbidity: liver disease
+[Count procedure] Hemodialysis
+severity of illness subclass: Extreme loss of function
+comorbidity: renal failure
+comorbidity: diabetes with chronic complications
+payment: Medicare
+comorbidity: psychoses
+payment: Medicaid
+comorbidity: rheumatoid arthritis/collagen vascular diseases
+discharge month: Feb
+[Count procedure] Contrast aortogram
+comorbidity: deficiency anemias
+[Count procedure] Blood transfusion
+[Count procedure] Other non-OR therapeutic procedures on skin and breast
+comorbidity: chronic blood loss anemia
+comorbidity: other neurological disorders
+[Count] E Codes: Adverse effects of medical care
+comorbidity: coagulopathy
+[Count] E Codes: Unspecified
+comorbidity: valvular disease
+comorbidity: diabetes, uncomplicated
+[Count procedure] Gastrostomy; temporary and permanent
+severity of illness subclass: Major loss of function
+comorbidity: peripheral vascular disorders
+Transfer involving two discharges from different hospitals
+comorbidity: drug abuse
+[Count procedure] Other OR procedures on vessels other than head and neck
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+0.1
+0.0
+Number of days from last any hospitalization discharge
+disposition: Discharged alive, destination unknown, beginning in 2001
+Age
+disposition: Routine
+[Count procedure] Diagnostic cardiac catheterization; coronary arteriography
+payment: Self-pay
+severity of illness subclass: Minor loss of function (includes cases with no comorbidity or complications)
+Same-day stay involving two discharges at the same hospital
+comorbidity: alcohol abuse
+discharge month: Oct
+discharge month: Aug
+discharge month: May
+[Count procedure] Respiratory intubation and mechanical ventilation
+discharge month: Jul
+comorbidity: hypertension (combine uncomplicated and complicated)
+Elective admission: Yes
+[Count procedure] Electrocardiogram
+discharge month: Jun
+Not metropolitan or micropolitan counties
+[Count procedure] Other diagnostic cardiovascular procedures
+comorbidity: obesity
+[Count procedure] Cardiac stress tests
+[Count procedure] Prophylactic vaccinations and inoculations
+[Count procedure] Insertion; revision; replacement; removal of cardiac pacemaker or cardioverter/defibrillator
+payment: Private insurance
+payment: No charge
+discharge month: Sept
+severity of illness subclass: Moderate loss of function
+risk of mortality subclass: Minor likelihood of dying
+[Count procedure] Other respiratory therapy
+[Count] chronic condition indicator body system: Diseases of the circulatory system 
+[Count procedure] Diagnostic ultrasound of heart (echocardiogram)
+[Count procedure] Coronary artery bypass graft (CABG)
+[Count procedure] Other therapeutic procedures
+[Count procedure] Incision and drainage; skin and subcutaneous tissue
+Figure 12: Top-35 features (normalized) in RNNCRF models using diﬀ_prob
+metric
+38
+
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Resident
+payment: Medicare
+comorbidity: chronic pulmonary disease
+comorbidity: renal failure
+number of registered chronic conditions
+severity of illness subclass: Major loss of function
+comorbidity: deficiency anemias
+discharge month: Nov
+discharge month: Jan
+Diseases and Disorders of the Circulatory System
+comorbidity: diabetes, uncomplicated
+comorbidity: fluid and electrolyte disorders
+comorbidity: diabetes with chronic complications
+risk of mortality subclass: Major likelihood of dying
+Not a transfer or other same-day stay
+severity of illness subclass: Extreme loss of function
+Admission day on weekend
+[Count procedure] Hemodialysis
+Elective admission: No
+discharge month: Feb
+payment: Medicaid
+disposition: Transfer other: includes Skilled Nursing Facility (SNF), Intermediate Care Facility (ICF), and another type of facility
+[Count diagnosis] Coronary atherosclerosis and other heart disease
+comorbidity: peripheral vascular disorders
+median income: 0-25th percentile
+[Count procedure] Blood transfusion
+[Count] procedure class: Minor Therapeutic
+comorbidity: other neurological disorders
+comorbidity: liver disease
+[Count diagnosis] Cardiac dysrhythmias
+length of stay
+comorbidity: depression
+disposition: Against medical advice (AMA)
+[Count] chronic condition indicator body system: Diseases of the genitourinary System 
+comorbidity: coagulopathy
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+0.1
+0.0
+Age
+Number of days from last any hospitalization discharge
+disposition: Routine
+comorbidity: hypertension (combine uncomplicated and complicated)
+[Count] chronic condition indicator body system: Diseases of the circulatory system 
+[Count diagnosis] Congestive heart failure; nonhypertensive
+severity of illness subclass: Moderate loss of function
+[Count procedure] Diagnostic cardiac catheterization; coronary arteriography
+[Count diagnosis] Residual codes; unclassified
+comorbidity: obesity
+[Count] chronic condition indicator body system: Factors influencing health status and contact with health services
+severity of illness subclass: Minor loss of function (includes cases with no comorbidity or complications)
+discharge month: Oct
+[Count diagnosis] Disorders of lipid metabolism
+[Count] chronic condition indicator body system: Endocrine, nutritional, and metabolic diseases and immunity disorders
+disposition: Home Health Care (HHC)
+discharge month: Aug
+discharge month: May
+Gender: Female
+[Count procedure] Respiratory intubation and mechanical ventilation
+[Count diagnosis] Other aftercare
+discharge month: Jul
+payment: Private insurance
+discharge month: Jun
+median income: 51-75th percentile
+risk of mortality subclass: Minor likelihood of dying
+Not metropolitan or micropolitan counties
+Counties in metro areas of 250,000-999,999 population
+payment: Self-pay
+median income: 76-100th percentile
+discharge month: Sept
+Elective admission: Yes
+[Count diagnosis] Other nutritional; endocrine; and metabolic disorders
+risk of mortality subclass: Extreme likelihood of dying
+risk of mortality subclass: Moderate likelihood of dying
+Figure
+13:
+Top-35
+features
+(normalized)
+in
+RNNCRF
+models
+using
+diﬀ_prob_weighted metric
+39
+
+0.00
+0.05
+0.10
+0.15
+0.20
+0.25
+0.30
+0.35
+length of stay
+Resident
+number of registered chronic conditions
+[Count procedure] Hemodialysis
+[Count diagnosis] Cardiac dysrhythmias
+[Count diagnosis] Coronary atherosclerosis and other heart disease
+payment: Medicare
+[Count procedure] Blood transfusion
+[Count] chronic condition indicator body system: Diseases of the genitourinary System 
+comorbidity: chronic pulmonary disease
+comorbidity: renal failure
+[Count diagnosis] Other nervous system disorders
+[Count] procedure class: Minor Therapeutic
+[Count diagnosis] Anxiety disorders
+severity of illness subclass: Major loss of function
+[Count] chronic condition indicator body system: Diseases of the digestive system 
+comorbidity: deficiency anemias
+[Count] chronic condition indicator body system: Symptoms, signs, and ill-defined conditions 
+discharge month: Nov
+[Count procedure] Incision of pleura; thoracentesis; chest drainage
+discharge month: Jan
+Diseases and Disorders of the Circulatory System
+[Count diagnosis] Coagulation and hemorrhagic disorders
+[Count diagnosis] Deficiency and other anemia
+comorbidity: diabetes, uncomplicated
+[Count] procedure class: Minor Diagnostic
+[Count diagnosis] Phlebitis; thrombophlebitis and thromboembolism
+[Count diagnosis] Acute and unspecified renal failure
+[Count procedure] Other vascular catheterization; not heart
+comorbidity: fluid and electrolyte disorders
+[Count] chronic condition indicator body system: Diseases of blood and blood-forming organs 
+[Count diagnosis] Other circulatory disease
+[Count diagnosis] Chronic ulcer of skin
+[Count diagnosis] Fluid and electrolyte disorders
+[Count] chronic condition indicator body system: Infectious and parasitic disease 
+1.0
+0.8
+0.6
+0.4
+0.2
+0.0
+Number of days from last any hospitalization discharge
+[Count diagnosis] Congestive heart failure; nonhypertensive
+[Count diagnosis] Residual codes; unclassified
+Age
+[Count] chronic condition indicator body system: Diseases of the circulatory system 
+[Count diagnosis] Disorders of lipid metabolism
+[Count diagnosis] Other aftercare
+[Count] chronic condition indicator body system: Factors influencing health status and contact with health services
+[Count diagnosis] Essential hypertension
+[Count] chronic condition indicator body system: Endocrine, nutritional, and metabolic diseases and immunity disorders
+[Count diagnosis] Hypertension with complications and secondary hypertension
+disposition: Routine
+[Count procedure] Respiratory intubation and mechanical ventilation
+[Count diagnosis] Screening and history of mental health and substance abuse codes
+[Count procedure] Diagnostic cardiac catheterization; coronary arteriography
+Number of index events in the timeline up to current admission (inclusive)
+[Count diagnosis] Other nutritional; endocrine; and metabolic disorders
+comorbidity: hypertension (combine uncomplicated and complicated)
+[Count] chronic condition indicator body system: Diseases of the respiratory system 
+[Count procedure] Diagnostic ultrasound of heart (echocardiogram)
+[Count diagnosis] Conduction disorders
+[Count diagnosis] Thyroid disorders
+[Count diagnosis] Peri-; endo-; and myocarditis; cardiomyopathy (except that caused by tuberculosis or sexually transmitted disease)
+[Count diagnosis] Diabetes mellitus without complication
+[Count diagnosis] Pulmonary heart disease
+[Count diagnosis] Asthma
+[Count diagnosis] Delirium, dementia, and amnestic and other cognitive disorders
+[Count diagnosis] Esophageal disorders
+[Count procedure] Insertion; revision; replacement; removal of cardiac pacemaker or cardioverter/defibrillator
+[Count diagnosis] Other lower respiratory disease
+[Count procedure] Other therapeutic procedures
+severity of illness subclass: Moderate loss of function
+[Count diagnosis] Heart valve disorders
+[Count diagnosis] Other connective tissue disease
+[Count diagnosis] Other injuries and conditions due to external causes
+Figure 14:
+Top-35 features (normalized) in RNNCRF models using ratio_diﬀ_prob_weighted metric
+40

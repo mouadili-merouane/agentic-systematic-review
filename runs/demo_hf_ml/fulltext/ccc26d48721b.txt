@@ -1,0 +1,1448 @@
+Predicting Clinical Deterioration of Outpatients Using Multimodal
+Data Collected by Wearables
+DINGWEN LI, Washington University in St. Louis, USA
+JAY VAIDYA, Washington University in St. Louis, USA
+MICHAEL WANG, Washington University in St. Louis, USA
+BEN BUSH, Washington University in St. Louis, USA
+CHENYANG LU, Washington University in St. Louis, USA
+MARIN KOLLEF, Washington University in St. Louis, USA
+THOMAS BAILEY, Washington University in St. Louis, USA
+Hospital readmission rate is high for heart failure patients. Early detection of deterioration will help doctors prevent
+readmissions, thus reducing health care cost and providing patients with just-in-time intervention. Wearable devices (e.g.,
+wristbands and smart watches) provide a convenient technology for continuous outpatient monitoring. In the paper, we
+explore the feasibility of monitoring outpatients using Fitbit Charge HR wristbands and the potential of machine learning
+models to predicting clinical deterioration (readmissions and death) among outpatients discharged from the hospital. We
+developed and piloted a data collection system in a clinical study which involved 25 heart failure patients recently discharged
+from a hospital. The results from the clinical study demonstrated the feasibility of continuously monitoring outpatients using
+wristbands. We observed high levels of patient compliance in wearing the wristbands regularly and satisfactory yield, latency
+and reliability of data collection from the wristbands to a cloud-based database. Finally, we explored a set of machine learning
+models to predict deterioration based on the Fitbit data. Through 5-fold cross validation, K nearest neighbor achieved the
+highest accuracy of 0.8800 for identifying patients at risk of deterioration using the health data from the beginning of the
+monitoring. Machine learning models based on multimodal data (step, sleep and heart rate) significantly outperformed the
+traditional clinical approach based on LACE index. Moreover, our proposed weighted samples one class SVM model can reach
+high accuracy (0.9635) for predicting the deterioration happening in the future using data collected by a sliding window,
+which indicates the potential for allowing timely intervention.
+CCS Concepts: • Human-centered computing →Ubiquitous and mobile computing systems and tools;
+Additional Key Words and Phrases: Mobile sensing, wearables, hospital readmission, clinical deterioration, machine learning,
+heart failure
+ACM Reference Format:
+Dingwen Li, Jay Vaidya, Michael Wang, Ben Bush, Chenyang Lu, Marin Kollef, and Thomas Bailey. 2018. Predicting Clinical
+Deterioration of Outpatients Using Multimodal Data Collected by Wearables. Proc. ACM Interact. Mob. Wearable Ubiquitous
+Technol. 0, 0, Article 0 (February 2018), 22 pages. https://doi.org/0000001.0000001
+Authors’ addresses: Dingwen Li, Washington University in St. Louis, 1 Brookings Dr, St. Louis, MO, 63130, USA; Jay Vaidya, Washington
+University in St. Louis, 1 Brookings Dr, St. Louis, MO, 63130, USA; Michael Wang, Washington University in St. Louis, 1 Brookings Dr, St.
+Louis, MO, 63130, USA; Ben Bush, Washington University in St. Louis, 1 Brookings Dr, St. Louis, MO, 63130, USA; Chenyang Lu, Washington
+University in St. Louis, 1 Brookings Dr, St. Louis, MO, 63130, USA; Marin Kollef, Washington University in St. Louis, 1 Brookings Dr, St.
+Louis, MO, 63130, USA; Thomas Bailey, Washington University in St. Louis, 1 Brookings Dr, St. Louis, MO, 63130, USA.
+ACM acknowledges that this contribution was authored or co-authored by an employee, contractor, or affiliate of the United States government.
+As such, the United States government retains a nonexclusive, royalty-free right to publish or reproduce this article, or to allow others to do
+so, for government purposes only.
+© 2018 Association for Computing Machinery.
+2474-9567/2018/2-ART0 $15.00
+https://doi.org/0000001.0000001
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+arXiv:1803.04456v2 [cs.CY] 1 Jun 2018
+
+0:2
+•
+1
+INTRODUCTION
+Hospital readmissions occur often and are difficult to predict [14]. Many hospitals have dedicated resources to
+identify patients at risk for readmission, and to prevent such readmissions [14]. Heart failure is the most common
+principle hospital discharge diagnosis among Medicare beneficiaries and is among the most expensive conditions
+billed to Medicare [3]. Readmission rates following discharge for heart failure are high, with approximately 25%
+of patients being readmitted within 30 days. However, only about 35% of these patients are readmitted for heart
+failure [20], and efforts to prevent these readmissions, most of which have focused on the condition causing the
+index admission, have met with variable and incomplete success [5]. It is difficult to accurately diagnose heart
+failure in time [24]. In the medical field, clinicians use standardized LACE index (calculated based on length of
+stay, acuity of admission, co-morbidity index and number of emergency department visit) to evaluate the risk of
+readmission or death after discharge. The problems of frequent readmission and hard-to-detect deterioration in
+patients with heart failure, along with the health care costs associated with these readmissions, suggests the need
+for innovative, global monitoring strategies that call attention to patients who are in need of attention to prevent
+clinical deterioration and consequent need for emergency department visits or hospital readmission.
+Wearable devices have become accessible for general population. While activity, heart rate and sleep quality
+sensors (wristbands and smart watches) are increasingly popular among healthy individuals, few studies have
+assessed their potential role in health care [4, 33]. The more common accessibility of wearable devices leads an
+evolution in medical research, which helps clinicians collect everyday health data in a cheap and friendly way.
+Studies showed Fitbit worked well in activity related monitoring and data collection [8]. Wearable devices can
+achieve pretty high accuracy in steps measurement. An earlier study found that Fitbit Flex wristbands had an
+accuracy of 0.996 when measuring straight indoor walking [21]. Wearable devices also show their accuracy in
+measuring everyday heart rate with errors ranging from 1.8% to 5.5% [28]. Due to their attractive designs, easy
+to use characteristics and accuracy, wearable fitness devices are promising devices for monitoring outpatients.
+In this paper we explore the potential of wearables to monitor clinical deterioration among outpatients.
+Specifically, we aim to predict clinical deterioration defined as a composite outcome of either readmission or
+death among patients discharged from a hospital. We first developed a cloud-based database system to collect
+multimodal data from outpatients using the Fitbit Charge HR wristband. The system can passively collect everyday
+health data including step counts, heart rates, and sleep duration and quality. We then conducted a clinical
+study to monitor 25 heart failure patients recently discharged from a major research hospital in United States.
+We assessed the feasibility of collecting multimodal data from outpatients using wearables by analyzing the
+data yield, reliability, and patient compliance of our data collection system based on wristbands. Finally, we
+demonstrate the potential of applying machine learning to predict clinical deterioration among outpatients as
+either predicting deterioration ahead of time with recent data or identifying patient at risk of deterioration with
+data from beginning of monitoring.
+The main findings of our study are two-fold. First, our experience in the clinical study demonstrated the
+feasibility of collecting multimodal data from outpatients using wearables. In the study, our system collected
+more than 80% of per-minute step data from 84% of the patients. While the yield of heart rate data is lower, the
+median gap in hear rate data was only 4 minutes. The results suggests a high level of compliance of patients in
+wearing the wristband regularly. Furthermore, the cloud-based database collected 73% of the data within an hour,
+which allows timely intervention.
+Second, the superior performance of weighed samples one class SVM (with accuracy of 0.9635) demonstrates
+the feasibility of predicting clinical deterioration ahead of time. In the feasibility study of identifying patients at
+risk of deterioration, the performance evaluation of a set of predictive models show that the K nearest neighbor
+model achieved significantly higher accuracy (0.8800) than the traditional method based on LACE index (0.7826).
+Furthermore, combining multiple modalities (step, heart rate and sleep) effectively improved predictive accuracy
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+Predicting Clinical Deterioration of Outpatients Using Multimodal Data Collected by Wearables
+•
+0:3
+when compared to models based on a single modality, which suggests the significance of incorporating multiple
+modalities for training predictive models.
+2
+RELATED WORK
+There has been significant interest in predicting clinical deterioration. Based on the sources of data used to
+perform the prediction, studies in this area can be categorized as prediction using clinical data collected within
+the hospital and that based on data collected by wearable devices.
+Clinicians traditionally relied on scores derived from inpatient data [10, 11, 13, 22, 26, 31, 35] or patient
+mobility [16, 30]. In particular, LACE index has been widely adopted to predict readmission. The LACE index is
+manually calculated at the time of discharge to predict the risk of readmission of both medical and surgical patients
+after hospital discharge[35]. However, LACE index has variable performance for different use cases. Robinson and
+Gudali [26] showed that LACE index had fair discrimination in a study of 5,800 patients in Singapore [22] and
+poor discrimination in a study done on about 500 patients in UK with an average age of 85 years [10]. Wang [35]
+claimed that LACE index might not accurately predict 30-day readmission of congestive heart failure patients
+discharged from hospital. LACE-rt, as a real-time version of LACE index, was invented to predict readmission
+using the length of stay during the previous acute care admission [15]. However, LACE-rt underestimates the
+readmission rates by not taking early death into account [15].
+As predicting hospital readmission via LACE index has variable performance, recent literature exploited
+learning-based approaches to train predictive models using clinical data. Logistic regression is a commonly used
+machine learning model to predict hospital readmission [17, 22, 29]. [22, 29] demonstrated that logistic regression
+outperformed LACE index in predicting 30-day readmission, while several other studies [29, 32, 38] showed that
+Random forest was also an accurate model in predicting hospital readmission. These learning-based approaches
+relied on medical records and vital signs collected while patients were in the hospital [18, 27, 34, 34, 40]. To date,
+there is scarce literature on predicting readmission using outpatient data.
+As wearables can passively collect outpatient data in a continuous fashion, recent studies sought to employ
+wearables to predict readmission. Abdulmajeed et al. studied the feasibility of predicting the readmission of
+heart failure patients via wearables [1]. Bae at al. [6] demonstrated the feasibility of predicting readmission of
+postsurgical cancer via sedentary behavior data collected by Fitbit. However, both of the studies utilized features
+from a single modality, i.e., step. As wearables incorporate more sensing modalities, it is important to explore the
+potential of multimodal data to improve model accuracy. Our study combined features derived from heart rate
+and sleep data in addition to step data. Our comparative evaluation demonstrated the advantage of exploiting
+multimodal data for predicting clinical deterioration. Moreover, while previous studies using wearables focused
+on predictive models only, we further provided in-depth analysis of patient compliance and the performance of
+data collection from heart failure patients after hospital discharge. By demonstrating the feasibility of continuous
+data collection from outpatients using wearables, the findings from our clinical study have broad implications on
+future clinical studies that use wearables to monitor outpatients.
+3
+SYSTEM DESIGN
+We have developed HIPAA-compliant software to collect multimodal data from Fitbit wristbands and store them
+a cloud-based database. The system architecture is shown in Figure 1. Each patient wears a Fitbit Charge HR
+wristband. The wristband collects multimodal data including per-minute heart rate and step count, the duration
+and quality of each sleep episode, and the remaining battery life of the wristband. The wristband synchronizes
+with the Fitbit App on an Internet connected device, in our case a smartphone, through Bluetooth. The smartphone
+then send the collected data to the Fitbit cloud where all user data is stored indefinitely. If the wristband is unable
+to synchronize with a smartphone and push the data to the Fitbit cloud, it will store intraday data locally on
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+0:4
+•
+Fig. 1. System Overview
+the device for up to 7 days. Therefore, as long as there is a synchronization between the Fitbit and smartphone
+within 7 days, there should be no data loss. Afterwards, it reduces to storing daily summary data for the next
+30 days. The data communication from the wristband to the Fitbit cloud is managed by software provided by
+Fitbit. Once data has been stored in the Fitbit cloud, our own cloud-based Heroku server retrieves the data of our
+participants through Fitbit’s developer API and stores it in our PostgreSQL database. If the data indicates that
+there may be issues with patient compliance, then our server uses Google’s API and a Python Excel package to
+generate an Excel file containing the anonymized patient’s data and sends an alert through Gmail to the nurses
+who are in charge of the study. The nurse reviews patient’s data and contacts the patient if necessary.
+The end-to-end latency of data collection from the wristband to our database is influenced by the frequency at
+which data flows through the system. When the Fitbit App is setup on the patient’s smartphone, the setting to
+synchronize the Fitbit Charge HR with the smartphone every 15 minutes is enabled. The two devices synchronize
+over Bluetooth so in order for data to be successfully transmitted, they must be within range of one another.
+Once the smartphone has received the data from the Fitbit, it immediately attempts to send this information to
+the Fitbit cloud over the Internet. From the Fitbit cloud, our application requests intraday heart rate and step data
+as well as accessory data (battery life at last sync and time of last sync) every 10 minutes for all patients. On a
+daily basis, it requests intraday and sleep summary data, and runs a checking routine to determine if patients are
+properly complying with the study protocol. If the system detects any anomalies, then it will send an email to the
+nurses and inform them to contact the patient. We used the number of total heart rate data points in the previous
+day as a proxy for what percentage of the day the patient was wearing the device properly. We decided on using
+heart rate data because it was the most granular with multiple samplings per minute. If either the number of
+heart rate data points was below 5400 per day or the last known battery level of the patient’s device was below
+medium we alerted the nurses.
+4
+PERFORMANCE OF DATA COLLECTION
+In order to assess the feasibility of using wearables to monitor the health conditions of outpatients, it is important
+to evaluate the patients’ compliance rate and the yield, reliability and latency of the data collection process.
+4.1
+Yield
+The yield is defined as the fraction of the expected samples that are successfully collected and stored in our
+database. The yield is calculated separately for heart rate, step and sleep data. The sampling rate of heart rate and
+sleep is one sample per minute. For example, for a duration of 1 hour we are expecting 60 samples of heart rate
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+Predicting Clinical Deterioration of Outpatients Using Multimodal Data Collected by Wearables
+•
+0:5
+and step count, respectively. To measure the yield of sleep data, we choose the sampling rate to be one sample
+per day. In that case, the sleep yield is defined as the fraction of days in which we collected sleep data.
+Figure 2a shows yield of heart rate, step and sleep data for each participant. The average yield of step is much
+higher than that of heart rate. The mean yield of step count is 0.9113 and the standard deviation is 0.1237, 84% of
+participants have step yield higher than 0.8, as shown on Figure 2a. In comparison, the mean yield of heart rate is
+0.6369 and the standard deviation is 0.3262, 54% participants have heart rate yield higher than 80%. Generally,
+there are three main causes for low yield. The first cause is the user compliance. The patients may not follow the
+procedure all the time, for instance, they may take off Fitbit occasionally. The second cause is the sensor issue.
+There may be the case where the sensor is not working. The third cause is the lose of connectivity. Fitbit cloud
+may permanently lose some data due to bad network connectivity. If the end-to-end latency is longer than the
+period when Fitbit store the unsynchronized data locally, we will permanently lose these data since they will be
+overwritten by the later coming data. In section 4.3, we will show that this is not the cause of low yield for our
+system.
+For those users which have either one of the heart rate yield and step count yield higher than 0.8, the results
+demonstrate that the users are highly compliant with the study protocol, since we can verify that the Fitbit is
+continuing collecting the data. As shown on Figure 2a, 88% of participants are compliant with the study protocol.
+However, for those users, such as 7, 14 and 16, which have both low heart rate yield and step yield, the results
+imply the low user compliance. There is also the case where the yield of one sensing modality is significantly
+higher than the other. For example, Figure 2b show that user 6, 13, 15, 16, 19, 20 have much higher step yield
+than their heart rate yield. On the other hand, only user 11 has heart rate yield which is significantly larger than
+its step yield. The inconsistency of heart rate yield and step yield can reflect the productivity and reliability of
+different sensing modality. From the yield analysis, we can conclude that Fitbit’s step measurement is usually
+more productive and reliable than heart rate measurement. The reason of relatively low heart rate yield may be
+explained by the sensing mechanism. Step is derived from acceleration which is collected by Inertial Measurement
+Unit (IMU) inside Fitbit. Fitbit measure heart rate via shooting LED light to skin which detects changes in blood
+volume. Thus, a period of blood volume changing indicates a single heart beat. We can imagine that IMU can
+continuously collect acceleration while Fitbit turning on, no matter how Fitbit is worn. However, the heart rate
+sensor more relies on the proper wearing position. From its sensing mechanism, we can see that heart rate sensor
+works well only if it is tightly fasten to user’s wrist.
+1 2 3 4 5 6 8 9 1011121315171819202122232425 7 1416
+participants
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+yield
+Yield per device
+HR
+Step
+Sleep
+(a)
+1 2 3 4 5 6 8 9 1011121315171819202122232425 7 1416
+participants
+0.2
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+yield difference
+Delta of step and heart rate per device
+(b)
+Fig. 2. Yield of heart rate, step and sleep. (a) shows the yield for each participant. The three participants to the right are
+those with compliant issue. (b) is the difference between step yield and heart rate yield per participant.
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+0:6
+•
+The poor result of sleep yield, Figure 2a, indicates that the sleep measurement is not as reliable as step count
+and heart rate. The Fitbits of user 14, 16, 19, 21 don’t have any sleep measurement at all. Fitbit Charge HR can
+automatically detect user’s sleep behavior via a combination of movement and heart-rate patterns. Study [12]
+point out that sleep stages can not be returned in three cases, such as the heart rate can not be clearly detected
+throughout the night, sleep duration is less than three hours or battery runs out of power during the sleeping
+period. Despite the fact that all sleep yield is low, we still want to distinguish the sleep yield as relatively high
+and relatively low. In the analysis, we define the relatively high sleep yield as its value is larger or equal to the
+median, thus the relatively low sleep yield are those less than the median. The Fitbits of user 6, 7, 14, 15, 16, 19,
+21, which have no or relatively small sleep yield are those also have low heart rate yield. The reason may be that
+users are unwilling to wear Fitbit during the sleep. Some of them, such as user 6, 15, 19, 21, they have high step
+yield over 0.8, which indicates that they are compliant with protocol of wearing Fitbit during the day time. The
+users 7, 14, 16, who give very low sleep yield are those with both low heart rate and step yield. Therefore, the
+participants associated with these three devices are less compliant throughout the day. Since the step sensing is
+always generating data even if the user take off the device, the only cause of low step yield is that the device is
+out-of-battery.
+The yield analysis from different sensing modalities demonstrates the ability of analyzing user compliance
+issue. Furthermore, the differences of yield from sensing modality suggest the reliability of associated sensors. In
+section 4.2, we will further discuss other metrics to measure reliability.
+4.2
+Reliability
+In this section, we will explore two intuitive metrics measuring system’s reliability. Time-to-failure is defined as
+the time interval during which a component operates continuously without a failure and time-to-recovery is
+defined as the time interval from the occurrence of a failure until the component recovers [9]. Time-to-failure
+measures how frequently our system fail, on the other hand, time-to-recovery measures how quickly our system
+is able to recover from failure. In our system, failure is the case where a certain type of data is missing. We
+analyze the system reliability in terms of heart rate and step data instead of sleep data, since heart rate and
+step are continuously collected by Fitbit at every minute, which can better reflect system reliability through the
+entire duration of study. Time-to-failure is calculated as the length of duration when there is no data missing.
+Time-to-recovery is actually the length of gap where the data is missing. Step has an average of 0.035 times
+of failure per participant per day, which is significantly less than that of heart rate, 3.126 times of failure per
+participant per day. Thus, step sensing is less likely to fail than heart rate sensing. The median time-to-failure
+of heart rate sensing is 55 minutes, and the median time-to-failure of step sensing is 119 hours (about 5 days).
+However, when looking at time-to-recovery, heart rate sensing recovers from failure more quickly than step
+sensing. The median time-to-recovery of heart rate sensing is 4 minutes, and the median time-to-recovery of step
+sensing is 198 minutes (3.3 hours). Heart rate sensing usually takes less time to recovery, which can be observed
+when comparing Figure 4a and Figure 4b. Usually, we care about the tail of time-to-recovery, since it can tell us
+about whether our system can handle the extreme case of long duration of failure. Figure 4a and Figure 4b plot
+the CDF of time-to-recovery for all devices. The 95% percentile time-to-recovery of heart rate is 8.4 hours and
+137 hours (5.7 days) for step. Although the extreme case of long time-to-recovery of step sensing happen very
+seldom, it is still disconcerting for the real clinical situation, since the clinicians may miss the appropriate time to
+provide just-in-time intervention if the system failure last for a long period.
+4.3
+Latency
+A well-functioning system need to have high yield and high reliability as well as low end-to-end latency. Studying
+the device’s latency is important as it provides us with a good idea of whether or not the system can be used
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+Predicting Clinical Deterioration of Outpatients Using Multimodal Data Collected by Wearables
+•
+0:7
+Fig. 3. CDF of system latency
+in a time-sensitive manner. In our analysis, the end-to-end system latency is defined as the time duration from
+when the data is collected by Fitbit to the time of it is synchronized with Fitbit cloud. Since Fitbit synchronizes all
+types of data simultaneously, we can analyze end-to-end system latency in terms of one type of data. Therefore,
+step data is selected to measure latency because of its highest reliability. We plot the cumulative distribution
+function (CDF) of the end-to-end latency, which can be seen in Figure 3. From the latency result analysis, we
+learn the fact that the median end-to-end system latency is 8.55 minutes and 99% percentile of latency is 22.5
+hours, which is less than a day. As Fitbit can locally store data up to 7 days, the end-to-end system is not an
+issue of causing data loss. Also, the CDF tells us 73% of data transmission is under an hour, meaning that our
+system is capable of quickly responding to patient’s deterioration in most of time. We would like to mention
+that such low latency is not necessary in this particular study. But the latency analysis explore the potential for
+other applications that require timely alerts and intervention. Our data collection system is feasible of applying
+to hourly real-time monitoring and just-in-time intervention. The latency can be further reduced if the system is
+implemented natively in Fitbit Cloud.
+5
+DATA PREPROCESSING AND FEATURE SELECTION
+5.1
+Data Preprocessing
+Since Fitbit API has its own data preprocessing protocols, we could only obtain the processed data provided
+by Fitbit cloud. Time series data from Fitbit is preprocessed as summary given for a certain granularity. In the
+study, time granularity for heart rate, step count and sleep status is chosen as one minute. Sleep summary data is
+generated by Fitbit API for each sleep duration. Since patients are supposed to wear Fitbit all the time during
+the study period, there is inevitably some noisy data unrelated to the features we want to extract. Step count
+is continuously measured by Fitbit through the whole day, even when patients go to bed. Since our purpose of
+measuring step count is to reflect patient’s daily activity level when they awake, a time filter is applied to extract
+step count for the time period when patient is "awake". Sleep time is defined as the time when total step count is
+under 10 within 30 minutes after 7pm. Awake time is defined as the time when the first step is taken after 7am
+[6]. Thus, we only consider steps made within the duration between Awake time and Sleep time.
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+0:8
+•
+0
+5
+10
+15
+20
+25
+30
+Time length (hour)
+0.0
+10.0
+20.0
+30.0
+40.0
+50.0
+60.0
+70.0
+80.0
+90.0
+100.0
+CDF (%)
+HR
+Time to Failure
+Time to Recovery
+(a)
+0
+5
+10
+15
+20
+25
+30
+Time length (day)
+0.0
+10.0
+20.0
+30.0
+40.0
+50.0
+60.0
+70.0
+80.0
+90.0
+100.0
+CDF (%)
+step
+Time to Failure
+Time to Recovery
+(b)
+Fig. 4. CDF of time-to-failure and time-to-recovery. (a) shows the CDF of time-to-failure and time-to-recovery of heart rate
+sensing. (b) shows the CDF of time-to-failure and time-to-recovery of step sensing.
+Particularly, there are four devices missing sleep data. In order to preserve the consistency of features among
+training examples, we fill in the average value of corresponding missing features calculated from other examples
+which have complete features.
+5.2
+Features
+5.2.1
+First Order Features. First order statistical features used in our project are mean, maximum, minimum,
+skewness and kurtosis. Assume given time series {xi}, 1 ≤i ≤N, mean µ and standard deviation σ of time series
+data is calculated as:
+µ =
+ÍN
+i=1 xi
+N
+,σ =
+sÍN
+i=1(xi −µ)
+N
+(1)
+Skewness is defined as:
+Skewness =
+ÍN
+i=1(xi −µ)3
+(N −1)σ 3
+(2)
+which measures the symmetry of distribution. If skewness is high, it means the distribution lacks symmetry.
+Skewness can help us model whether the time series data, such as heart rate and sleep data, follows a bellshape distribution. Kurtosis, in the other hand, measures whether the distribution is heavy-tailed or light-tailed
+compared to normal distribution. Kurtosis can be calculated using following formula:
+Kurtosis =
+ÍN
+i=1(xi −µ)4
+(N −1)σ 4
+−3
+(3)
+5.2.2
+Second Order Features. The commonly used second order time series features in medical data mining
+are co-occurance features [23, 34]. Those features are shown to outperform other second order features in the
+case of one dimensional time series data [23]. First of all, one dimensional time series data is quantized into Q
+levels. Then a two dimensional matrix c(i, j), (1 ≤i, j ≤Q) is created by calculating number of times two points
+of quantized level i and j is at distance d. Second order features, such as energy (E), entropy (S), correlation (ρx,y),
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+Predicting Clinical Deterioration of Outpatients Using Multimodal Data Collected by Wearables
+•
+0:9
+inertia (F) and local homogeneity (LH) are derived based on matrix c:
+E =
+Q
+Õ
+i=1
+Q
+Õ
+j=1
+c(i, j)2
+S =
+Q
+Õ
+i=1
+Q
+Õ
+j=1
+c(i, j) ∗log(c(i, j))
+ρx,y =
+ÍQ
+i=1
+ÍQ
+j=1(i −µx)(j −µy)c(i, j)
+σx ∗σy
+(4)
+where:
+µx =
+ÍQ
+i=1 i ÍQ
+j=1 c(i, j)
+Q
+, σ 2
+x =
+ÍQ
+i=1(i −µx)2 ÍQ
+j=1 c(i, j)
+Q
+µy =
+ÍQ
+j=1 j ÍQ
+i=1 c(i, j)
+Q
+, σ 2
+y =
+ÍQ
+j=1(j −µy)2 ÍQ
+i=1 c(i, j)
+Q
+(5)
+F =
+Q
+Õ
+i=1
+Q
+Õ
+j=1
+(i −j)2c(i, j)
+LH =
+Q
+Õ
+i=1
+Q
+Õ
+j=1
+1
+1 + (i −j)2c(i, j)
+(6)
+5.2.3
+Detrended Fluctuation Analysis. In stochastic processes, chaos theory and time series analysis, detrended
+fluctuation analysis (DFA) is a method for determining the statistical self-affinity of a signal [19, 25]. Self-affinity
+is an important factor when analyzing time series which is supposed to have a regular patten. In our case, we
+apply DFA to heart rate and sleep time series, which evaluates long-range correlation of noisy time series data
+[19]. DFA can be used for analyzing non-stationary time series with slowly varying trend, such as heart rate [23].
+DFA is the average fitting error over time series segments of different scale [23]. It first convert time series
+{xi}, 1 ≤i ≤N into an unbounded process {Xj}, 1 ≤j ≤N by summation or integration:
+X(j) =
+jÕ
+i=1
+[x(i) −⟨x⟩], 1 ≤j ≤N
+(7)
+where ⟨x⟩is the mean over the entire time series {xi}, 1 ≤i ≤N. Then {Xj}, 1 ≤j ≤N is divided into sub-series
+each of length n. A polynomial piecewise fit {Yj}, 1 ≤j ≤N is generated by minimizing local least square error
+within the sub-series. The fluctuation (F) of detrended time series is:
+F(n) =
+v
+u
+t
+1
+N
+N
+Õ
+j=1
+(X(j) −Y(j))2
+(8)
+Finally, fluctuation measure is repeated over different length n.
+5.2.4
+Feature Extraction. Fitbit API preprocessed raw data collected from Fitbit Charge HR. Various calculations
+are performed to extract meaningful features from time series data. Instead of using time series data directly
+obtained from Fitbit API, we transform them into statistical features. Also, we derive other features from the
+original step data. Sedentary bout time is defined as a time duration where no steps are taken when patient is
+awake, as illustrated by Figure 5. Daily sedentary bout count refers to the total number of sedentary bout per day.
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+0:10
+•
+Fig. 5. Sedentary bout is the duration when there is 0 step count. Each block represent 1 minute granularity.
+Fig. 6. Illustration of sleep parameters. Basically, TimeinBed is the sum of minutesToFallAsleep, minutesAsleep, minutesAwake,
+and minutesAfterWakeup.
+Statistical features, such as min, max, and mean, are calculated from original step data and the derived sedentary
+behavior data. Sleep data gathered by Fitbit includes sleep status and sleep summary. Sleep status takes discrete
+value from 0 to 3, where 0 is no measurement, 1 is sleeping, 2 is restless, 3 is awake. Sleep status is measured
+every minute as a time series data. First order time series features, skewness and kurtosis, are extracted as input
+to train models. We apply DFA to sleep status, an indication of sleep quality where high value means more
+fluctuation in sleep. Different time windows are generated to compensate the influence of unknown appropriate
+window size. Sleep summary data provides various features which are extracted automatically by Fitbit API. The
+useful features are Time in Bed, Minute to Fall Asleep, Minute Awake, Minute After Wakeup, Awake Count,
+Restless Count, Restless Duration. The relation of the parameters is illustrated by Figure 6. We then compute min,
+max, mean of those features. Since we work on predicting deterioration for heart failure patients, time series
+analysis is also performed on heart rate data. First order time series features, such as mean, standard deviation,
+skewness and kurtosis, are derived from heart rate data of each patient. Second order time series features, such
+as energy, correlation, inertia, local homogeneity, are also calculated. We perform DFA on heart rate data, which
+will capture the heartbeat fluctuation along the day. Different time windows are also applied for extracting DFA
+of heart rate. There are 51 features in total, representing characteristics of activity, sleep and heart rate. In order
+to improve model performance, we apply Sequential Forward Feature Selection to filter out irrelevant features.
+Thus, a subset of overall features will be used to train a predictive model.
+6
+DETERIORATION PREDICTION
+Due to the study scale and the challenge of launching study for heart failure patients, we finally get 25 patients
+participating the study and 7 of them deteriorated within 60 days. Typically, this amount of examples is insufficient
+to train a stable predictive model. Moreover, we are facing the issue of incomplete data and noisy measurement.
+Hence, we need to modify the standard machine learning algorithms to robustly learn a predictive model and
+overcome the overfitting issue brought by small data set. In the following section, we will focus on solving two
+predictive tasks which are commonly studied in the clinician research. One is to train a model predicting the
+deterioration happening in the future with the data collected by sliding window, namely the early warning task.
+The other is to predict whether a patient will deteriorate in the future based on the data collected from the
+beginning of monitoring, namely identifying the patients with the risk of deterioration. Since the deterioration
+only happen in a small fraction of days during the whole monitoring period, the challenge in the early warning
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+Predicting Clinical Deterioration of Outpatients Using Multimodal Data Collected by Wearables
+•
+0:11
+task is to learn a classifier from skewed data set. For identifying the patients with risk of deterioration, the
+challenge is the size of dataset, because each patient’s data is an example.
+6.1
+Deterioration Early Warning
+6.1.1
+Dataset. In the deterioration early warning task, the dataset is created by treating each day as a training
+example. The feature extraction methods are performed to segment the time series data and generate meaningful
+statistics features in one day granularity. This is a binary classification task with normal day and deterioration day
+as the classes. After segmenting the time series data, we obtain a dataset of 427 normal days and 11 deteriorated
+days. The classification task is highly skewed and one of the class has very small amount of samples. Thus, we
+formalize the learning task as anomaly detection.
+6.1.2
+Weighted Samples One Class SVM. One Class SVM (OC-SVM) is a semi-supervised machine learning
+method, which is designed for anomaly detection. OC-SVM is proposed assuming the anomaly examples are not
+available during the training phase. Therefore, it is trained with only normal examples. However, SVM classifiers
+are sensitive to outliers in the training examples [36] and need outlier suppression techniques in the training
+phase. Hence, we introduce the sample weights which are learned during the training phase to assign each
+training example a weight ηi to control its influence on the decision boundary. Therefore, the revised optimization
+objective of weighted samples OC-SVM is:
+min
+ω,ρ,η
+∥ω∥2
+2
+−ρ + 1
+νn
+n
+Õ
+i=1
+ηi max(0, ρ −ωTϕ(xi))
+s.t. eTη ≥βn
+(9)
+where ν is the hyperparameter to control the upper bound of the fraction of training errors and the lower bound
+of the fraction of support vectors, β controls the maximum number of points allowed to be outliers. The above
+optimization is not jointly convex in terms of ω, ρ and η. The non-convex part
+1
+νn
+nÍ
+i=1
+ηi max(0, ρ −ωTϕ(xi)) can
+be reformulated using concave duality [2, 37]. Then the above objective (9) is equivalent to:
+min
+ω,ρ Rvex + Rcave
+Rvex = ∥ω∥2
+2
+−ρ, Rcave = min
+η
+n
+Õ
+i=1
+ηi max(0, ρ −ωTϕ(xi)).
+(10)
+Obviously, Rvex is a convex objective, and Rcave is a non-convex objective. We reformulated Rcave as:
+Rcave = д(h(ω))
+where h(ω) = max(0, ρ −ωTϕ(x)), д(u) =
+inf
+η∈{0,1}[ηTu]
+(11)
+Since h(ω) is the point-wise infimum of a set of linear functions, д(h(ω)) is concave on the domain h(ω) ∈Ω[39].
+We can approximate Rcave by the multi-stage relaxation proposed by [37]. The basic idea of multi-stage relaxation
+is to first set η to be a vector of ones, indicating all the training examples have the same weights. Then the
+procedure iteratively minimize the objective by alternatively fixing ω, ρ and η until convergence:
+(1) Fix η = ˆη and calculate ˆω via solving
+ˆω = argminω
+∥ω∥2
+2
+−ρ + 1
+νn
+n
+Õ
+i=1
+ˆηi max(0, ρ −ωTϕ(xi))
+(12)
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+0:12
+•
+(2) Fix ω = ˆω and calculate ˆh( ˆω) = max(0, ρ −ˆωTϕ(xi)). In order to minimize the overall objective, η will be 1
+for βn number of smallest hi in ˆh( ˆω) based on the constrain eTη ≥βn.
+The weighted samples OC-SVM begins with the standard OC-SVM by initializing the sample weights to be
+all ones. The multi-stage optimization framework could obtain a better solution than the standard OC-SVM
+after convergence [39]. In the experiment section, we will compare the weighted samples OC-SVM with the
+standard one as well as other anomaly detection models to demonstrate its superior performance for solving the
+deterioration early warning problem.
+6.2
+Deterioration Risk Prediction
+6.2.1
+Dataset. In the deterioration risk prediction task, the dataset consists of the derived features from
+deteriorated participants and non-deteriorated participants, which are extracted from the beginning of the
+monitoring. There are totally 25 examples, including 7 examples as the patients who deteriorated within 60 days
+and 18 examples as patients who did not deteriorate within 60 days. Note that the dataset here is extremely small
+and imbalanced. Most of the models will overfit when applied to solve machine learning problem given such
+small dataset. In order to achieve high accuracy as well as preventing overfitting, we use K Nearest Neighbor to
+perform the binary classification.
+6.2.2
+K Nearest Neighbor. K Nearest Neighbor (KNN) is a non-parametric learning method for classification.
+An example is classified by the majority vote of its K nearest neighbors. Usually, K is predefined before training. In
+the experiment, we will explore the best K for this specific task. The distance metric used in our implementation
+is the Euclidean distance of the two sample data which takes into account all available features. Also, we will
+perform feature selection on the training set to find the best feature subset which could achieve better testing
+accuracy.
+7
+PERFORMANCE EVALUATIONS
+We evaluate the performance of proposed models on the real experimental data collected from heart failure
+patients in a large research hospital in United States. The clinical study is IRB approved and there are a total
+of 25 patients recruited for research purposes on predicting clinical deterioration. In the study, patients were
+supposed to wear Fitbit Charge HR to collect health related data everyday, such as heart rate, step and sleep data.
+The data was finally transmitted to our Heroku database. 5 out of 25 patients became deteriorated (readmitted or
+deceased) within 30 days after being discharged from hospital. 2 patients became deteriorated during the period
+between 30 days and 60 days. The patients are mixed in age ranging from 66 to 88, 16 male vs. 9 female, and
+LACE index ranging from 3 to 15.
+7.1
+Deterioration Early Warning
+There are a total of 438 days which have valid data collected from the Fitbit devices, including 427 normal days
+and 11 days when deterioration happened. We divide the samples into a training set which contains only normal
+days and a testing set which contains both normal days and deterioration days. The testing set is designed in
+such a way to avoid favoring classifier which achieves high accuracy by only predicting the anomaly case for
+new unseen data. We randomly split the normal days as 95% of them belonging to the training set and remaining
+5% of them belonging to the testing set. The deterioration days are all counted into the testing set, since OC-SVM
+only use normal data for training. For each time of evaluation, we repeat the training and testing split for 100
+times and average the results.
+We first explore the predictive performance of different combination of time window size and the days ahead.
+Since there is a lack of empirical guidelines for how to choose the time window and how well the predictor
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+Predicting Clinical Deterioration of Outpatients Using Multimodal Data Collected by Wearables
+•
+0:13
+performs for more days ahead. It is important to find the relationship between time window size and the number
+of days ahead for prediction. In the experiment, we train weighted samples OC-SVM with time window varying
+from 1 to 7 days for predicting deterioration ahead by 1 to 7 days. The results are shown on Figure 7 with x-axis
+indicating the number of days ahead. For each number of days ahead, we compare the performance metrics by
+varying time window size, which are indicated by bars of different colors. The accuracy and sensitivity are high
+for predicting the deterioration when just using time window of 1 or 2 days. The combination of predicting 1
+day ahead using 2 days data achieves the highest accuracy of 0.9636 and also highest sensitivity of 1.0 with
+specificity of 0.9480 and PPV of 0.8975. The results imply the performance declines when predicting more days
+ahead, which is reasonable since the long-term future may not be related to current status. To our surprise, the
+weighted samples OC-SVM perform better when the window size is small. The model is able to achieve over 0.9
+overall accuracy when just using 1-3 day data. The results give us a practical guideline of using less than 3 day
+data to predict the deterioration in the near future.
+Then, we compare weighted samples OC-SVM with other commonly used methods for anomaly detection,
+including standard OC-SVM, density based method such as local outlier factor (LOF) and clustering based method
+such as K means clustering. The dataset here is the same as that used in the last experiment. In this particular
+experiment, we set the time window to be 2 days and predict whether the participant will deteriorate after 1
+day. We evaluate the model performance via looking at accuracy, sensitivity, specificity and precision. Table 1
+summarizes the results for different anomaly detection methods. The K means and LOF have low sensitivity
+compared with OC-SVM based approach, which imply these two methods are not suitable for solving our specific
+problem. Our proposed weighted samples OC-SVM performs better than the standard OC-SVM with lower false
+positive rate. Figure 9 demonstrates the influence of ν on model’s performance. ν is a hyperparameter of the
+soft-margin SVM, which controls the upper bound of training error and lower bound of support vectors. The
+curve serves as the guideline for how to tune the classifier to meet specific performance requirement. For instance,
+in order to avoid missing any future deterioration, we choose ν = 0.09 to achieve the highest sensitivity as
+well as high specificity. Aside from the performance, we also care about the features that have high influence
+on the classification results. Figure 8 shows the feature importance for each feature used in weighted samples
+OC-SVM, which is the absolute value of SVM’s coefficient. Time series features derived from heart rate, such as
+local homogeneity, inertia and energy, contribute significantly to the classification results. Besides, step features
+and sleep features also have impact on the classification results.
+These results demonstrate the potential of early warning of clinical deterioration to allow just-in-time intervention.
+Model
+Sensitivity
+Specificity
+PPV
+Accuracy
+K−means
+0.6555
+0.7185
+0.4473
+0.6997
+LOF
+0.0909
+0.9519
+0.5820
+0.6959
+OC-SVM
+1.0
+0.9015
+0.8227
+0.9308
+Weighted OC-SVM
+1.0
+0.9481
+0.8975
+0.9635
+Table 1. Performance evaluation of different anomaly detection methods. The results are averaged over 100 repeated test on
+randomly split dataset. Weighted OC-SVM has the best performance.
+7.2
+Deterioration Risk Prediction
+7.2.1
+Model Evaluation. In this section, we aim to predict clinical deterioration risk for each participant within
+60 days. Five models including logistic regression, SVM, random forest, neural network and K nearest neighbor,
+are trained on the data from 25 patients. The performance is evaluated by repeated 5-fold cross validation to
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+0:14
+•
+1
+2
+3
+4
+5
+6
+7
+Number of days ahead
+0.80
+0.82
+0.84
+0.86
+0.88
+0.90
+0.92
+0.94
+0.96
+0.98
+1.0
+Accuracy
+Accuracy
+1 day
+2 day
+3 day
+4 day
+5 day
+6 day
+7 day
+1
+2
+3
+4
+5
+6
+7
+Number of days ahead
+0.60
+0.64
+0.68
+0.72
+0.76
+0.80
+0.84
+0.88
+0.92
+0.96
+1.0
+Sensitivity
+Sensitivity
+1 day
+2 day
+3 day
+4 day
+5 day
+6 day
+7 day
+1
+2
+3
+4
+5
+6
+7
+Number of days ahead
+0.80
+0.82
+0.84
+0.86
+0.88
+0.90
+0.92
+0.94
+0.96
+0.98
+1.0
+Specificity
+Specificity
+1 day
+2 day
+3 day
+4 day
+5 day
+6 day
+7 day
+1
+2
+3
+4
+5
+6
+7
+Number of days ahead
+0.60
+0.64
+0.68
+0.72
+0.76
+0.80
+0.84
+0.88
+0.92
+0.96
+1.0
+PPV
+PPV
+1 day
+2 day
+3 day
+4 day
+5 day
+6 day
+7 day
+Fig. 7. Performance evaluation of weighted samples OC-SVM with varying size of time window and number of days ahead.
+The classifier is able to achieve good performance for predicting near future deterioration happening.
+tackle the model instability issue induced by the small dataset [7]. We repeatedly perform cross validation for 100
+times and the results are averaged among 100 repeated cross validation. The mean results will help eliminate the
+randomness caused by cross validation. In each iteration of performing cross validation, we apply feature selection
+on the training set to remove the noisy features and improve prediction accuracy for the testing set. The type of
+feature selection used in our experiment is the sequential forward feature selection with the accuracy criteria,
+which selects the best subset of features. The sequential forward feature selection is performed on each model
+starting with the empty set of features. At each round, a new feature which can improve the overall accuracy
+is added to the current feature set. Finally, the optimal subset of features is returned by the feature selection
+algorithm. Table 3 shows selected feature subset for different models. We note that all models selected features
+derived from multiple modalities (step, HR and/or sleep), which suggests the potential benefits of exploiting
+multi-modal data for predicting clinical deterioration. In particular, random forest, logistic regression and KNN
+each selected features from all three modalities. There are 6 features which are used by more than two of the
+models. The features are DFA of sleep using 360-minute window, average minutes of being asleep, average daily
+steps, average awake counts and minimum minutes of being awake per sleep. Intuitively, we expect the features
+selected to train predictive models have different distribution among non-readmitted group and readmitted group.
+Therefore, we plot Figure 11, which are the distribution of the 6 most commonly used features. As we expected,
+the distribution of selected features are different for non-deteriorated group and deteriorated group. Also, we
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+Predicting Clinical Deterioration of Outpatients Using Multimodal Data Collected by Wearables
+•
+0:15
+minawake
+HR-skewness
+DFA-Sleep-10
+min2fallasleep
+DFA-HR-10
+DFA-Sleep-20
+DFA-Sleep-50
+minafterwakeup
+DFA-Sleep-30
+DFA-Sleep-40
+DFA-Sleep-60
+Sleep-skewness
+DFA-HR-20
+HR-kurtosis
+DFA-HR-30
+DFA-HR-40
+awakecount
+DFA-HR-50
+daily_sedentary_bout
+DFA-HR-60
+Sleep-kurtosis
+HR-ro
+restlesscount
+minasleep
+sedentary_per_bout
+efficiency
+daily_sedentary_time
+timeinbed
+restlessduration
+HR-E
+daily_step
+HR-F
+HR-LH
+0.0
+2.5
+5.0
+7.5
+10.0
+12.5
+15.0
+17.5
+20.0
+importance
+Fig. 8. Feature importance of weighted samples OC-SVM. Heart rate features contribute significantly to the classification
+results. Sleep and step features also have impact on the classification.
+plot the distribution of HR features that were selected by random forest, logistic regression and KNN, shown
+on Figure 12. The distribution of HR local homogeneity is different between non-deteriorated and deteriorated
+groups. However, the distribution of DFA HR with 10-minute window is similar among the two groups.
+In the experiment, we optimize the model by performing grid search to find the best hyperparameter setting.
+We compare the model performance in terms of specificity, PPV and accuracy by fixing the sensitivity to around
+0.95, because our goal is to correctly identify the risk patients and have low false alarm rate at the same time. We
+also evaluate the area under the ROC curve (AUC-ROC) and area under the precision-recall curve (AUC-PR).
+Since our training class is a skew distribution and the number of negative examples greatly exceeds the number
+of positives examples (18 vs. 7), AUC-PR is very useful to compare false positives with true positives. Table 2
+summarizes the evaluation results from all models with sensitivity fixed to around 0.95. From the results, we
+observe that KNN has the highest AUC-PR, Specificity and PPV value and second highest AUC-ROC. The results
+indicate that KNN can achieve very high sensitivity with acceptable false alarm rate compared with other models.
+Neural network does not seem to work in our task, the possible reason could be overfitting. Figure 13 shows the
+specificity, sensitivity PPV and accuracy varying with different threshold. The figure of performance metrics
+with varying threshold can help us tune sensitivity, specificity, PPV and accuracy according to specific purposes.
+For many clinical applications it is desirable to achieve high sensitivity as well as high specificity, which is able
+to avoid generating false alarms.
+However, for all models, overfitting could probably occur when the training set is small. A commonly used
+justification for overfitting is to compare training error with testing error. If the testing error is much higher
+than the training error, the model is very likely overfitting. On the other hand, if the testing error is very close
+to the training error, it implies the model generalizes well, thus dose not overfit. The results of performance
+evaluation shown on Table 2 suggest KNN is the best model for our case. Hence, we focus on fine-tuning the
+parameters of KNN to make it generalize better. Figure 10 shows the influence of the number of nearest neighbor
+on the model’s generalization ability. Moreover, as suggested by Occam’s razor principle in machine learning,
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+0:16
+•
+Fig. 9. Sensitivity, specificity, PPV and accuracy
+vary along withν. The bestν is 0.9 for our dataset.
+Fig. 10. Generalization performance with the inverse of number of nearest neighbors
+smaller model with the same accuracy is preferred over the complex model. Hence, we apply sequential forward
+feature selection to select the smallest feature subset when there are multiple subsets leading to same accuracy.
+The degree of overfitting is the smallest when K = 2, where the model can achieve the accuracy of 0.880 for the
+unseen data. The KNN with 2 nearest neighbors is used throughout the experiment, including the later part of the
+section where we evaluate the impacts of multiple data modalities and how early we can predict the deterioration.
+We also evaluate the accuracy of using the LACE index, shown on Figure 2. LACE index is calculated by
+incorporating four parameters. "L" stands for length of stay in the hospital. "A" stands for acuity of admission of
+patient in the hospital. "C" stands for co-morbidity. "E" stands for number of emergency department visit. In our
+experiment, the threshold of LACE index is 10 (as suggested by [15, 22, 35]), which means the patients will be
+predicted as readmitted if their LACE index are larger than 10. The KNN model outperforms the LACE index in
+terms of sensitivity, PPV and overall accuracy, which demonstrates the feasibility of predicting the deterioration
+risk of patient via the data passively collected by Fitbit.
+Model
+AUC-ROC
+AUC-PR
+Specificity
+Sensitivity
+PPV
+Accuracy
+Random Forest
+0.7434
+0.5551
+0.3077
+0.9459
+0.6667
+0.780
+SVM
+0.5943
+0.4016
+0.1795
+0.9459
+0.5385
+0.7467
+Logistic Regression
+0.7829
+0.6118
+0.4872
+0.9009
+0.6333
+0.7933
+Neural Network
+0.4002
+0.2048
+0.077
+0.9459
+0.3333
+0.720
+KNN
+0.7533
+0.6880
+0.5385
+0.9820
+0.9130
+0.8667
+LACE
+0.7647
+0.6250
+0.5556
+0.7826
+Table 2. Performance comparison of different models for predicting deterioration. The results shown on the table are based
+on fixing sensitivity to be around 0.95. In general, KNN is a good model for predicting risk of deterioration.
+7.2.2
+Impacts of Multiple Data Modalities. We now evaluate the contributions of different data modalities to
+prediction. The features used in our machine learning models are derived from three modalities collected by the
+Fitbit Charge HR: heart rate, step and sleep. In the following we compare the accuracy of the KNN models when
+trained with different combinations of data modalities.
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+Predicting Clinical Deterioration of Outpatients Using Multimodal Data Collected by Wearables
+•
+0:17
+Random forest
+SVM
+Logistic regression
+Neural network
+KNN
+min restless count
+avg minasleep
+DFA sleep 360 minutes
+daily sedentary bout
+HR Local Homogeneity
+avg minasleep
+DFA sleep 360 minutes
+min minute awake
+avg time in bed
+avg minute awake
+avg awake count
+avg restless count
+max restless duration
+avg daily step
+activity quality
+DFA HR 10 minutes
+DFA sleep 60 minutes
+DFA sleep 120 minutes
+avg awake count
+avg restless count
+min minute awake
+max awake count
+min daily step
+avg daily step
+DFA sleep 360 minutes
+all features except:
+HR Local Homogeneity
+sleep efficiency
+sedentary per bout
+Table 3. Features selected by Sequential Forward Feature Selection
+Non-deteriorated
+Deteriorated
+2.5
+3.0
+3.5
+4.0
+4.5
+5.0
+5.5
+DFA sleep 360 minutes
+Non-deteriorated
+Deteriorated
+5
+10
+15
+20
+25
+30
+35
+minute
+avg minasleep
+Non-deteriorated
+Deteriorated
+0.0
+0.5
+1.0
+1.5
+2.0
+2.5
+3.0
+1,000 step
+avg daily step
+Non-deteriorated
+Deteriorated
+5
+10
+15
+20
+25
+30
+avg restless count
+Non-deteriorated
+Deteriorated
+2
+4
+6
+8
+10
+12
+avg awake count
+Non-deteriorated
+Deteriorated
+0.00
+0.25
+0.50
+0.75
+1.00
+1.25
+1.50
+1.75
+2.00
+minute
+min minute awake
+Fig. 11. Feature value distribution between non-deteriorated and deteriorated patient groups
+Model
+Step
+HR
+Sleep
+Sleep, HR
+Sleep, Step
+Step, HR
+All
+Best Accuracy
+0.7960
+0.832
+0.728
+0.820
+0.860
+0.852
+0.880
+Table 4. Best accuracy of models trained with different type of features, indicating all features have contribution to overall
+accuracy
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+0:18
+•
+Non-deteriorated
+Deteriorated
+0
+100000
+200000
+300000
+400000
+500000
+600000
+700000
+HR Local Homogeneity
+Non-deteriorated
+Deteriorated
+1.0
+1.5
+2.0
+2.5
+3.0
+3.5
+4.0
+minute
+DFA HR 10 minutes
+Fig. 12. HR feature distribution between non-deteriorated and deteriorated patient groups
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Threshold
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Percentage
+Random Forest
+specificity
+sensitivity
+PPV
+accuracy
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Threshold
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Percentage
+SVM
+specificity
+sensitivity
+PPV
+accuracy
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Threshold
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Percentage
+Logistic Regression
+specificity
+sensitivity
+PPV
+accuracy
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Threshold
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Percentage
+Neural Network
+specificity
+sensitivity
+PPV
+accuracy
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Threshold
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Percentage
+KNN
+specificity
+sensitivity
+PPV
+accuracy
+Fig. 13. Sensitivity, specificity, PPV and accuracy varying along with threshold. The appropriate threshold is chosen according
+to the specific purpose.
+In a state-of-the-art study [6], Bae et al. trained random forest using only features derived from step. In
+comparison, our results show that incorporating multi-modal data in machine learning models can further
+improve the prediction accuracy, as shown on Table 4. For instance, the best accuracy of KNN model trained
+with a combination of heart rate, sleep and step features is 0.880, compared with 0.7280 when using features
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+Predicting Clinical Deterioration of Outpatients Using Multimodal Data Collected by Wearables
+•
+0:19
+Model
+AUC-ROC
+AUC-PR
+Specificity
+Sensitivity
+PPV
+Accuracy
+Step
+0.6910
+0.5839
+0.3333
+0.9550
+0.7222
+0.7933
+HR
+0.8064
+0.6502
+0.3590
+0.9369
+0.6667
+0.7867
+Sleep
+0.7237
+0.3439
+0.0513
+0.9099
+0.1667
+0.6867
+Sleep, HR
+0.8064
+0.6502
+0.3590
+0.9369
+0.6667
+0.7867
+Sleep, Step
+0.6556
+0.6304
+0.4615
+1.0
+1.0
+0.860
+Step, HR
+0.8151
+0.6991
+0.4872
+0.9369
+0.7308
+0.820
+All
+0.7533
+0.6880
+0.5385
+0.9820
+0.9130
+0.8667
+Table 5. Performance metrics of models trained with different combination of features. The sensitivity is fixed to be around
+0.95. Better performance is achieved using features from multiple sensing modalities.
+derived from sleep only. Table 5 summarizes the performance metrics for all models with sensitivity fixed as
+0.95. In general, using all the features produces better results from all metrics. Moreover, we find that the model
+trained with sleep and step features can also give good performance. Overall, combining features derived from
+step, heart rate and sleep consistently improve model accuracy. This result motivates combining multi-modal
+data for predicting clinical outcomes.
+7.2.3
+How early can we predict clinical deterioration? We investigate the ability of the model in predicting the
+deterioration ahead of time. In order to simulate this situation, we train and evaluate the models using 5-day, 10day, 15-day and 20-day data from the beginning of the monitoring. As shown on Table 6, the prediction accuracy
+increases as using longer period of measurement. As shown on Table 7, the specificity increases drastically as
+using more days when fixing the sensitivity to be near 0.95. In particular, 20-day data yield the highest overall
+accuracy 0.8677 as well as highest specificity 0.5385. The results suggest that long-term monitoring data should
+be used for predicting the risk of deterioration.
+Length of day
+5-day
+10-day
+15-day
+20-day
+Best Accuracy
+0.7340
+0.8420
+0.8280
+0.880
+Table 6. Accuracy of models trained with different length of day. The accuracy increases as using more days of data for
+prediction.
+Model
+AUC-ROC
+AUC-PR
+Specificity
+Sensitivity
+PPV
+Accuracy
+5-day
+0.4247
+0.2114
+0.0256
+0.9009
+0.0833
+0.6733
+10-day
+0.7339
+0.6884
+0.3077
+1.0
+1.0
+0.820
+15-day
+0.7710
+0.5808
+0.3333
+0.9009
+0.5417
+0.7533
+20-day
+0.7533
+0.6880
+0.5385
+0.9820
+0.9130
+0.8667
+Table 7. Performance metrics for models trained with different length of day. The sensitivity is fixed to be around 0.95.
+8
+CONCLUSION
+In this paper, we explore the feasibility and potential of using wearables to predict clinical deterioration among
+outpatients through a clinical study involving 25 heart failure patients discharged from a hospital. Our primary
+findings from the study were two fold. First, our experience demonstrated the feasibility of collecting multi-modal
+Proceedings of the ACM on Interactive, Mobile, Wearable and Ubiquitous Technologies, Vol. 0, No. 0, Article 0. Publication date:
+February 2018.
+
+0:20
+•
+data (step, sleep and heart rate) from outpatients using wristbands. 88% of participants wore the Fitbit Charge HR
+wristband regularly which indicated a high level of compliance. The monitoring system achieved high data yield,
+collecting 80% of per-minute step data from 84% of the participants. While the heart rate data yield was lower,
+the median gap between data samples were 4 minutes. Furthermore, the monitoring system collected 73% of the
+data from the wristband to our cloud-based database within an hour.
+Second, We demonstrate the potential of machine learning models to predict clinical deterioration among
+outpatients. Our proposed weighted samples one class SVM can reach 0.9635 accuracy for deterioration early
+warning. Our results showed machine learning models can exploit multi-modal data to achieve high accuracy
+for identifying patient’s risk of deterioration (e.g., 0.88 under K nearest neighbor vs. 0.78 with the LACE index).
+Moreover, machine learning models can predict deterioration risk using only the first ten days of data collected,
+which suggests the potential for early identifying the high risk patients and allows timely intervention.
+Building upon the promising results, we plan to conduct larger clinical studies to generalize the results and
+impact clinical practice.
