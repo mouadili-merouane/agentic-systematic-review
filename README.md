@@ -66,7 +66,8 @@ The system is generic: a new review only requires a new YAML protocol file.
 
 ## 3. Repository structure
 ```
-configs/protocol_demo.yaml   review protocol (the only file to change for a new topic)
+configs/protocol_template.yaml  blank PRISMA protocol template for a new review
+configs/protocol_demo.yaml   protocol of the demonstration review
 sr_agent/
   graph.py                   LangGraph coordinator, human checkpoints, resumption
   llm.py                     rate limiting, retries, JSON validation, model fallback chain
