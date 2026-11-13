@@ -10,3 +10,5 @@
 {"ts": "2026-11-12T23:32:08+00:00", "agent": "retrieval_agent", "action": "dedup_done", "before": 285, "after": 272}
 {"ts": "2026-11-12T23:48:18+00:00", "agent": "coordinator", "action": "session_start", "provider": "groq", "fast": "openai/gpt-oss-20b", "strong": "openai/gpt-oss-120b", "b": "openai/gpt-oss-120b"}
 {"ts": "2026-11-13T10:50:11+00:00", "agent": "coordinator", "action": "session_start", "provider": "groq", "fast": ["openai/gpt-oss-20b", "qwen/qwen3.6-27b", "openai/gpt-oss-120b"], "strong": ["openai/gpt-oss-120b", "qwen/qwen3.6-27b", "openai/gpt-oss-20b"], "b": ["openai/gpt-oss-120b", "qwen/qwen3.6-27b", "openai/gpt-oss-20b"]}
+{"ts": "2026-11-13T10:52:32+00:00", "agent": "screening_agents", "action": "ta_screening_done", "n": 272, "included": 88, "excluded": 184, "kappa_A_B": 0.837, "agreement": 0.923, "arbitrated": 50}
+{"ts": "2026-11-13T10:53:45+00:00", "agent": "human", "action": "review_screening_title_abstract", "approve": true, "feedback": "ok"}

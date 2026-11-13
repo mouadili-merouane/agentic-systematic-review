@@ -7,5 +7,7 @@
   },
   "identified_total": 285,
   "duplicates_removed": 13,
-  "records_screened": 272
+  "records_screened": 272,
+  "records_excluded_ta": 184,
+  "reports_sought": 88
 }
