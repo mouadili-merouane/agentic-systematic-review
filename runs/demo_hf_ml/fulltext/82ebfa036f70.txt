@@ -1,0 +1,1266 @@
+Interpretable Multimodal Machine Learning Model for Predicting Health
+Risks of Patients with Heart Failure
+Rachel Chae1†, Jiandong Zhou2,3,4†, Oscar Hou In Chou5, Bingqing Yang2, Haolin Pu6, Gary Tse7,8, Bernard Man Yung Cheung5,
+Tingting Zhu9, Josip Car10 and Lei Lu10
+1Nuffield Department of Primary Care Health Sciences, Somerville College, University of Oxford, Oxford, United Kingdom
+2Department of Family Medicine and Primary Care, Li Ka Shing Faculty of Medicine, The University of Hong Kong, Hong Kong SAR, China
+3School of Public Health, Li Ka Shing Faculty of Medicine, The University of Hong Kong, Hong Kong SAR, China
+4Department of Pharmacology and Pharmacy, The University of Hong Kong, Hong Kong SAR, China
+5Division of Clinical Pharmacology, Department of Medicine, School of Clinical Medicine, Li Ka Shing Faculty of Medicine, University of Hong Kong, Hong Kong SAR,
+China
+6Department of Applied Science, School of Science and Technology, Hong Kong Metropolitan University, Hong Kong SAR, China
+7Tianjin Key Laboratory of Ionic-Molecular Function of Cardiovascular Disease, Department of Cardiology, Tianjin Institute of Cardiology, Second Hospital of Tianjin
+Medical University, Tianjin 300211, China
+8Department of Health Sciences, School of Nursing and Health Studies, Hong Kong Metropolitan University, Hong Kong SAR, China
+9Institute of Biomedical Engineering, Department of Engineering Science, University of Oxford, Oxford, United Kingdom
+10School of Life Course & Population Sciences, King’s College London, London, United Kingdom
+†These authors contributed equally to this work.
+Abstract
+Heart failure (HF) is one of the major causes of morbidity and mortality globally, necessitating accurate tools for health outcome prediction and
+risk stratification. In this study, we propose an interpretable multimodal machine learning framework integrating four clinical data modalities (i.e.,
+demographics, medications, laboratory tests, and electrocardiograms [ECGs]) to predict 30-day all-cause mortality and hospital readmission in
+HF patients. Using clinical data from 2,868 HF patients across 43 local hospitals in Hong Kong, we trained and evaluated ten machine learning
+models for HF risk prediction, with the best performing model achieving an area under the receiver operating characteristic curve (AUC) of 0.881
+for mortality and 0.709 for readmission. Notably, laboratory tests and ECG features dominate predictive power, and their combination alone yielded
+near-optimal results (AUC: 0.872), suggesting that these two modalities may be adequate for effective risk prediction in resource-constrained
+settings. The SHapley Additive exPlanations (SHAP) analysis identified serum albumin, high-sensitivity troponin I, lactate dehydrogenase, and QT
+interval dispersion as key predictors. Feature redundancy analysis further revealed strong correlations within laboratory tests and ECG features,
+suggesting opportunities for model simplification. To the best of our knowledge, this is the first study that comprehensively evaluates diverse
+configurations of four data modalities for HF risk prediction through ablation analysis, quantifying the marginal gains of each data modality and
+their combinations. Our findings demonstrate that interpretable multimodal machine learning model can enhance risk prediction in HF patients,
+supporting personalized management and scalable deployment across diverse healthcare settings.
+Keywords: Heart Failure, Hospital Readmission, Mortality, ECG, Multimodal Machine Learning
+Corresponding author: Lei Lu. E-mail address: lei.lu@kcl.ac.uk
+1. Introduction
+C
+ardiovascular diseases (CVDs) are the leading cause of mortality and morbidity globally, affecting over 500 million people
+and accounting for approximately 20.5 million deaths in 2021 [1],
+[2]. Among CVDs, heart failure (HF) is a particularly challenging
+clinical condition due to its progressive nature and high rates of adverse outcomes. Notably, up to one in four heart failure patients is
+readmitted to the hospital within 30 days of discharge [3], reflecting
+both the clinical complexity of the condition and its substantial strain
+on healthcare systems. In the United States alone, unplanned readmissions within 30 days of discharge contribute to more than $17
+billion annual healthcare care expenditures [4]. These challenges
+underscore the critical need for accurate risk stratification tools to enable early identification of high-risk HF patients and facilitate timely,
+targeted interventions.
+HF is a complex clinical syndrome characterized by the inability
+of the heart to pump sufficient blood to meet the body’s metabolic demands, often resulting from underlying conditions such as coronary
+artery disease, hypertension, or cardiomyopathy [5]. It is typically
+diagnosed and stratified through a combination of clinical history,
+physical examination, biomarker testing (e.g., B-type natriuretic peptide, BNP) and imaging modalities such as echocardiography to assess
+left ventricular ejection fraction and structural abnormalities [6], [7].
+For example, the MAGGIC (Meta-Analysis Global Group in Chronic
+Heart Failure) is a simple yet powerful clinical method of risk stratification for HF patients with preserved ejection fraction [8]. The
+MAGGIC was developed to predict 1- and 3-year mortality in HF patients using 13 clinical variables, including age, sex, body mass index,
+systolic blood pressure, ejection fraction, creatinine, current smoker,
+diabetes mellitus, chronic obstructive pulmonary disease, New York
+Heart Association class, HF duration >18 months, 𝛽-blocker use,
+and angiotensin-converting enzyme inhibitor use [8], [9]. Previous
+studies showed that the MAGGIC risk model achieved promising
+performance in predicting 1-year mortality at population level [10],
+and it was useful for optimizing selection of patients with HF who
+need specialist care [11]. However, these traditional approaches rely
+on static and manually curated variables that may not capture the
+full complexity or dynamic progression of HF risks. Furthermore,
+predictive scores such as MAGGIC were derived from historical cohorts and often do not incorporate real-time patient conditions that
+could enhance early risk detection and personalized treatment.
+Recent advances in machine learning (ML) have enabled more
+sophisticated modeling of complex and heterogeneous data associated with HF risks. Various ML methods have been explored for
+the prediction of HF risk, such as logistic regression [12], random
+forests [13], deep neural networks [14], transformer-based models
+[15], and large language models [16]. Among these, gradient boosting
+models (GBMs), particularly XGBoost (eXtreme Gradient Boosting),
+have gained significant attention due to their strong predictive performance and interpretability when combined with SHAP (SHapley
+Additive exPlanations) [17]–[19]. Leveraging these ML frameworks,
+various data sources have been utilized to support HF diagnosis, risk
+stratification, and disease management. For example, echocardiogra1
+ . 
+CC-BY 4.0 International license
+It is made available under a 
+perpetuity. 
+ is the author/funder, who has granted medRxiv a license to display the preprint in
+(which was not certified by peer review)
+preprint 
+The copyright holder for this
+this version posted January 13, 2026. 
+; 
+https://doi.org/10.64898/2026.01.12.26343905
+doi: 
+medRxiv preprint 
+NOTE: This preprint reports new research that has not been certified by peer review and should not be used to guide clinical practice.
+
+Interpretable Multimodal Machine Learning Model for Predicting Health Risks of Patients with Heart Failure
+phy is commonly used for screening and guiding treatment decisions
+[20], [21]. Electronic health record (EHR) and administrative data
+have enabled the identification of hospitalized HF cases [12], [18] and
+prediction of 30-day outcomes [22], [23]. Electrocardiograms (ECGs)
+have facilitated HF detection via deep learning [14], and identification of digital biomarkers related to atrial fibrillation and mortality
+[24]. Cardiac magnetic resonance (CMR) imaging has further demonstrated utility in phenotyping and predicting long-term outcomes,
+particularly in patients with suspected cardiac sarcoidosis [25].
+While these studies demonstrate the potential of various data
+sources for HF risk prediction [14], [15], [20], [21], [24], they are
+largely limited to single-modality inputs, which capture only a partial
+view of the patient’s condition. For example, EHR data may lack
+real-time physiological dynamics [15]; ECG provides rich electrophysiological signals but it can be easily affected by measurement
+noises and artifacts [26]; while imaging modalities are often costly
+and not routinely available at scale [25]. As a result, single-modality
+models risk missing critical interactions across biological systems and
+may underperform in real-world settings where data completeness
+varies [27]. These limitations underscore the need for integrative,
+multimodal approaches that combine complementary information
+from diverse sources, such as demographics, medications, laboratory
+tests, and ECG features, to achieve more robust, generalizable, and
+clinically actionable risk predictions.
+The integration of multimodal data has emerged as a promising
+strategy for HF risk prediction in recent studies. For example, multimodality imaging has been used to refine the prognosis in patients
+with HF and preserved ejection fraction [28]; combinations of echocardiographic and laboratory data have been applied to predict risk in
+ischemic cardiomyopathy and HF with preserved ejection fraction
+[29]; 12-lead multimodal ECG signals have been used for the early
+diagnosis of HF [30]; and integration of clinical notes with structured tabular data has been shown to improve prognostic accuracy
+for hospital outcomes in patients with HF [31]. These efforts reflect a
+growing recognition that combining diverse data sources can capture
+complementary aspects of disease severity and progression. Despite
+these advances, many existing studies on multimodal HF risk prediction face critical limitations: (i) they often rely on small, single-center
+cohorts with limited statistical power and generalizability; (ii) when
+ECG or other physiological signals are included, they are typically
+treated as supplementary features without rigorous analysis to quantify their incremental value over robust EHR-only baselines; (iii) there
+is a lack of interpretability-focused investigation into cross-modal interactions, such as how specific abnormal features modify the risk
+conveyed by laboratory biomarkers, which could provide mechanistic
+insights and guide clinical action. As a result, clear evidence is still
+lacking regarding when and for whom multimodal models outperform the strong EHR-only baselines, and which modality interactions
+drive those improvements in predictive performance.
+This study aims to address this gap by developing and evaluating
+a multimodal ML framework for predicting 30-day outcomes in HF
+patients using a comprehensive dataset. Then, we identify the most
+predictive clinical and physiological markers through SHAP-based
+explainability, and assess the incremental value of integrating diverse
+data modalities. Furthermore, we explore feature interactions and
+redundancy to inform future model simplification and clinical deployment. To the best of our knowledge, this is the first study to
+perform a systematic ablation analysis across four modalities, i.e.,
+demographics, medications, laboratory tests, and ECG features, to
+quantify the relative contribution of each to HF risk prediction. This
+comprehensive evaluation not only highlights the importance of multimodal integration but also provides practical guidance for feature
+selection and model design in real-world settings.
+2. Methods
+2.1. Study design
+An overview of our study design is illustrated in Figure 1. First, a
+dataset comprising four types of medical records and ECG data was
+used to derive diverse features, which were paired with records of
+30-day mortality and 30-day hospital readmission of HF patients. The
+labeled features were then stratified into training, validation, and
+test sets. The training and validation sets were used to train several
+baseline models, and their performance on the test set was compared.
+Finally, the best-performing model was selected for further analysis
+of its predictive performance, model explainability, and selection of
+important features.
+2.2. Data sets and cohorts
+This study uses four types of structured electronic health records
+and tabulated ECG data derived from the Clinical Data Analysis and
+Reporting System (CDARS), an integrated territory-wide database
+managed by the Hong Kong Hospital Authority that consolidates
+patient information from 43 public hospitals and associated outpatient clinics across Hong Kong. Although data extraction, cleaning,
+and analysis were performed by investigators affiliated with a single tertiary centre in Hong Kong, the underlying cohort reflects a
+multicentre public-hospital population captured in CDARS rather
+than a single-centre cohort. HF patients were identified from CDARS
+based on eligibility criteria and the availability of at least one 12-lead
+baseline ECG recorded, and a total of 2,868 HF patients were included
+in the dataset, with a median age of 77.37 years and an interquartile
+range (IQR) of 66.89 to 84.28 years (Table 1).
+The dataset included coded medical records encompassing patient
+demographics, baseline comorbidities, healthcare utilization history,
+medication prescriptions, and laboratory tests (e.g., complete blood
+counts, renal/liver function tests, lipid and glucose tests). To avoid
+information leakage, all predictors were defined using pre-baseline
+observation windows only, where the ECG measurement date was
+designated as the baseline (time zero) for cohort entry and feature extraction. Comorbidities were defined from diagnosis codes recorded
+within the 5 years prior to the index admission. Medications were
+defined from prescription records within the 12 months prior to the
+index ECG. Laboratory values were extracted from measurements obtained prior to the index ECG, using the closest available pre-baseline
+test within a 6-month window when multiple results were available.
+Healthcare utilization variables (e.g., prior hospitalizations and emergency visits) were captured only if they occurred prior to the index
+admission. Outcomes were defined as 30-day all-cause mortality and
+30-day all-cause hospital readmission following discharge from the
+index admission. No variables recorded after the index ECG time or
+after discharge from the index admission were used as model inputs.
+The dataset also contained ECG measurements from patients upon
+admission. The raw ECG data were processed and tabulated into
+a total of 78 features, such as heart rate variability (HRV), P-wave
+durations, and QT intervals. The details of ECG signal processing
+and feature extraction can be found in our previous research [32].
+Combined with features from medical records, a total of 2868 samples
+with 146 features were used as tabulated inputs to machine learning
+models. Details of clinical characteristics of HF patients and the list
+of extracted features can be found in Supplementary file.
+Information on patient health outcomes after hospital discharge
+was provided in terms of mortality and hospital readmission within
+30 days after initial admission. Mortality data was sourced from the
+Hong Kong Death Registry, an official government registry containing death records for all Hong Kong citizens, which is linked to the
+CDARS. Although additional information on the cause of mortality and hospital readmission was also provided (e.g., 30-day CVD
+mortality, 30-day atrial fibrillation readmission), the models were
+trained using all-cause 30-day mortality and 30-day hospital readmission as the prediction targets, as these are widely used indicators in
+2–14
+ . 
+CC-BY 4.0 International license
+It is made available under a 
+perpetuity. 
+ is the author/funder, who has granted medRxiv a license to display the preprint in
+(which was not certified by peer review)
+preprint 
+The copyright holder for this
+this version posted January 13, 2026. 
+; 
+https://doi.org/10.64898/2026.01.12.26343905
+doi: 
+medRxiv preprint 
+
+Interpretable Multimodal Machine Learning Model for Predicting Health Risks of Patients with Heart Failure
+Figure 1. Flowmap of model training, validation, and analysis for HF risk prediction.
+evaluating health outcomes of HF patients [33], [34].
+The dataset arose from the doctoral studies of the author Dr. Gary
+Tse (G.T.) at the Graduate School, The Chinese University of Hong
+Kong. G.T. obtained ethics approval from the Chinese University of
+Hong Kong-New Territories East Cluster Clinical Research Ethics
+Committee for studies related to the use of ECGs for risk stratification (Approval numbers: 2019.338, 2019.361, and 2019.422), which
+were used towards his doctoral thesis. The requirement for informed
+consent was waived because of the retrospective design and a lack
+of patient contact. Furthermore, G.T. received written confirmation
+from the M.D. Subcommittee of the Graduate School of the Chinese
+University of Hong Kong for the use of the data. The study was conducted in accordance with the Declaration of Helsinki. This cohort
+was obtained as subset of a previously conducted retrospective registry study of adult patients hospitalized for heart failure between
+2005 and 2019 from a single tertiary centre [35]. The registry has been
+used to conduct single centre [32], [36], [37], multi-centre studies
+[38], and territory-wide cross-cluster studies from the city [39].
+2.3. Train-test dataset split
+Of the entire dataset, 20% of the data (574 samples) were hold out for
+testing. The remaining data were divided into training (64% of total
+dataset, 1835 samples) and validation sets (16% of total dataset, 459
+samples). The train-test split was stratified by demographic characteristics (e.g., sex, age), as well as two health outcomes (e.g., 30-day
+mortality and 30-day hospital readmission rates). Due to the imbalance between positive and negative samples for one of the labels of
+interest (30-day mortality), stratification was performed when splitting the dataset into training, validation, and testing sets to ensure
+that the positive samples were well distributed in the subsets used for
+training and testing. Statistical tests were performed to ensure that
+there was an even distribution of health outcomes from the overall
+dataset. A chi-square test was performed to ensure that the sex and
+health outcomes of training, testing, and validation sets did not differ
+significantly from each other, and a two-sample independent t-test
+was performed to check that the age distributions of the datasets did
+not differ significantly from each other.
+2.4. Model development and evaluation
+Several ML model architectures and parameters were explored in
+the process of identifying the best performing model for predicting
+health outcomes of HF patients.
+We acknowledge that previous studies have shown promising performance of tree-based models over deep learning models in analyzing tabular data, particularly with respect to model tuning, interpretability, and prediction on moderate or small size datasets [40].
+Therefore, we selected a range of baseline models for developing
+the risk prediction model and for feature importance interpretation.
+These models include XGBoost, LightGBM, Random Forest, Logistic
+Regression, and neural networks. The models were developed on
+the training set and optimized with hyperparameter tuning. Baseline
+models that do not natively support missing values (e.g., logistic regression, support vector machines, and neural networks) required
+explicit imputation during training. Missing values for these baseline
+3–14
+ . 
+CC-BY 4.0 International license
+It is made available under a 
+perpetuity. 
+ is the author/funder, who has granted medRxiv a license to display the preprint in
+(which was not certified by peer review)
+preprint 
+The copyright holder for this
+this version posted January 13, 2026. 
+; 
+https://doi.org/10.64898/2026.01.12.26343905
+doi: 
+medRxiv preprint 
+
+Interpretable Multimodal Machine Learning Model for Predicting Health Risks of Patients with Heart Failure
+Table 1. Distribution of patient characteristics and health outcomes in the training, validation, and test sets.
+Characteristics
+Train set (𝑛= 1835)
+Validation set (𝑛= 459)
+Test set (𝑛= 574)
+Basic information
+Age (years), median (IQR)
+77.37 (66.89, 84.28)
+77.38 (66.88, 84.37)
+77.49 (67.04, 84.96)
+Male sex, 𝑛(%)
+877 (47.8)
+219 (47.7)
+277 (48.3)
+Comorbidities
+CCI score, median (IQR)
+5.21 (4, 6)
+5.21 (4, 6)
+5.21 (4, 7)
+Diabetes without chronic complication, 𝑛(%)
+533 (29.05)
+143 (31.15)
+172 (29.97)
+Diabetes with chronic complication, 𝑛(%)
+163 (8.88)
+44 (9.59)
+56 (9.76)
+Hypertension, 𝑛(%)
+840 (45.78)
+202 (44.01)
+264 (45.99)
+Acute myocardial infarction, 𝑛(%)
+188 (10.25)
+34 (7.41)
+59 (10.28)
+VTVFSCD†, 𝑛(%)
+26 (1.42)
+7 (1.53)
+13 (2.26)
+Stroke/transient ischemic attack, 𝑛(%)
+297 (16.19)
+69 (15.03)
+79 (13.76)
+Atrial fibrillation, 𝑛(%)
+503 (27.41)
+144 (31.37)
+178 (31.01)
+Peripheral vascular disease†, 𝑛(%)
+14 (0.76)
+4 (0.87)
+1 (0.17)
+Ischemic heart disease, 𝑛(%)
+649 (35.37)
+144 (31.37)
+217 (37.8)
+Hyperlipidaemia, 𝑛(%)
+33 (1.8)
+7 (1.53)
+12 (2.09)
+Renal diseases, 𝑛(%)
+222 (12.1)
+64 (13.94)
+70 (12.2)
+Liver diseases, 𝑛(%)
+36 (1.96)
+9 (1.96)
+14 (2.44)
+Gastrointestinal bleeding, 𝑛(%)
+230 (12.53)
+51 (11.11)
+72 (12.54)
+Anaemia, 𝑛(%)
+272 (14.82)
+71 (15.47)
+90 (15.68)
+Chronic obstructive pulmonary disease, 𝑛(%)
+289 (15.75)
+56 (12.2)
+82 (14.29)
+Cerebrovascular disease, 𝑛(%)
+359 (19.56)
+81 (17.65)
+98 (17.07)
+Peptic ulcer disease, 𝑛(%)
+155 (8.45)
+39 (8.5)
+47 (8.19)
+Cancer, 𝑛(%)
+96 (5.23)
+27 (5.88)
+27 (4.7)
+Outcomes
+30-day mortality, 𝑛(%)
+101 (5.5)
+25 (5.4)
+29 (5.1)
+30-day hospital readmission, 𝑛(%)
+682 (37.2)
+170 (37.0)
+213 (37.1)
+30-day ASCVD hospital readmission, 𝑛(%)
+263 (14.3)
+62 (13.5)
+83 (14.5)
+30-day HF readmission, 𝑛(%)
+136 (7.4)
+34 (7.4)
+37 (6.4)
+† Variables with visually notable distributional differences or low prevalence across data partitions; formal 𝜒2 testing did not indicate statistically significant differences (𝑝≥
+0.05).
+models were handled using multivariate imputation by chained equations (MICE), as implemented within the AutoGluon preprocessing
+pipeline. In contrast, the final LightGBM model relied on its intrinsic
+handling of missing values during tree construction, and no explicit
+imputation or post-baseline data processing was performed prior to
+training.
+The set of model parameters that resulted in the highest AUC score
+(LightGBM) was chosen as the best performing model. The resulting
+models for each of the model architectures were evaluated based on
+their performance on the test sets. AUC was used as the primary
+discrimination metric. Given class imbalance (particularly for 30-day
+mortality), we additionally report precision–recall curves and the
+area under the precision–recall curve (AUPRC), alongside thresholddependent metrics (F1, precision, recall) computed using operating
+thresholds selected on the validation set and applied to the test set.
+2.5. Model explanation
+Feature importance was analyzed to generate model explanation and
+visualize variables that were the most important in shaping model
+predictions. We used the SHAP technique to determine the importance of clinical variables in structured tabular data [41]. Higher
+SHAP values indicate greater importance of specific features in influencing the model’s prediction performance, while lower SHAP values
+suggest a less significant influence. Using SHAP techniques provides
+valuable insight into the relationships between input features and
+prediction outcomes, allowing a better understanding of the model’s
+decision-making process.
+Feature interactions were explored in several ways throughout this
+study. First, the feature importance ranking from SHAP analysis
+was used to identify the features that are the most impactful on the
+model’s predictive performance. The top features’ interactions with
+model outcomes, as well as their interactions with each other, were
+explored by mapping the SHAP values of individual features. Then,
+the model was retrained on subsets of features, either individual features identified as impactful in the SHAP analysis or categories of
+features (e.g., demographics, laboratory tests, ECG measurements),
+and the predictive performance of each model was also compared.
+This comprehensive analysis provided insight into which modalities contributed clinically significant information and were the most
+instrumental component in model prediction.
+3. Results
+3.1. Patient characteristics
+In the dataset, 155 out of 2868 samples (5.4%) were reported for mortality within 30 days of discharge. The train-test split was stratified
+on demographic characteristics (e.g., sex and age) as well as health
+outcomes (e.g., 30-day mortality and 30-day hospital readmission) to
+ensure even distribution of labels across training and testing data. The
+patient characteristics of the training, validation, and test sets are summarized in Table 1. Statistical tests (chi-square test and two-sample
+independent t-test) were performed to ensure that the distribution of
+demographic characteristics and health outcomes of train, validation,
+and test sets did not differ significantly from each other.
+4–14
+ . 
+CC-BY 4.0 International license
+It is made available under a 
+perpetuity. 
+ is the author/funder, who has granted medRxiv a license to display the preprint in
+(which was not certified by peer review)
+preprint 
+The copyright holder for this
+this version posted January 13, 2026. 
+; 
+https://doi.org/10.64898/2026.01.12.26343905
+doi: 
+medRxiv preprint 
+
+Interpretable Multimodal Machine Learning Model for Predicting Health Risks of Patients with Heart Failure
+Table 2. Baseline model performance for predicting 30-day mortality.
+Model
+AUC
+F1
+Precision
+Recall
+LogisticRegression
+0.7363
+0.2185
+0.1444
+0.4483
+RandomForest
+0.8480
+0.2647
+0.2308
+0.3103
+DecisionTree
+0.6939
+0.3467
+0.2826
+0.4483
+XGBoost
+0.8508
+0.3214
+0.2169
+0.6207
+SVMClassifier
+0.7610
+0.2319
+0.2000
+0.2759
+NeuralNetwork
+0.6276
+0.1628
+0.1228
+0.2414
+NNAttention
+0.7011
+0.2041
+0.1449
+0.3448
+NNResidual
+0.7075
+0.2697
+0.2000
+0.4138
+TabNetClassifier
+0.6904
+0.1983
+0.1304
+0.4138
+LightGBM
+0.8566
+0.3248
+0.2159
+0.6552
+Note: The F1, precision, and recall are computed on the test set using operating
+thresholds selected on the validation set.
+3.2. Baseline model performances
+A total of ten baseline models were evaluated for 30-day mortality
+prediction, including Logistic Regression, Random Forest, Decision
+Tree, XGBoost, LightGBM, Support Vector Machine (SVM), three
+neural-network variants (NeuralNetwork, NNAttention, NNResidual), and TabNet. AutoGluon TabularPredictor [42] was used as the
+primary framework for baseline screening and standardized preprocessing where applicable, while several models were trained using
+standalone implementations outside AutoGluon.
+Logistic Regression, Random Forest, XGBoost, and LightGBM models were trained within AutoGluon, which provides a unified pipeline
+for preprocessing, missing-value handling, and model optimization
+using scikit-learn and gradient boosting backends. Decision Tree,
+SVM, neural-network variants, and TabNet were trained separately
+using their respective reference implementations, while maintaining
+identical training, validation, and test splits to ensure comparability
+across models.
+Neural network baselines included a feed-forward multilayer perceptron (NeuralNetwork) with two hidden layers and ReLU activations, trained using the Adam optimizer with dropout regularization
+to mitigate overfitting. Two architectural variants were additionally
+evaluated to assess the effect of network design choices: NNResidual incorporates residual (skip) connections to improve optimization
+stability and gradient flow in deeper representations, while NNAttention augments the feed-forward architecture with a self-attention
+mechanism to enable flexible modeling of feature interactions.
+TabNetClassifier [44], a deep learning architecture employing sequential attention masks for tabular feature selection, was also evaluated using default configurations, providing a representative comparison against attention-based tabular models.
+All models were evaluated on the same held-out test set. Thresholddependent metrics (F1 score, precision, and recall) were computed
+using operating thresholds selected on the validation set and applied
+unchanged to the test set. Table 2 summarizes model discrimination
+(AUC) and operating-point performance. Among the evaluated approaches, gradient-boosted tree models demonstrated the strongest
+discrimination performance. LightGBM achieved the highest AUC,
+followed closely by XGBoost, and was therefore selected as the primary model for subsequent analysis.
+Having identified LightGBM as the best overall performer, we ran a
+cross-validated hyperparameter sweep on the training set using AUC
+as the selection metric, then evaluated on the held-out test set. Figure
+2 shows validation and test ROC curves for the two final models: 30day mortality (validation AUC = 0.93; test AUC = 0.88) and 30-day
+readmission (validation AUC = 0.73; test AUC = 0.71). Operating
+thresholds were chosen on the validation ROC using Youden’s J (maximize TPR-FPR) [43] and then fixed for test evaluation. Applying
+these same thresholds to the test set produced the confusion matriFigure 2. ROC curves for the LightGBM model on predicting 30-day mortality
+and 30-day hospital readmission. Solid lines show test performance (mortality AUC = 0.88; readmission AUC = 0.71); dashed lines show validation
+performance (mortality AUC = 0.93; readmission AUC = 0.73). Callouts
+mark validation-selected operating thresholds (thr) via Youden’s J approach
+[43] (mortality thr = 0.10 and readmission thr = 0.41). The dotted diagonal
+indicates chance performance (AUC = 0.5).
+Figure 3. Confusion matrices for (a) 30-day mortality and (b) 30-day readmission LightGBM models on the test set, evaluated at a threshold of 0.10 and
+0.41, respectively. Cell values are counts; axes show true vs. predicted labels.
+ces in Figure 3. For prediction of 30-day mortality (thr = 0.10), we
+observed TN (True Negative) = 381, FP (False Positive) = 164, FN
+(False Negative) = 3, TP (True Positive) = 26, reflecting a sensitivity5–14
+ . 
+CC-BY 4.0 International license
+It is made available under a 
+perpetuity. 
+ is the author/funder, who has granted medRxiv a license to display the preprint in
+(which was not certified by peer review)
+preprint 
+The copyright holder for this
+this version posted January 13, 2026. 
+; 
+https://doi.org/10.64898/2026.01.12.26343905
+doi: 
+medRxiv preprint 
+
+Interpretable Multimodal Machine Learning Model for Predicting Health Risks of Patients with Heart Failure
+Figure 4. Precision–recall (PR) curves for the LightGBM model predicting
+30-day mortality and 30-day hospital readmission. Solid lines show test-set performance (mortality AUPRC = 0.33; readmission AUPRC = 0.57), and dashed
+lines show validation-set performance (mortality AUPRC = 0.39; readmission
+AUPRC = 0.61). Callouts indicate validation-selected operating thresholds
+(thr) chosen to maximize the F1 score on the precision–recall curve (mortality
+thr = 0.12; readmission thr = 0.41), with corresponding recall, precision, F1
+score, and specificity reported.
+favored operating point suitable for ruling out risk. For prediction
+of 30-day readmission (thr = 0.41), we observed TN = 202, FP =
+159, FN = 44, TP = 169, consistent with the lower discriminative
+signal in this endpoint. As shown in Figure 4, we further presented
+the precision–recall (PR) curves and the Area Under the PR Curve
+(AUPRC) for the LightGBM model in predicting 30-day mortality
+and 30-day hospital readmission. Solid lines show test-set performance (mortality AUPRC = 0.33; readmission AUPRC = 0.57), and
+dashed lines show validation-set performance (mortality AUPRC =
+0.39; readmission AUPRC = 0.61).
+3.3. Feature importance for HF risk prediction
+Validating previously identified features. Due to its performance on
+the test set, LightGBM was chosen for model explanation through
+SHAP analysis. Tree-based models such as GBMs have the advantage
+of providing feature importance data, which allows for identification
+of key clinical features and thresholds. Figure 5 shows the top 20 features and their impact on model output for LightGBM models trained
+on 30-day mortality and 30-day hospital readmission of HF patients.
+Some of the features identified have been previously identified to be
+correlated with mortality and/or hospital readmission. For instance,
+serum albumin has been previously identified as a predictor of cardiovascular mortality [45], and the LightGBM model also identified
+it as a key feature for the risk prediction.
+The relationship between serum albumin levels and model prediction is demonstrated in Figure 6, and the model identified key
+thresholds of 35 g/L and 43 g/L identified for the 30-day mortality
+and hospital readmission separately; while previous study indicated
+that the normal reference range for albumin is 35-45 g/L, and a reduced serum albumin level is present in approximately 20% of all
+acute medical admissions [46]. Furthermore, LightGBM identifies
+QT interval as an important feature, which is also supported by previous literature [47]. As shown in Figure 6, QT intervals outside of the
+healthy range (350 to 450 ms for males and 360 to 460 ms for females)
+are associated with increased risk for mortality, particularly if the QT
+interval is below 350 ms.
+Identifying less explored features. Meanwhile, some of the top 20
+features identified by LightGBM are less well-studied as risk factors
+for mortality and hospital readmission for HF patients. These features included lactate dehydrogenase level and QT dispersion. For
+example, Figure 7a shows a positive relationship between lactate
+dehydrogenase level and 30-day mortality, with a key threshold of
+around 600 U/L. LightGBM also identified a positive relationship
+between QT dispersion and 30-day readmission.
+Feature interaction effects. Furthermore, GBMs are effective at
+capturing feature interaction effects, giving insight into the complex
+relationship between the two features and the model outcome. For
+instance, Figure 7 demonstrate the interaction between the features
+high sensitive troponin level, mean ventricular rate, and QT dispersion. Figure 7c shows the interaction effect of high sensitive troponin
+levels with QT interval dispersion. Each point represents a patient,
+with color indicating QT interval dispersion values. The plot shows
+that for the same troponin I levels, patients with higher QT interval
+dispersion tend to have more negative SHAP values, indicating a
+stronger contribution to increased 30-day mortality risk. In contrast,
+patients with lower QT dispersion exhibit smaller or even SHAP effects at comparable troponin I concentrations. Figure 7d plots the
+interaction effect of mean ventricular rate and QT interval dispersion.
+In contrast to Figure 7c, this analysis shows that mean ventricular rate
+does not significantly interact with the effect of QT interval dispersion
+on 30-day mortality risk for patients.
+The SHAP interaction values for every feature pair across the evaluation set are further visualized in Figure 8, where brighter cells indicate stronger two-way interactions in the model. The block structure
+highlights where the model most frequently exploits cross–feature
+effects: (i) dense and bright regions within the ECG modality (e.g.,
+QT- and P–wave metrics with QRS morphology/dispersion features),
+(ii) within the laboratory test modality (e.g., electrolytes, lipids, troponin–related measures), and (iii) across ECG and laboratory test
+modalities. This suggests that while some ECG and lab features are
+partially redundant within their own modalities, combinations across
+ECG and laboratory domains are likely to interact and meaningfully
+impact predicted risk.
+3.4. Performance of multimodal data for HF risk prediction
+One strength of our model is that it is trained on multimodal data,
+allowing for exploring interactions between different categories of
+patient data. The effect of multimodal data and interaction between
+these multimodal features on the model performance was investigated
+by grouping the features into different categories: (i) demographic
+characteristics and baseline comorbidities (denoted as Demo, or DB),
+(ii) medication prescriptions (Med, or MD), (iii) lab tests at admission (Lab, or LT), and (iv) ECG measurements (ECG). Table 3 shows
+results of HF risk prediction with combinations of the four feature
+categories, including the AUC, as well as specificity and sensitivity
+calculated at the operating point determined by Youden’s J statistic
+(i.e., the point maximizing sensitivity + specificity – 1) [43]. The
+first four rows show results for 30-day mortality and 30-day hospital
+readmission prediction for models trained on features from only one
+of the four feature categories. We report the predictive performance
+with different combinations of data modalities in the following subsections.
+3.4.1. Predictive performance with a single modality
+As shown in Table 3, when using a single data modality for the HF risk
+prediction, ECG features achieved the highest performance (AUC:
+0.809 for mortality, 0.665 for readmission), likely due to their ability
+to capture dynamic cardiac signals. Notably, Lab features also performed well on their own, likely due to their role as precise biomarkers
+of a patient’s physiological state (AUC: 0.802 for mortality, 0.623 for
+readmission). In contrast, Med features had the lowest performance
+with an AUC score of 0.547 for 30-day mortality prediction and 0.604
+for 30-day readmission prediction. When considering F1 score, which
+reflects the balance between precision and recall under class imbalance, Lab features achieved the highest F1 among single-modality
+models for mortality (F1 = 0.27), while ECG features showed slightly
+lower F1 despite higher AUC, indicating that strong discrimination
+6–14
+ . 
+CC-BY 4.0 International license
+It is made available under a 
+perpetuity. 
+ is the author/funder, who has granted medRxiv a license to display the preprint in
+(which was not certified by peer review)
+preprint 
+The copyright holder for this
+this version posted January 13, 2026. 
+; 
+https://doi.org/10.64898/2026.01.12.26343905
+doi: 
+medRxiv preprint 
+
+Interpretable Multimodal Machine Learning Model for Predicting Health Risks of Patients with Heart Failure
+Figure 5. SHAP summary plot for the LightGBM models trained to predict (a) 30-day mortality and (b) 30-day hospital readmission. The plot shows the top 20
+most impactful features on prediction and the distribution of each feature’s impact on the model output. Each point on the plot corresponds to an individual in
+the dataset. A negative SHAP value indicates reduced mortality risk, while a positive SHAP value indicates increased mortality risk.
+Figure 6. SHAP scatterplot showing the relationship between serum albumin levels and model prediction for (a) 30-day mortality and (b) 30-day hospital
+readmission. SHAP scatterplot showing the relationship between QT interval levels and model prediction for (c) 30-day mortality and (d) 30-day hospital
+readmission. The vertical lines represent key clinical thresholds. g/L identified in previous studies to be indicators of increased risk.
+Figure 7. (a) SHAP scatterplot showing the relationship between lactate dehydrogenase levels and 30-day mortality U/L. (b) SHAP scatterplot showing the
+relationship between QT dispersion and 30-day hospital readmission. (c) Feature interaction effects between high sensitive troponin I levels and QT dispersion
+(d) Feature interaction effects between mean ventricular rate and QT interval dispersion.
+7–14
+ . 
+CC-BY 4.0 International license
+It is made available under a 
+perpetuity. 
+ is the author/funder, who has granted medRxiv a license to display the preprint in
+(which was not certified by peer review)
+preprint 
+The copyright holder for this
+this version posted January 13, 2026. 
+; 
+https://doi.org/10.64898/2026.01.12.26343905
+doi: 
+medRxiv preprint 
+
+Interpretable Multimodal Machine Learning Model for Predicting Health Risks of Patients with Heart Failure
+Figure 8. Supervised feature–feature distance heatmap. Each dot point in the image shows the pairwise supervised distance between model features (see
+Methods for metric definition). To preserve readability with 146 features, only every third feature label is shown on the axes. The color bar indicates the distance
+scale, and diagonal cells reflect self-comparisons.
+Figure 9. ROC curves for models trained for predicting 30-day mortality using (a) single feature modality, (b) combination of two feature modalities, and (c)
+combination of three or four feature modalities.
+8–14
+ . 
+CC-BY 4.0 International license
+It is made available under a 
+perpetuity. 
+ is the author/funder, who has granted medRxiv a license to display the preprint in
+(which was not certified by peer review)
+preprint 
+The copyright holder for this
+this version posted January 13, 2026. 
+; 
+https://doi.org/10.64898/2026.01.12.26343905
+doi: 
+medRxiv preprint 
+
+Interpretable Multimodal Machine Learning Model for Predicting Health Risks of Patients with Heart Failure
+Table 3. Performance metrics for 30-day mortality and 30-day hospital readmission trained with different combinations of feature categories.
+Modalities
+Feature Types
+30-day Mortality
+30-day Hospital Readmission
+AUC
+Sensitivity
+Specificity
+F1
+AUC
+Sensitivity
+Specificity
+F1
+Single modality
+Demo Features
+0.792
+0.862
+0.681
+0.2530
+0.646
+0.465
+0.798
+0.5445
+Med Features
+0.547
+0.793
+0.349
+0.0805
+0.604
+0.526
+0.662
+0.5489
+Lab Features
+0.802
+1.000
+0.508
+0.2745
+0.623
+0.545
+0.690
+0.5469
+ECG Features
+0.809
+0.793
+0.717
+0.1702
+0.665
+0.493
+0.781
+0.5390
+Two modalities
+Demo + Med
+0.771
+0.759
+0.745
+0.2162
+0.685
+0.610
+0.709
+0.5714
+Demo + Lab
+0.873
+0.862
+0.787
+0.3279
+0.666
+0.667
+0.598
+0.5606
+Demo + ECG
+0.814
+0.828
+0.692
+0.1778
+0.671
+0.671
+0.629
+0.5629
+Med + Lab
+0.806
+1.000
+0.484
+0.2680
+0.641
+0.521
+0.737
+0.5523
+Med + ECG
+0.815
+0.828
+0.705
+0.1778
+0.682
+0.765
+0.571
+0.6085
+Lab + ECG
+0.872
+0.897
+0.714
+0.3500
+0.698
+0.765
+0.548
+0.5385
+Three modalities
+Demo + Med + Lab
+0.858
+1.000
+0.631
+0.3171
+0.680
+0.681
+0.604
+0.5771
+Demo + Med + ECG
+0.824
+0.828
+0.747
+0.1702
+0.689
+0.723
+0.596
+0.5767
+Demo + Lab + ECG
+0.868
+0.897
+0.703
+0.3636
+0.699
+0.723
+0.598
+0.5957
+Med + Lab + ECG
+0.863
+0.897
+0.703
+0.3488
+0.706
+0.761
+0.584
+0.6076
+Four modalities
+Demo + Med + Lab + ECG
+0.881
+0.931
+0.697
+0.3768
+0.709
+0.793
+0.562
+0.5556
+Note: Demo: demographic characteristics and baseline comorbidities (DB); Med: medication prescriptions (MD); Lab: Laboratory tests (LT); ECG: electrocardiogram-derived
+features. F1 scores are computed on the test set using thresholds selected on the validation set to maximize F1.
+Figure 10. ROC curves for models trained for predicting 30-day hospital readmission using (a) single feature modality, (b) combination of two feature modalities,
+and (c) combination of three or four feature modalities.
+does not necessarily translate into optimal thresholded performance.
+For 30-day readmission, single-modality F1 scores were relatively
+similar across feature types (F1 0.54–0.55), suggesting limited gains
+from any single data source alone. Figures 9a and 10a demonstrate
+detailed comparison of model performance for predicting 30-day mortality and 30-day hospital readmission using features derived from a
+single data modality.
+3.4.2. Predictive performance with two modalities
+We explored six different combinations of two modalities of these
+features for the HF risk prediction. As shown in Table 3, when using
+two modalities of features, the combination of Lab and ECG features
+achieved high AUC scores of 0.872 and 0.698 for predicting 30-day
+mortality and 30-day hospital readmission respectively. This further
+validated our observation of the superior predictive performance
+when using Lab features or ECGs alone, as indicated in Section 3.4.1.
+Importantly, this performance gain was also reflected in F1 score,
+with Lab + ECG achieving the highest F1 among two-modality models for mortality (F1 = 0.35), indicating improved balance between
+sensitivity and precision at clinically relevant thresholds. Another interesting pattern is the comparison between Demo + Lab and Med +
+Lab. While both achieve high AUC values, Demo + Lab outperforms
+Med + Lab, particularly in specificity and sensitivity for predicting 30day mortality. This difference is further supported by higher F1 scores
+for Demo + Lab (F1 = 0.33 vs. 0.27), highlighting the importance
+of demographic factors and baseline comorbidities in contextualizing biomarker information. The results also show that Lab + ECG
+performs slightly better than Demo + ECG. This reflects the strong
+prognostic value of laboratory tests that capture accurate patient
+health conditions, such as organ dysfunction, inflammation, and
+myocardial injury, which are directly linked to short-term outcomes
+in heart failure; while demographics provide important baseline risk
+(e.g., age, sex, comorbidities), offering a comprehensive profile for
+the risk prediction. The variations in performance underscore the
+importance of careful feature selection and the potential for overfitting or noise when too many modalities are combined. Figures
+9b and 10b provided detailed comparison of model performance for
+predicting 30-day mortality and 30-day hospital readmission using
+different combinations of two data modalities.
+3.4.3. Predictive performance with three modalities
+We further investigated the predictive performance in HF risk using
+three modalities of these features. As shown in Table 3, integrating Lab features and ECGs either with Demo or Med features yields
+superior predictive performance compared to the other two feature
+configurations. These combinations also achieved consistently higher
+F1 scores for both outcomes, with Demo + Lab + ECG reaching an F1
+of 0.36 for mortality and 0.60 for readmission, indicating improved
+robustness when additional contextual information is incorporated
+alongside physiological signals. We also observed that the model
+showed slightly decreased performance when comparing this combination Demo, Lab and ECG features to using only Lab and ECG,
+which may reflect added noise or redundancy in the data. This effect
+was more evident in AUC than F1, suggesting that while ranking
+9–14
+ . 
+CC-BY 4.0 International license
+It is made available under a 
+perpetuity. 
+ is the author/funder, who has granted medRxiv a license to display the preprint in
+(which was not certified by peer review)
+preprint 
+The copyright holder for this
+this version posted January 13, 2026. 
+; 
+https://doi.org/10.64898/2026.01.12.26343905
+doi: 
+medRxiv preprint 
+
+Interpretable Multimodal Machine Learning Model for Predicting Health Risks of Patients with Heart Failure
+Table 4. Feature rankings and AUC performance for various features in original and reduced models.
+Feature
+Feature ranking
+(Original Model)
+Feature ranking
+(Reduced Model)
+Predictive Performance of Reduced
+Model (AUC)
+Baseline age (years)
+10
+5
+0.8041
+Charlsons comorbidity index
+28
+10
+0.7789
+Anaemia
+131
+23
+0.7891
+Atrial fibrillation
+116
+50
+0.8003
+Diabetes with chronic complication
+131
+58
+0.8063
+Nonsteroidal anti-inflammatory drugs
+89
+87
+0.7963
+Antirheumatic drugs
+90
+87
+0.7963
+Antiplatelets
+131
+88
+0.8106
+ACEIARB
+77
+90
+0.7768
+Antihypertensive drugs
+110
+99
+0.8117
+High sensitive troponin I (ng/L)
+2
+1
+0.8142
+Lactate dehydrogenase (U/L)
+4
+1
+0.7929
+Potassium (mol/L)
+6
+3
+0.7522
+Urea (mmol/L)
+11
+3
+0.7503
+Creatinine (umol/L)
+13
+3
+0.7097
+QT interval dispersion (coef var)
+1
+1
+0.8171
+QT interval dispersion (min)
+3
+1
+0.8060
+QT interval (mean)
+5
+2
+0.7734
+QTc (mean)
+7
+3
+0.6941
+QT interval dispersion (first)
+9
+3
+0.7717
+performance may plateau, thresholded classification performance
+remains relatively stable. Figures 9c and 10c provided detailed comparison of model performance for predicting 30-day mortality and
+30-day hospital readmission using different combinations of three
+modalities of features.
+3.4.4. Predictive performance with four modalities
+As demonstrated in the above subsections, the comparison across
+different configurations of feature modalities indicates that incorporating more modalities generally improves the model’s performance
+in HF risk prediction. As shown in Table 3, using all four modalities
+achieved the highest AUC score, with 0.881 for 30-day mortality and
+0.709 for 30-day hospital readmission respectively. This configuration also yielded the highest F1 score for mortality (F1 = 0.38) and
+competitive F1 performance for readmission (F1 = 0.56), suggesting
+that multimodal integration improves not only discrimination but
+also balanced classification performance when operating thresholds
+are selected on validation data. Figures 9c and 10c also included
+the detailed comparison of model performance for predicting 30-day
+mortality and 30-day hospital readmission using the four modalities
+of features.
+3.5. Predictive performance of individual features
+To analyze the predictive ability of individual features in each category,
+we trained reduced models using one feature from a single category
+and all features from the remaining three categories. Each reduced
+model includes a single feature from one category along with all
+features from the remaining categories. For instance, the reduced
+models for lab test category was trained using one lab test feature
+and all non-lab-related features. By doing so, these reduced models
+can shed insight on which features are the most influential in each
+category. Table 4 reports the feature rankings in both the original and
+reduced models, as well as the AUC scores indicating the predictive
+performance of each reduced model for 30-day mortality.
+As shown in Table 4, the QT interval dispersion (coefficient of
+variation) is demonstrated as the most predictive feature in the ECG
+category, achieving the highest AUC score of 0.817. Therefore, the
+QT interval dispersion ranked the most important feature when representing its entire category. Similarly, other features such as QT
+interval dispersion (minimum) and QT interval (mean) demonstrate
+strong predictive performance. Similarly, high-sensitive troponin
+I and ACEIARB were the most predictive features in the lab tests
+and medication history category, respectively. In the demographics
+and baseline comorbidities category, age was the most predictive feature with a feature importance ranking of 5 in the reduced model
+compared to 10 in the original model. The fact that a single feature from each category retained significant predictive performance
+demonstrates some redundancy in features, and necessitating further
+exploring feature selection.
+3.6. Exploring feature redundancy
+The comparison of different feature modalities indicated that not all
+features contributed positively to the predictive performance, there
+are redundant or noisy features. To characterize dependencies among
+predictors, we computed a supervised feature–feature distance for
+exploring feature redundancy as follows [48].
+For each ordered pair of features (𝑖, 𝑗), we first trained a single–feature predictive model 𝑓𝑖using feature 𝑥𝑖to predict the clinical
+outcome 𝑦, yielding predictionŝ 𝑦𝑖= 𝑓𝑖(𝑥𝑖). We then trained a second
+single–feature model 𝑔𝑗←𝑖using feature 𝑥𝑗to mimiĉ 𝑦𝑖by treatinĝ 𝑦𝑖
+as the regression target. The supervised fit was quantified by
+𝑅2
+𝑖→𝑗= 1 −
+𝔼
+[(̂𝑦𝑖−𝑔𝑗←𝑖(𝑥𝑗))2]
+Var(̂𝑦𝑖)
+∈[0, 1],
+(1)
+with values clipped below at 0.
+This yields an asymmetric similarity: how well 𝑥𝑗can stand in
+for 𝑥𝑖. For visualization and clustering, we formed a conservative,
+symmetric distance
+𝐷𝑖𝑗= max(1 −𝑅2
+𝑖→𝑗, 1 −𝑅2
+𝑗→𝑖
+),
+𝐷𝑖𝑗∈[0, 1], 𝐷𝑖𝑖= 0.
+(2)
+10–14
+ . 
+CC-BY 4.0 International license
+It is made available under a 
+perpetuity. 
+ is the author/funder, who has granted medRxiv a license to display the preprint in
+(which was not certified by peer review)
+preprint 
+The copyright holder for this
+this version posted January 13, 2026. 
+; 
+https://doi.org/10.64898/2026.01.12.26343905
+doi: 
+medRxiv preprint 
+
+Interpretable Multimodal Machine Learning Model for Predicting Health Risks of Patients with Heart Failure
+Figure 11. Supervised feature–feature distance heatmap. Each cell shows the pairwise supervised distance between model features (see Methods for metric
+definition). To preserve readability with 146 features, only every third feature label is shown on the axes. The color bar indicates the distance scale, and diagonal
+cells reflect self-comparisons.
+We refer to 𝐷𝑖𝑗as the supervised distance: smaller values indicate
+higher redundancy (i.e., one feature can effectively substitute for the
+other), whereas larger values indicate complementary information.
+The matrix 𝐃= [𝐷𝑖𝑗] is demonstrated as a heatmap in Figure
+11. Distinct light-colored blocks (low distance) appear within lab
+tests modality (e.g., electrolytes, urea, cholesterol, troponin) and
+within ECG measurements modality (e.g., interval and dispersion
+measures, P-wave/QRS morphology), indicating substantial withingroup redundancy. These findings provide insights on redundancyaware feature selection (e.g., clustering within blocks and retaining
+representatives, or aggregating correlated measures) to reduce noise
+and complexity while preserving predictive performance.
+3.7. Subgroup analysis
+To assess fairness and generalizability of the predictive model, we
+conducted subgroup analysis stratified by sex and age, evaluating performance for both 30-day mortality and 30-day hospital readmission
+(Figure 12). The performance score for each subgroup was estimated
+with 95% percentile bootstrap confidence intervals (1,000 resamples).
+The dashed vertical line in Figure 12 marks the overall AUC, while
+the dotted line at 0.5 corresponds to chance-level performance.
+As shown in Figure 12a, for 30-day mortality, stratified results indicated consistent model performance across subgroups, with similar
+AUCs for males (0.86) and females (0.88). Across age groups, the
+model maintained good discrimination in the 75-85 and >85 years
+age groups, although the ≤75 years group exhibited wide confidence
+intervals due to limited events (𝑛=3), reflecting greater statistical
+uncertainty.
+As shown in Figure 12b, for 30-day hospital readmission, the overall AUC was lower than that for mortality prediction, consistent with
+the recognized challenges in accurately predicting readmission risk.
+Performance across sex subgroups was balanced, with overlapping
+confidence intervals between males and females for the readmission risk prediction. Age-based stratification showed comparable
+results, with modestly increased AUCs in older age groups. These subgroup analyses suggest that the models achieve stable performance
+across demographic groups. While we report subgroup discrimination, reliable subgroup-specific calibration and fairness metrics (e.g.,
+PPV/NPV, TPR/FPR) could not be robustly estimated for certain
+strata—particularly younger age groups for 30-day mortality—due
+to limited event counts. Future validation using larger and more
+balanced cohorts will be essential to confirm equitable performance
+across different populations.
+4. Discussion
+This study presents a comprehensive and interpretable multimodal
+ML framework for predicting 30-day all-cause mortality and hospital
+readmission in HF patients using data from 2,868 individuals across
+43 hospitals in Hong Kong. By integrating four distinct clinical data
+modalities, i.e., demographics, medications, laboratory tests, and ECG
+features, we systematically evaluated the predictive power of various
+ML model architectures and identified LightGBM as the top classifier
+with an AUC score of 0.881 for mortality and 0.709 for readmission.
+The use of SHAP analysis enabled robust model interpretation, revealing key predictors such as serum albumin, high-sensitivity troponin
+I, lactate dehydrogenase, and QT interval dispersion. These findings
+align with known pathophysiological mechanisms in mortality risk
+[45], [47], [49], while also highlight underrecognized biomarkers that
+11–14
+ . 
+CC-BY 4.0 International license
+It is made available under a 
+perpetuity. 
+ is the author/funder, who has granted medRxiv a license to display the preprint in
+(which was not certified by peer review)
+preprint 
+The copyright holder for this
+this version posted January 13, 2026. 
+; 
+https://doi.org/10.64898/2026.01.12.26343905
+doi: 
+medRxiv preprint 
+
+Interpretable Multimodal Machine Learning Model for Predicting Health Risks of Patients with Heart Failure
+Figure 12. Subgroup discrimination on the test set for (a) 30-day mortality and (b) 30-day hospital readmission. Points show AUC with 95% percentile bootstrap
+CIs (1,000 resamples) for each subgroup; the dashed vertical line marks the overall AUC and the dotted line at 0.5 indicates chance performance. Horizontal
+separators delineate the overall, sex, and age sections. Labels include the numbers of patients and events.
+may need further clinical investigation.
+A major contribution of this work is the comprehensive ablation
+analysis across multimodal configurations, which quantified the incremental value of each data modality and their combinations. To
+the best of our knowledge, this is the first study to perform such a
+systematic evaluation of four clinical modalities in HF risk prediction.
+Our results demonstrate that laboratory tests and ECG features are
+the most informative individually and together achieve near optimal
+performance, suggesting that these two modalities may be adequate
+in resource constrained settings. Furthermore, the supervised feature
+distance analysis revealed substantial redundancy within laboratory
+tests and ECG features, indicating opportunities for model simplification through feature clustering or aggregation without sacrificing
+predictive accuracy.
+Notably, combining all four modalities did not uniformly improve
+performance across metrics and modality configurations. Several
+factors may explain this pattern, including (i) feature redundancy
+and correlated predictors across modalities (e.g., overlapping clinical
+signal between laboratory tests, comorbidity indicators, and derived
+ECG features), (ii) noise introduced by higher-dimensional inputs
+relative to sample size, which can reduce generalization, and (iii) potential label noise or endpoint heterogeneity in real-world outcomes.
+Together, these results suggest that multimodal fusion is not guaranteed to be additive; in some settings, carefully selected subsets (e.g.,
+Lab + ECG) may achieve near-optimal performance while offering
+lower complexity and improved deployability.
+The strong performance of ECG features alone underscores the
+value of electrophysiological signals as dynamic indicators of cardiac
+instability. The identified ECG features also showed significant prognostic implications. For instance, QT dispersion has been showed to
+report worse clinical outcomes after arrest as it reflects the repolarization abnormalities [47]. It was suggested to be linked with cardiac
+and brain injury via sympathetic innervation of the left ventricle.
+Meanwhile, it was suggested that successful re-perfusion of ischemic
+cardiac tissues would decrease the QT dispersion [50]. The result
+demonstrated the model is capable of identifying pathophysiological
+factors that are contributing to adverse outcomes after HF. In addition,
+the interaction analysis showed meaningful cross modal effects particularly between lab and ECG domains, suggesting that combining
+biochemical and functional data enhances risk stratification. These
+interactions provide mechanistic hypotheses that could guide future
+research and support more personalized clinical decision making.
+We acknowledge several limitations within this study. First, the
+population cohort used for this study was derived from a single and
+limited geographic region, which may affect generalizability of the
+developed model to other populations. Second, although we included
+multiple data modalities for the model development, medical images and longitudinal temporal patterns were not incorporated, these
+modalities may further improve the predictive performance of HF
+risks. Third, these ML models were trained on static clinical data,
+and did not account for in hospital changes or treatment responses,
+which may limit the performance of the developed framework in
+real-world clinical decision-making and care planning.
+We additionally acknowledge that 30-day hospital readmission is
+influenced by social and health-system factors (e.g., discharge planning, outpatient follow-up access, caregiver support, socioeconomic
+context) that are not fully captured in structured EHR variables. Incorporating these factors, when available, may improve readmission
+prediction and interpretability in future work.
+Our future research will explore several directions on advancing
+the health risk prediction and clinical translation. First, alternative
+model architectures will be investigated for improving the predictive
+performance. For instance, ensemble models may enhance predictive
+performance by combining multiple independently trained models;
+while transformer-based architectures such as TabTransformer [51]
+can be effective for tabular data, but remain underexplored in CVD
+outcomes prediction, leaving another route for future exploration.
+Second, generalizability of ML models is critical for real-world applications; we will explore external validation across diverse datasets
+from multiple institutions, enabling assessment of robustness across
+different populations and healthcare settings. Finally, prospective
+clinical trials in multicentre cohorts will be essential to validate these
+findings in healthcare setting, and evaluate the clinical utility and
+feasibility of model deployment.
+5. Conclusion
+This study presents a comprehensive multimodal machine learning
+framework for predicting 30-day all-cause mortality and hospital
+readmission in HF patients using four clinical data modalities: demographics, medications, laboratory tests, and ECGs. Our model
+achieved the predictive performance with an AUC of 0.881 for mortality and 0.709 for readmission. By performing a comprehensive
+analysis across four clinical modalities in HF risk modeling, our
+findings revealed that laboratory tests and ECG features contributed
+substantially to predictive performance, with their combination alone
+achieving near-optimal accuracy. We also identified clinically meaningful predictors such as serum albumin, lactate dehydrogenase, and
+QT interval dispersion, many of which reflect underlying pathophysiological mechanisms of cardiac dysfunction. These results underscore the importance of multimodal integration in enhancing risk
+prediction while offering transparency and practicality for real-world
+deployment. By balancing high performance, interpretability, and
+scalability, our framework supports personalized patient management and future implementation in diverse healthcare settings.
+12–14
+ . 
+CC-BY 4.0 International license
+It is made available under a 
+perpetuity. 
+ is the author/funder, who has granted medRxiv a license to display the preprint in
+(which was not certified by peer review)
+preprint 
+The copyright holder for this
+this version posted January 13, 2026. 
+; 
+https://doi.org/10.64898/2026.01.12.26343905
+doi: 
+medRxiv preprint 
+
+Interpretable Multimodal Machine Learning Model for Predicting Health Risks of Patients with Heart Failure
