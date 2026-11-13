@@ -1,4 +1,6 @@
 {
+  "protocol": true,
+  "search_strategy": true,
   "screening_title_abstract": true,
   "screening_full_text": true,
   "final_report": true
