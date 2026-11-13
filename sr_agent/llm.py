@@ -81,3 +81,43 @@ def call_json(llm, system, user, schema: type[BaseModel], attempts=3):
             last_err = e
             msg = f"{user}\n\nYour previous answer was invalid ({str(e)[:300]}). Return ONLY the corrected JSON."
     raise RuntimeError(f"Sortie JSON invalide après {attempts} essais : {last_err}")
+
+
+# ---------------------------------------------------------------- bascule automatique entre modèles
+def _is_unavailable(e):
+    msg = str(e).lower()
+    return any(k in msg for k in ["model_not_found", "decommissioned", "does not exist", "not found"])
+
+
+class FallbackLLM:
+    """Chaîne de modèles : si le quota journalier d'un modèle est atteint (ou s'il n'existe plus),
+    on passe automatiquement au suivant. Chaque bascule est signalée (piste d'audit)."""
+
+    def __init__(self, names, provider, on_switch=None, temperature=0):
+        self.names, self.provider, self.on_switch = list(names), provider, on_switch
+        self.models = {}
+        self.i = 0
+        self.temperature = temperature
+
+    @property
+    def current(self):
+        return self.names[self.i]
+
+    def _model(self):
+        if self.current not in self.models:
+            self.models[self.current] = make_llm(self.current, self.provider, self.temperature)
+        return self.models[self.current]
+
+    def invoke(self, messages):
+        while True:
+            try:
+                return self._model().invoke(messages)
+            except Exception as e:
+                if (_is_daily_quota(e) or _is_unavailable(e)) and self.i + 1 < len(self.names):
+                    old = self.current
+                    self.i += 1
+                    print(f"\n↪ {old} indisponible ({'quota' if _is_daily_quota(e) else 'modèle'}) -> {self.current}")
+                    if self.on_switch:
+                        self.on_switch(old, self.current, str(e)[:200])
+                    continue
+                raise

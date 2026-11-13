@@ -15,6 +15,9 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from .utils.checkpoint import RunStore
 from .schemas import Protocol, SearchStrategy, Record
 from .agents import protocol_agent, search_strategy_agent, screening_agent
+from .agents import extraction_agent, synthesis_agent, critic_agent
+from .tools import report as report_tool
+import hashlib, json
 from .tools.sources import SEARCHERS
 from .tools.dedup import deduplicate
 from .tools import fulltext as ft
@@ -23,6 +26,7 @@ from .metrics import cohen_kappa, binary
 import re
 from collections import Counter
 
+MAX_CRITIC_ROUNDS = 2   # révisions automatiques max demandées par l'agent critique
 BATCH = 6          # articles par appel LLM au screening titre/résumé
 SYNC_EVERY = 8     # sauvegarde GitHub tous les N appels pendant les longues boucles
 
@@ -343,10 +347,106 @@ def make_nodes(ctx: Ctx):
             _ft_counts()
         return {"approved": ["screening_full_text"]}
 
+
+    # ================= LOT 3 =================
+    def _included():
+        R = _latest(S, "07_ft.jsonl")
+        return [i for i, d in R.items() if d["decision"] == "include"]
+
+    def _source_text(i, recs):
+        f = S.dir / "fulltext" / f"{i}.txt"
+        return f.read_text(encoding="utf-8") if f.exists() else (recs[i].get("abstract") or "")
+
+    def extract(state: State):
+        p = Protocol(**S.load_json("01_protocol.json"))
+        recs = {r["id"]: r for r in S.load_json("04_records.json")}
+        R = _latest(S, "07_ft.jsonl")
+        idx = HybridIndex(S.dir / "rag")
+        idx = idx.load() if idx.exists() else None
+        done = S.done_ids("08_extraction.jsonl")
+        todo = [i for i in _included() if i not in done]
+        for n, i in enumerate(todo, 1):
+            basis = R[i].get("basis")
+            if basis == "full_text_rag" and idx is not None:
+                seen, passages = set(), []
+                for q in extraction_agent.QUERIES:
+                    for h in idx.search(q, k=3, paper_id=i):
+                        if h["pos"] not in seen:
+                            seen.add(h["pos"]); passages.append(h["text"])
+            else:
+                passages = [recs[i].get("abstract") or ""]
+            e = extraction_agent.run(ctx.llm_strong, p.research_question, recs[i], passages)
+            S.append_jsonl("08_extraction.jsonl", {"id": i, "basis": basis, **e.model_dump()})
+            print(f"  extraction {n}/{len(todo)}", end="\r")
+            ctx.maybe_sync(n, "extraction en cours")
+        print()
+        S.log("extraction_agent", "extraction_done", n=len(_included()))
+        return {}
+
+    def _table():
+        recs = {r["id"]: r for r in S.load_json("04_records.json")}
+        E = _latest(S, "08_extraction.jsonl")
+        E = {i: E[i] for i in _included() if i in E}
+        return synthesis_agent.compact_table(E, recs), E, recs
+
+    def synthesize(state: State):
+        fb = state.get("feedback")
+        if S.has("09_synthesis.json") and not fb:
+            return {}
+        p = Protocol(**S.load_json("01_protocol.json"))
+        table, _, _ = _table()
+        syn = synthesis_agent.run(ctx.llm_strong, p.research_question, table, S.load_json("prisma_counts.json"), fb)
+        S.save_json("09_synthesis.json", syn.model_dump())
+        S.log("synthesis_agent", "synthesis_written", revision_feedback=fb)
+        return {"feedback": None}
+
+    def critique(state: State):
+        syn = S.load_json("09_synthesis.json")
+        h = hashlib.sha1(json.dumps(syn, sort_keys=True).encode()).hexdigest()[:10]
+        prev = S.load_json("10_critique.json", {"rounds": 0})
+        if prev.get("synthesis_hash") == h:
+            return {}
+        table, E, recs = _table()
+        texts = {i: _source_text(i, recs) for i in E}
+        checks = critic_agent.deterministic_checks(syn, table, E, texts)
+        rev = critic_agent.run(ctx.llm_strong, syn, table, checks).model_dump()
+        revise = critic_agent.needs_revision(rev, checks) and prev["rounds"] < MAX_CRITIC_ROUNDS
+        cur = {"rounds": prev["rounds"] + (1 if revise else 0), "synthesis_hash": h, "checks": checks,
+               "review": rev, "revision_requested": revise}
+        S.save_json("10_critique.json", cur)
+        hist = S.load_json("10_critique_history.json", [])
+        S.save_json("10_critique_history.json", hist + [cur])
+        S.log("critic_agent", "critique_done", n_issues=len(rev["issues"]), revise=revise,
+              evidence_verification_rate=checks["evidence_verification_rate"])
+        return {"feedback": critic_agent.feedback_text(rev, checks) if revise else None}
+
+    def report(state: State):
+        table, E, recs = _table()
+        out = report_tool.build(S.dir, S.load_json("01_protocol.json"), S.load_json("02_search_strategy.json"),
+                                S.load_json("prisma_counts.json"), S.load_json("05_ta_summary.json", {}),
+                                S.load_json("09_synthesis.json"), table, E, recs,
+                                ctx.extra.get("models", {}), S.load_json("10_critique.json"))
+        S.log("synthesis_agent", "report_built", **out)
+        return {}
+
+    def review_report(state: State):
+        c = S.load_json("10_critique.json", {})
+        ans = _review(ctx, state, "final_report", {
+            "fichiers": [f"report/{f}" for f in sorted(p.name for p in (S.dir / "report").iterdir())],
+            "contrôle qualité": [f"citations d'évidence vérifiées : {c.get('checks', {}).get('evidence_verification_rate')}",
+                                 f"révisions automatiques : {c.get('rounds')}",
+                                 f"avis du critique : {c.get('review', {}).get('overall_assessment', '')}"],
+            "aide": ["Lire report/manuscript.md ; 'ok' pour valider, sinon décrire les corrections à apporter"]})
+        if ans["approve"]:
+            return {"approved": ["final_report"]}
+        return {"feedback": "Human reviewer: " + ans["feedback"]}
+
     return dict(protocol=protocol, review_protocol=review_protocol, search_strategy=search_strategy,
                 review_strategy=review_strategy, retrieve=retrieve, dedup=dedup,
                 screen_ta=screen_ta, review_ta=review_ta, fetch_fulltext=fetch_fulltext,
-                build_index=build_index, screen_ft=screen_ft, review_ft=review_ft)
+                build_index=build_index, screen_ft=screen_ft, review_ft=review_ft,
+                extract=extract, synthesize=synthesize, critique=critique, report=report,
+                review_report=review_report)
 
 
 # ---------------------------------------------------------------- graph
@@ -365,8 +465,11 @@ def build_graph(ctx: Ctx, checkpoint_path: str):
     g.add_edge("retrieve", "dedup")
     for a, b in [("dedup", "screen_ta"), ("screen_ta", "review_ta"), ("review_ta", "fetch_fulltext"),
                  ("fetch_fulltext", "build_index"), ("build_index", "screen_ft"), ("screen_ft", "review_ft"),
-                 ("review_ft", END)]:
+                 ("review_ft", "extract"), ("extract", "synthesize"), ("synthesize", "critique"),
+                 ("report", "review_report")]:
         g.add_edge(a, b)
+    g.add_conditional_edges("critique", lambda s: "synthesize" if s.get("feedback") else "report")
+    g.add_conditional_edges("review_report", lambda s: "synthesize" if s.get("feedback") else END)
     saver = SqliteSaver(sqlite3.connect(checkpoint_path, check_same_thread=False))
     return g.compile(checkpointer=saver)
 
