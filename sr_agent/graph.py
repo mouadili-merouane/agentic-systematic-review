@@ -23,6 +23,7 @@ from .tools.dedup import deduplicate
 from .tools import fulltext as ft
 from .rag.index import HybridIndex
 from .metrics import cohen_kappa, binary
+from .llm import QuotaExceeded
 import re
 from collections import Counter
 
@@ -104,6 +105,26 @@ def _apply_overrides(store, name, text):
                                       "rationale": "human override", "criteria_failed": []})
             n += 1
     return n
+
+
+def ft_counts(S):
+    """Recalcule les compteurs PRISMA de l'étape texte intégral."""
+    R = _latest(S, "07_ft.jsonl")
+    assessed = [d for d in R.values() if d["decision"] != "not_retrieved"]
+    excl = [d for d in assessed if d["decision"] == "exclude"]
+    reasons = Counter((d.get("criteria_failed") or ["unspecified"])[0] for d in excl)
+    S.prisma(reports_assessed=len(assessed), reports_excluded_ft=len(excl), reports_excluded_reasons=dict(reasons),
+             studies_included=sum(d["decision"] == "include" for d in assessed),
+             assessed_on_abstract_only=sum(d.get("basis") == "abstract_only" for d in assessed))
+
+
+def human_exclude(S, ids_with_reason: dict):
+    """Exclusion humaine a posteriori (texte intégral) : {id: 'E3' ou motif}. Tracée dans la piste d'audit."""
+    for i, reason in ids_with_reason.items():
+        S.append_jsonl("07_ft.jsonl", {"id": i, "decision": "exclude", "by": "human", "basis": "human_review",
+                                       "criteria_failed": [reason], "rationale": f"human exclusion ({reason})"})
+    S.log("human", "ft_overrides", ids=ids_with_reason)
+    ft_counts(S)
 
 
 # ---------------------------------------------------------------- nodes
@@ -324,6 +345,9 @@ def make_nodes(ctx: Ctx):
         return {}
 
     def _ft_counts():
+        ft_counts(S)
+
+    def _unused():
         R = _latest(S, "07_ft.jsonl")
         assessed = [d for d in R.values() if d["decision"] != "not_retrieved"]
         excl = [d for d in assessed if d["decision"] == "exclude"]
@@ -353,6 +377,30 @@ def make_nodes(ctx: Ctx):
         R = _latest(S, "07_ft.jsonl")
         return [i for i, d in R.items() if d["decision"] == "include"]
 
+    def _extraction_set():
+        """Études à extraire : toutes, ou un échantillon reproductible si cfg.max_extraction est défini."""
+        inc = sorted(_included())
+        n = ctx.cfg.get("max_extraction")
+        if not n or n >= len(inc):
+            return inc
+        saved = S.load_json("08_extraction_sample.json")
+        if saved and set(saved["ids"]) <= set(inc):
+            return saved["ids"]
+        import random
+        R = _latest(S, "07_ft.jsonl")
+        done = [i for i in inc if i in S.done_ids("08_extraction.jsonl")]
+        rnd = random.Random(42)
+        full = [i for i in inc if R[i].get("basis") == "full_text_rag" and i not in done]
+        rest = [i for i in inc if i not in full and i not in done]
+        rnd.shuffle(full); rnd.shuffle(rest)
+        ids = (done + full + rest)[:n]
+        S.save_json("08_extraction_sample.json", {
+            "ids": ids, "n_included": len(inc),
+            "rule": f"sample of {n} included studies (seed 42), priority to open-access full texts"})
+        S.log("coordinator", "extraction_sample", n=len(ids), n_included=len(inc))
+        S.prisma(studies_extracted=len(ids))
+        return ids
+
     def _source_text(i, recs):
         f = S.dir / "fulltext" / f"{i}.txt"
         return f.read_text(encoding="utf-8") if f.exists() else (recs[i].get("abstract") or "")
@@ -364,29 +412,40 @@ def make_nodes(ctx: Ctx):
         idx = HybridIndex(S.dir / "rag")
         idx = idx.load() if idx.exists() else None
         done = S.done_ids("08_extraction.jsonl")
-        todo = [i for i in _included() if i not in done]
+        todo = [i for i in _extraction_set() if i not in done]
         for n, i in enumerate(todo, 1):
             basis = R[i].get("basis")
             if basis == "full_text_rag" and idx is not None:
                 seen, passages = set(), []
                 for q in extraction_agent.QUERIES:
-                    for h in idx.search(q, k=3, paper_id=i):
+                    for h in idx.search(q, k=2, paper_id=i):
                         if h["pos"] not in seen:
                             seen.add(h["pos"]); passages.append(h["text"])
             else:
                 passages = [recs[i].get("abstract") or ""]
-            e = extraction_agent.run(ctx.llm_strong, p.research_question, recs[i], passages)
+            try:
+                e = extraction_agent.run(ctx.llm_strong, p.research_question, recs[i], passages)
+            except QuotaExceeded:
+                raise
+            except Exception as err:          # une étude en échec ne bloque pas les autres (re-tentée au prochain run)
+                S.log("extraction_agent", "extraction_failed", id=i, error=str(err)[:300])
+                print(f"\n⚠ extraction {i} échouée (sera re-tentée) : {str(err)[:120]}")
+                continue
             S.append_jsonl("08_extraction.jsonl", {"id": i, "basis": basis, **e.model_dump()})
             print(f"  extraction {n}/{len(todo)}", end="\r")
             ctx.maybe_sync(n, "extraction en cours")
         print()
-        S.log("extraction_agent", "extraction_done", n=len(_included()))
+        S.log("extraction_agent", "extraction_done", n=len(_extraction_set()))
         return {}
 
     def _table():
         recs = {r["id"]: r for r in S.load_json("04_records.json")}
         E = _latest(S, "08_extraction.jsonl")
-        E = {i: E[i] for i in _included() if i in E}
+        target = _extraction_set()
+        missing = [i for i in target if i not in E]
+        if missing:
+            S.log("synthesis_agent", "studies_without_extraction", ids=missing)
+        E = {i: E[i] for i in target if i in E}
         return synthesis_agent.compact_table(E, recs), E, recs
 
     def synthesize(state: State):
@@ -395,7 +454,15 @@ def make_nodes(ctx: Ctx):
             return {}
         p = Protocol(**S.load_json("01_protocol.json"))
         table, _, _ = _table()
-        syn = synthesis_agent.run(ctx.llm_strong, p.research_question, table, S.load_json("prisma_counts.json"), fb)
+        smp = S.load_json("08_extraction_sample.json")
+        note = None
+        if smp:
+            note = (
+                f"the evidence table covers a random sample of {len(table)} of the {smp['n_included']} included "
+                f"studies (demonstration under compute constraints); state this explicitly in the abstract, results "
+                f"and limitations, and do not generalise beyond the sample.")
+        syn = synthesis_agent.run(ctx.llm_strong, p.research_question, table, S.load_json("prisma_counts.json"), fb,
+                                  note)
         S.save_json("09_synthesis.json", syn.model_dump())
         S.log("synthesis_agent", "synthesis_written", revision_feedback=fb)
         return {"feedback": None}

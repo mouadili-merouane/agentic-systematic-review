@@ -40,9 +40,12 @@ def compact_table(extractions: dict, records: dict) -> list[dict]:
     return rows
 
 
-def run(llm, question: str, table: list[dict], counts: dict, feedback: str | None = None) -> Synthesis:
+def run(llm, question: str, table: list[dict], counts: dict, feedback: str | None = None,
+        note: str | None = None) -> Synthesis:
     user = (f"PRISMA counts: {json.dumps(counts)}\n\nEVIDENCE TABLE ({len(table)} included studies):\n"
             + json.dumps(table, ensure_ascii=False))
+    if note:
+        user += f"\n\nIMPORTANT CONTEXT: {note}"
     if feedback:
         user += f"\n\nREVISION REQUIRED — fix these issues raised by the reviewer:\n{feedback}"
     return call_json(llm, SYSTEM.format(question=question), user, Synthesis)

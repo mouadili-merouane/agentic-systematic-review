@@ -3,11 +3,31 @@
 Les données sont extraites uniquement des passages retrouvés par le RAG dans l'article ; chaque champ
 clé est accompagné d'une citation exacte (evidence) que l'agent critique vérifie ensuite dans le texte.
 """
-from typing import Literal, Optional
-from pydantic import BaseModel, Field
+from typing import Annotated, Literal, Optional
+from pydantic import BaseModel, BeforeValidator, Field
 from ..llm import call_json
 
-Rating = Literal["low", "high", "unclear"]
+
+def _rating(v):
+    v = str(v or "").strip().lower()
+    return v if v in ("low", "high") else "unclear"
+
+
+def _validation(v):
+    v = str(v or "").strip().lower()
+    ext, inte = "external" in v, any(k in v for k in ("internal", "cross", "split", "bootstrap", "hold"))
+    if ext and inte:
+        return "internal+external"
+    if ext:
+        return "external"
+    if inte:
+        return "internal"
+    return "none" if v in ("none", "no", "not performed") else "unclear"
+
+
+Rating = Annotated[Literal["low", "high", "unclear"], BeforeValidator(_rating)]
+Validation = Annotated[Literal["internal", "external", "internal+external", "none", "unclear"],
+                       BeforeValidator(_validation)]
 
 
 class Evidence(BaseModel):
@@ -42,7 +62,7 @@ class Extraction(BaseModel):
     best_auc_ci: str = Field("not reported", description="95% CI as text, e.g. 0.74-0.80")
     comparator: str = Field("none", description="conventional model/score compared, if any")
     comparator_auc: Optional[float] = None
-    validation: Literal["internal", "external", "internal+external", "none", "unclear"] = "unclear"
+    validation: Validation = "unclear"
     calibration_reported: Optional[bool] = None
     explainability: str = Field("none", description="SHAP, feature importance... or none")
     key_finding: str = Field(description="one sentence")

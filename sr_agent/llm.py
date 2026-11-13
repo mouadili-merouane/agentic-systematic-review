@@ -11,8 +11,21 @@ _last_call = [0.0]
 MIN_INTERVAL = 2.0  # secondes entre deux appels (quota gratuit Groq)
 
 
+PROVIDERS = ("groq", "google_genai", "openai", "anthropic", "mistralai", "cerebras")
+# fournisseurs compatibles OpenAI : nom -> (URL, variable d'environnement de la clé)
+OPENAI_COMPATIBLE = {"cerebras": ("https://api.cerebras.ai/v1", "CEREBRAS_API_KEY")}
+
+
 def make_llm(model, provider, temperature=0):
+    """`model` peut préciser son fournisseur : 'cerebras:gpt-oss-120b', 'google_genai:...' (sinon `provider`)."""
+    import os
     from langchain.chat_models import init_chat_model
+    if ":" in model and model.split(":", 1)[0] in PROVIDERS:
+        provider, model = model.split(":", 1)
+    if provider in OPENAI_COMPATIBLE:
+        url, key = OPENAI_COMPATIBLE[provider]
+        return init_chat_model(model, model_provider="openai", base_url=url, api_key=os.environ.get(key),
+                               temperature=temperature)
     return init_chat_model(model, model_provider=provider, temperature=temperature)
 
 
@@ -89,12 +102,23 @@ def _is_unavailable(e):
     return any(k in msg for k in ["model_not_found", "decommissioned", "does not exist", "not found"])
 
 
+def _retry_after(msg):
+    """Extrait 'try again in 27m48.3s' -> secondes."""
+    m = re.search(r"try again in\s*(?:(\d+)h)?\s*(?:(\d+)m)?\s*(?:([\d.]+)s)?", msg)
+    if not m:
+        return 600
+    h, mi, se = (float(x) if x else 0 for x in m.groups())
+    return int(h * 3600 + mi * 60 + se)
+
+
 class FallbackLLM:
     """Chaîne de modèles : si le quota journalier d'un modèle est atteint (ou s'il n'existe plus),
     on passe automatiquement au suivant. Chaque bascule est signalée (piste d'audit)."""
 
-    def __init__(self, names, provider, on_switch=None, temperature=0):
+    def __init__(self, names, provider, on_switch=None, temperature=0, wait_on_quota=False, max_wait_hours=14):
         self.names, self.provider, self.on_switch = list(names), provider, on_switch
+        self.wait_on_quota, self.max_wait = wait_on_quota, max_wait_hours * 3600
+        self.waited = 0
         self.models = {}
         self.i = 0
         self.temperature = temperature
@@ -113,11 +137,39 @@ class FallbackLLM:
             try:
                 return self._model().invoke(messages)
             except Exception as e:
-                if (_is_daily_quota(e) or _is_unavailable(e)) and self.i + 1 < len(self.names):
+                if _is_unavailable(e) and not _is_daily_quota(e) and len(self.names) > 1:
+                    bad = self.names.pop(self.i)                      # modèle inexistant : retiré de la chaîne
+                    self.i %= len(self.names)
+                    print(f"\n↪ {bad} n'existe pas chez le fournisseur -> {self.current}")
+                    if self.on_switch:
+                        self.on_switch(bad, self.current, "model unavailable")
+                    continue
+                too_long = any(k in str(e).lower() for k in ("context length", "context_length", "maximum context",
+                                                             "too many tokens", "reduce the length"))
+                if too_long and self.i + 1 < len(self.names):
+                    # requête trop longue pour ce modèle : on la confie au suivant, sans le retirer de la chaîne
+                    nxt = self.names[self.i + 1]
+                    print(f"\n↪ requête trop longue pour {self.current} -> {nxt} (pour cet appel)")
+                    m = self.models.get(nxt) or make_llm(nxt, self.provider, self.temperature)
+                    self.models[nxt] = m
+                    return m.invoke(messages)
+                if _is_daily_quota(e) and self.i + 1 < len(self.names):
                     old = self.current
                     self.i += 1
-                    print(f"\n↪ {old} indisponible ({'quota' if _is_daily_quota(e) else 'modèle'}) -> {self.current}")
+                    print(f"\n↪ {old} : quota atteint -> {self.current}")
                     if self.on_switch:
                         self.on_switch(old, self.current, str(e)[:200])
+                    continue
+                if _is_daily_quota(e) and self.wait_on_quota and self.waited < self.max_wait:
+                    # tous les modèles saturés : fenêtre glissante -> on attend le délai indiqué puis on reprend
+                    sec = min(max(_retry_after(str(e)), 60) + 30, 3600)
+                    self.waited += sec
+                    t = time.strftime("%H:%M", time.localtime(time.time() + sec))
+                    print(f"\n⏳ quota atteint sur tous les modèles — reprise automatique vers {t} "
+                          f"(attente {sec // 60} min). Garder l'onglet ouvert.")
+                    if self.on_switch:
+                        self.on_switch(self.current, "wait", f"waiting {sec}s for quota")
+                    time.sleep(sec)
+                    self.i = 0
                     continue
                 raise

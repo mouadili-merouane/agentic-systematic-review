@@ -42,3 +42,7 @@ human_in_the_loop: true   # pauses de validation humaine aux étapes critiques
 # Étape texte intégral : si false, un article sans texte intégral en accès libre est évalué sur son
 # résumé (signalé 'abstract_only') ; si true, il est compté 'non récupéré' (PRISMA) et non évalué.
 fulltext_required: false
+
+# Démonstration : extraction / synthèse limitées à un échantillon d'études incluses (quota LLM gratuit).
+# Priorité aux études avec texte intégral (RAG), tirées au hasard (graine fixe -> reproductible). null = toutes.
+max_extraction: 10
