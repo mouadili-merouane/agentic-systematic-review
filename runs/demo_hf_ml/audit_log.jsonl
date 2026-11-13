@@ -63,3 +63,4 @@
 {"ts": "2026-11-13T13:00:59+00:00", "agent": "critic_agent", "action": "critique_done", "n_issues": 4, "revise": false, "evidence_verification_rate": 0.842}
 {"ts": "2026-11-13T13:01:00+00:00", "agent": "synthesis_agent", "action": "report_built", "dir": "/kaggle/working/agentic-systematic-review/runs/demo_hf_ml/report", "files": ["evidence_table.csv", "manuscript.docx", "manuscript.md", "meta_analysis_ready.csv", "prisma_flow.png", "references.bib"], "docx": "manuscript.docx"}
 {"ts": "2026-11-13T13:02:27+00:00", "agent": "human", "action": "review_final_report", "approve": true, "feedback": "ok"}
+{"ts": "2026-11-13T13:36:03+00:00", "agent": "human", "action": "screening_reference_relabelled", "note": "reference by the student assisted by a second LLM (Claude), blinded to pipeline decisions"}

@@ -40,70 +40,16 @@
   },
   "accuracy_screening_vs_human": {
     "n": 30,
-    "tp": 11,
-    "tn": 6,
-    "fp": 4,
-    "fn": 9,
-    "accuracy": 0.567,
-    "sensitivity_recall": 0.55,
-    "specificity": 0.6,
-    "precision": 0.733,
-    "kappa_ai_vs_human": 0.133,
+    "tp": 15,
+    "tn": 12,
+    "fp": 0,
+    "fn": 3,
+    "accuracy": 0.9,
+    "sensitivity_recall": 0.833,
+    "specificity": 1.0,
+    "precision": 1.0,
+    "kappa_ai_vs_human": 0.8,
     "disagreements": [
-      {
-        "id": "f408085bc184",
-        "human": "include",
-        "ai": "exclude",
-        "ai_rationale": "A: The study population consists of pulmonary arterial hypertension patients, not heart failure patients, thus failing the adult HF inclusion criterion. | B: The SVM model targets pulmonary arterial h"
-      },
-      {
-        "id": "acbf12ec1599",
-        "human": "include",
-        "ai": "exclude",
-        "ai_rationale": "A: This is an expert consensus document, not primary research involving a machine‑learning model. | B: This is an expert consensus document (review) rather than original research presenting a machine‑"
-      },
-      {
-        "id": "3cfb79eefe94",
-        "human": "include",
-        "ai": "exclude",
-        "ai_rationale": "A: The study predicts readmission risk in a general EHR cohort, not specifically in heart‑failure patients. | B: The study evaluates readmission risk in a general inpatient cohort, not specifically in"
-      },
-      {
-        "id": "d9961b546d11",
-        "human": "include",
-        "ai": "exclude",
-        "ai_rationale": "A: The population is type 2 diabetes patients, not heart failure patients, violating inclusion criterion I2. | B: Study population consists of patients with type‑2 diabetes; heart failure is only an o"
-      },
-      {
-        "id": "d78c3deccdea",
-        "human": "include",
-        "ai": "exclude",
-        "ai_rationale": "A: The study population consists of patients after aortic valve replacement, not specifically heart failure patients, so it does not meet the heart failure population criterion. | B: The cohort consis"
-      },
-      {
-        "id": "ca04e2d6f04c",
-        "human": "include",
-        "ai": "exclude",
-        "ai_rationale": "A: The study population consists of asymptomatic individuals, not patients diagnosed with heart failure. | B: The model forecasts incident acute heart‑failure admissions based on climate data, not rea"
-      },
-      {
-        "id": "92101fd24fe3",
-        "human": "exclude",
-        "ai": "include",
-        "ai_rationale": "A: The study develops and compares machine‑learning models to predict three‑year mortality in adult heart failure patients, reporting discrimination metrics (C‑statistic, Brier score). | B: Original M"
-      },
-      {
-        "id": "2747680856cc",
-        "human": "exclude",
-        "ai": "include",
-        "ai_rationale": "A: The study develops and validates machine‑learning models (Random Forest, KNN, etc.) to predict all‑cause mortality in chronic heart failure patients and reports performance metrics (AUC). | B: The "
-      },
-      {
-        "id": "03e9b4fd370b",
-        "human": "include",
-        "ai": "exclude",
-        "ai_rationale": "A: Meta‑analysis; not primary ML model development or validation. | B: This is a meta‑analysis of AI studies, not original model development or validation."
-      },
       {
         "id": "fe73a5e8c06c",
         "human": "include",
@@ -111,22 +57,16 @@
         "ai_rationale": "The study cohort includes all adult heart disease patients, not exclusively heart‑failure patients; only a subgroup analysis of HF is reported, so the required HF population criterion is not met."
       },
       {
-        "id": "501d2f7aff10",
-        "human": "exclude",
-        "ai": "include",
-        "ai_rationale": "The abstract reports a machine‑learning model predicting 30‑day readmission in adult CHF patients and provides a quantitative performance metric (F1 score = 0.80)."
-      },
-      {
-        "id": "586b7222f03a",
+        "id": "c4404b1f42f1",
         "human": "include",
         "ai": "exclude",
-        "ai_rationale": "A: This is a systematic review of iron supplementation, not an original ML study, violating exclusion criterion E1. | B: It is an umbrella review of systematic reviews, not original primary research p"
+        "ai_rationale": "The study uses a general 2.4M‑patient cohort not limited to heart‑failure patients, so the population does not consist solely of adult HF patients."
       },
       {
-        "id": "e629099d6bff",
-        "human": "exclude",
-        "ai": "include",
-        "ai_rationale": "The abstract describes a deep‑learning Seq2Seq model predicting mortality in heart failure patients but does not report a quantitative performance metric, leaving uncertainty that will be resolved at "
+        "id": "903e266138a2",
+        "human": "include",
+        "ai": "exclude",
+        "ai_rationale": "The abstract is a conference abstract without full primary data and does not specify readmission or mortality outcomes nor report quantitative performance metrics."
       }
     ]
   },
@@ -144,8 +84,8 @@
     "first_event": "2026-11-12 23:30:19+00:00",
     "last_event": "2026-11-13 13:01:00+00:00",
     "elapsed_hours_wall_clock": 13.51,
-    "active_hours_pipeline": 2.07,
-    "human_interventions": 10,
+    "active_hours_pipeline": 2.32,
+    "human_interventions": 11,
     "human_overrides": 0,
     "model_switches": 2,
     "assumptions_manual_minutes": {
@@ -156,7 +96,7 @@
     },
     "manual_estimate_hours_screening_and_extraction": 43.4,
     "reference_benchmark": "Borah et al., BMJ Open 2017: mean 67.3 weeks to complete and publish a systematic review (195 PROSPERO reviews).",
-    "speedup_vs_manual_estimate": 21.0
+    "speedup_vs_manual_estimate": 18.7
   },
   "counts": {
     "identified_per_source": {

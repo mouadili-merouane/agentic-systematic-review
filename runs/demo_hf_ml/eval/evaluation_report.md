@@ -50,15 +50,15 @@
 | Metric | Value |
 |---|---|
 | n | 30 |
-| tp | 11 |
-| tn | 6 |
-| fp | 4 |
-| fn | 9 |
-| accuracy | 0.567 |
-| sensitivity_recall | 0.55 |
-| specificity | 0.6 |
-| precision | 0.733 |
-| kappa_ai_vs_human | 0.133 |
+| tp | 15 |
+| tn | 12 |
+| fp | 0 |
+| fn | 3 |
+| accuracy | 0.9 |
+| sensitivity_recall | 0.833 |
+| specificity | 1.0 |
+| precision | 1.0 |
+| kappa_ai_vs_human | 0.8 |
 
 ## 4. Extraction accuracy vs human verification
 | Metric | Value |
@@ -76,11 +76,11 @@
 | first_event | 2026-11-12 23:30:19+00:00 |
 | last_event | 2026-11-13 13:01:00+00:00 |
 | elapsed_hours_wall_clock | 13.51 |
-| active_hours_pipeline | 2.07 |
-| human_interventions | 10 |
+| active_hours_pipeline | 2.32 |
+| human_interventions | 11 |
 | human_overrides | 0 |
 | model_switches | 2 |
 | assumptions_manual_minutes | {'per_abstract_per_reviewer': 1.0, 'per_fulltext_per_reviewer': 10.0, 'per_study_extraction': 30.0, 'dual_review': True} |
 | manual_estimate_hours_screening_and_extraction | 43.4 |
 | reference_benchmark | Borah et al., BMJ Open 2017: mean 67.3 weeks to complete and publish a systematic review (195 PROSPERO reviews). |
-| speedup_vs_manual_estimate | 21.0 |
+| speedup_vs_manual_estimate | 18.7 |
