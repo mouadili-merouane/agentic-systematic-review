@@ -1,0 +1,41 @@
+# ============================================================================
+# PRISMA 2020 review protocol TEMPLATE — copy this file, fill it in, run the pipeline.
+#   cp configs/protocol_template.yaml configs/my_review.yaml
+#   (notebook cell 1: PROTOCOL = "configs/my_review.yaml")  or  python run.py --protocol configs/my_review.yaml
+# The Protocol agent turns the draft criteria below into numbered, operational criteria (I1.., E1..),
+# which a human validates before any search is run.
+# ============================================================================
+
+review_id: my_review               # output folder: runs/<review_id>/  (letters, digits, underscores)
+title: "Short title of the review"
+research_question: >
+  One sentence stating the question (ideally PICO: in <population>, does <intervention>,
+  compared with <comparator>, affect <outcomes>?).
+
+pico:                              # PRISMA item 4 — objectives
+  population: "Who is studied (age, condition, setting)"
+  intervention: "Exposure / intervention / index test / model"
+  comparator: "Comparator, or 'none'"
+  outcomes: "Outcomes and effect measures of interest"
+
+study_designs: ["randomised controlled trial", "cohort"]   # designs eligible for inclusion
+
+inclusion:                         # PRISMA item 5 — eligibility criteria (draft, free text)
+  - "Criterion 1"
+  - "Criterion 2"
+exclusion:
+  - "Reviews, editorials, letters, conference abstracts without full results"
+  - "Criterion 2"
+
+years: [2015, 2026]                # publication years (inclusive)
+languages: ["English"]
+
+sources:                           # PRISMA item 6 — information sources (max records retrieved per source)
+  openalex: 100
+  pubmed: 100
+  semantic_scholar: 60
+  arxiv: 25
+
+human_in_the_loop: true            # validation pauses: protocol, search strategy, screening T/A, full text, final report
+fulltext_required: false           # false: no open-access full text -> assessed on abstract (flagged 'abstract_only')
+max_extraction: null               # null = extract all included studies; an integer = reproducible random sample
