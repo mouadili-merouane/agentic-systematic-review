@@ -14,3 +14,11 @@
 {"id": "4fa6f4b6f42b", "retrieved": false, "source": "unpaywall:empty", "n_chars": 0}
 {"id": "d11f295ac9cc", "retrieved": false, "source": "unpaywall:empty", "n_chars": 0}
 {"id": "8f9a86adf45a", "retrieved": false, "source": "unpaywall:empty", "n_chars": 0}
+{"id": "807871f0a0f7", "retrieved": false, "source": "unpaywall:empty", "n_chars": 0}
+{"id": "3e99d85a1224", "retrieved": false, "source": "oa_pdf:empty;unpaywall:empty", "n_chars": 0}
+{"id": "cb8f0f08ec2e", "retrieved": false, "source": "europepmc:empty;oa_pdf:empty;unpaywall:empty", "n_chars": 0}
+{"id": "a8d3bd592b84", "retrieved": true, "source": "arxiv", "n_chars": 50692}
+{"id": "3381f2601511", "retrieved": true, "source": "oa_pdf", "n_chars": 27305}
+{"id": "2ce23c8f578c", "retrieved": false, "source": "europepmc:empty;unpaywall:empty", "n_chars": 0}
+{"id": "0d7d0656f5b3", "retrieved": false, "source": "europepmc:empty;unpaywall:empty", "n_chars": 0}
+{"id": "39cd89cf8298", "retrieved": false, "source": "unpaywall:empty", "n_chars": 0}
