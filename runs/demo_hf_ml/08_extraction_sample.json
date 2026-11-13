@@ -1,0 +1,16 @@
+{
+  "ids": [
+    "744836f8e48f",
+    "8cccefac6109",
+    "9d44a809594c",
+    "c7a75a2647c1",
+    "f1b754445d66",
+    "98592436c077",
+    "663c237b3f19",
+    "501d2f7aff10",
+    "d331d78c3781",
+    "a8d3bd592b84"
+  ],
+  "n_included": 71,
+  "rule": "sample of 10 included studies (seed 42), priority to open-access full texts"
+}

@@ -1,0 +1,287 @@
+[
+  {
+    "rounds": 1,
+    "synthesis_hash": "fddc900596",
+    "checks": {
+      "invalid_citations": [],
+      "uncited_studies": [],
+      "numbers_not_in_table": [
+        0.8,
+        0.9
+      ],
+      "evidence_quotes_total": 38,
+      "evidence_quotes_verified": 32,
+      "evidence_verification_rate": 0.842,
+      "unverified_quotes": [
+        {
+          "id": "8cccefac6109",
+          "field": "sample_size",
+          "quote": "our study included 50,630 patients with 93,552 HF ED visits and hospital readmission events with complete 1-year follow-"
+        },
+        {
+          "id": "8cccefac6109",
+          "field": "best_auc",
+          "quote": "At 1‑year follow‑up ... the AUC‑ROC for the combined endpoint ... was 76.80 (76.1–77.47) versus 69.52 (68.77–70.26)"
+        },
+        {
+          "id": "f1b754445d66",
+          "field": "sample_size",
+          "quote": "The final cohort contains 10 757 HF patients admitted to WA hospitals in 2003–2008."
+        },
+        {
+          "id": "d331d78c3781",
+          "field": "outcome",
+          "quote": "the system effectively and fast predicts four death types: death within 30 days, death within 180 days, death within 365"
+        },
+        {
+          "id": "a8d3bd592b84",
+          "field": "sample_size",
+          "quote": "203 out of the 299 instances ... and the rest of 96 instances represents patients deceased"
+        },
+        {
+          "id": "a8d3bd592b84",
+          "field": "best_auc",
+          "quote": "c-index of 0.714"
+        }
+      ]
+    },
+    "review": {
+      "issues": [
+        {
+          "severity": "high",
+          "section": "results_performance",
+          "issue": "The draft claims the deep learning system outperformed logistic regression, but the evidence table provides no comparator AUC for logistic regression for that study.",
+          "fix": "Remove the superiority claim or state that no direct comparator was reported for the deep learning system."
+        },
+        {
+          "severity": "high",
+          "section": "abstract",
+          "issue": "Numeric values 0.8 and 0.9 appear in the text (e.g., “above 0.90”) but are not present in the evidence table, violating the automated check.",
+          "fix": "Replace unsupported numbers with values that are documented in the evidence table or qualify the statement as a general observation."
+        },
+        {
+          "severity": "medium",
+          "section": "results_performance",
+          "issue": "The reported median AUC of 0.628 mixes percent‑based AUCs (e.g., 76.8) with decimal AUCs, making the median calculation unclear and potentially inaccurate.",
+          "fix": "Re‑calculate the median using a consistent unit (all decimals) or describe the range without providing a median."
+        },
+        {
+          "severity": "medium",
+          "section": "methods (missing)",
+          "issue": "Key PRISMA elements are absent: no description of search strategy, databases, dates, inclusion/exclusion criteria, data extraction process, registration, or protocol reference.",
+          "fix": "Add a Methods section that details the systematic search, registration (e.g., PROSPERO), selection process, data extraction, and synthesis methods."
+        },
+        {
+          "severity": "medium",
+          "section": "results / discussion",
+          "issue": "Heterogeneity is mentioned qualitatively but no statistical assessment (e.g., I², τ²) is reported, which is required for systematic reviews.",
+          "fix": "Include quantitative heterogeneity metrics or explicitly state that they could not be calculated due to the narrative synthesis."
+        },
+        {
+          "severity": "low",
+          "section": "results_characteristics, results_performance",
+          "issue": "Citation formatting inconsistencies (e.g., spaces inside brackets like \"[ d331d78c3781]\") may hinder traceability.",
+          "fix": "Standardize citations to the format \"[id]\" without leading or trailing spaces."
+        }
+      ],
+      "overall_assessment": "The draft presents a coherent narrative of ML performance in heart‑failure prediction but contains factual inaccuracies (unsupported comparator claims and numeric values) and omits essential PRISMA methodological details. Addressing these high‑severity errors and adding missing methods and heterogeneity information will bring the review into compliance with PRISMA 2020 standards."
+    },
+    "revision_requested": true
+  },
+  {
+    "rounds": 2,
+    "synthesis_hash": "9f63efb7a9",
+    "checks": {
+      "invalid_citations": [],
+      "uncited_studies": [],
+      "numbers_not_in_table": [],
+      "evidence_quotes_total": 38,
+      "evidence_quotes_verified": 32,
+      "evidence_verification_rate": 0.842,
+      "unverified_quotes": [
+        {
+          "id": "8cccefac6109",
+          "field": "sample_size",
+          "quote": "our study included 50,630 patients with 93,552 HF ED visits and hospital readmission events with complete 1-year follow-"
+        },
+        {
+          "id": "8cccefac6109",
+          "field": "best_auc",
+          "quote": "At 1‑year follow‑up ... the AUC‑ROC for the combined endpoint ... was 76.80 (76.1–77.47) versus 69.52 (68.77–70.26)"
+        },
+        {
+          "id": "f1b754445d66",
+          "field": "sample_size",
+          "quote": "The final cohort contains 10 757 HF patients admitted to WA hospitals in 2003–2008."
+        },
+        {
+          "id": "d331d78c3781",
+          "field": "outcome",
+          "quote": "the system effectively and fast predicts four death types: death within 30 days, death within 180 days, death within 365"
+        },
+        {
+          "id": "a8d3bd592b84",
+          "field": "sample_size",
+          "quote": "203 out of the 299 instances ... and the rest of 96 instances represents patients deceased"
+        },
+        {
+          "id": "a8d3bd592b84",
+          "field": "best_auc",
+          "quote": "c-index of 0.714"
+        }
+      ]
+    },
+    "review": {
+      "issues": [
+        {
+          "severity": "high",
+          "section": "abstract",
+          "issue": "The reported range of AUCs for the best ML models (0.533 to 0.9228) is inaccurate; 0.533 is the AUC of the logistic regression comparator, not an ML model.",
+          "fix": "Replace the lower bound with the smallest reported ML AUC (0.602) or state the correct range based on ML models only."
+        },
+        {
+          "severity": "high",
+          "section": "results_performance",
+          "issue": "The sentence \"the lowest was 0.533 for logistic regression in a comparative analysis\" incorrectly describes a comparator AUC as the lowest ML model performance.",
+          "fix": "Rephrase to indicate that 0.533 is the comparator AUC, and report the lowest ML AUC (e.g., 0.602 from the support vector machine study)."
+        },
+        {
+          "severity": "medium",
+          "section": "methods",
+          "issue": "PRISMA-required details of the search strategy (exact search strings, date limits, language restrictions) are missing.",
+          "fix": "Add a concise description of the search strings used for each database, the date range covered, and any language or publication type filters applied."
+        },
+        {
+          "severity": "medium",
+          "section": "methods",
+          "issue": "The review does not include a study selection flow diagram (PRISMA flowchart) summarising records identified, screened, excluded, and included.",
+          "fix": "Insert a PRISMA flow diagram with numbers for each stage of the selection process."
+        },
+        {
+          "severity": "medium",
+          "section": "risk_of_bias",
+          "issue": "The process for applying PROBAST (domains assessed, number of reviewers, consensus procedure) is not described.",
+          "fix": "Provide a brief methods paragraph detailing how PROBAST was applied, including reviewer numbers and resolution of disagreements."
+        },
+        {
+          "severity": "medium",
+          "section": "heterogeneity",
+          "issue": "No formal assessment of heterogeneity (e.g., I², τ²) is reported, despite mentioning it in the narrative.",
+          "fix": "State that heterogeneity could not be quantified due to the narrative synthesis, or report I² if calculated; otherwise clarify why it was not estimated."
+        },
+        {
+          "severity": "low",
+          "section": "results_performance",
+          "issue": "AUC values are presented inconsistently (decimal vs. percent) for CatBoost (76.8 %).",
+          "fix": "Standardise all AUCs to decimal format (e.g., 0.768) for consistency."
+        }
+      ],
+      "overall_assessment": "The draft contains factual inaccuracies regarding the reported range of machine‑learning AUCs and mislabels a comparator AUC as an ML performance metric, which are high‑severity errors. Additionally, several PRISMA elements such as detailed search strategy, a study‑selection flow diagram, and a clear description of the risk‑of‑bias assessment are missing or insufficiently reported."
+    },
+    "revision_requested": true
+  },
+  {
+    "rounds": 2,
+    "synthesis_hash": "9c3418d14c",
+    "checks": {
+      "invalid_citations": [],
+      "uncited_studies": [
+        "501d2f7aff10",
+        "a8d3bd592b84"
+      ],
+      "numbers_not_in_table": [
+        0.52,
+        0.77
+      ],
+      "evidence_quotes_total": 38,
+      "evidence_quotes_verified": 32,
+      "evidence_verification_rate": 0.842,
+      "unverified_quotes": [
+        {
+          "id": "8cccefac6109",
+          "field": "sample_size",
+          "quote": "our study included 50,630 patients with 93,552 HF ED visits and hospital readmission events with complete 1-year follow-"
+        },
+        {
+          "id": "8cccefac6109",
+          "field": "best_auc",
+          "quote": "At 1‑year follow‑up ... the AUC‑ROC for the combined endpoint ... was 76.80 (76.1–77.47) versus 69.52 (68.77–70.26)"
+        },
+        {
+          "id": "f1b754445d66",
+          "field": "sample_size",
+          "quote": "The final cohort contains 10 757 HF patients admitted to WA hospitals in 2003–2008."
+        },
+        {
+          "id": "d331d78c3781",
+          "field": "outcome",
+          "quote": "the system effectively and fast predicts four death types: death within 30 days, death within 180 days, death within 365"
+        },
+        {
+          "id": "a8d3bd592b84",
+          "field": "sample_size",
+          "quote": "203 out of the 299 instances ... and the rest of 96 instances represents patients deceased"
+        },
+        {
+          "id": "a8d3bd592b84",
+          "field": "best_auc",
+          "quote": "c-index of 0.714"
+        }
+      ]
+    },
+    "review": {
+      "issues": [
+        {
+          "severity": "high",
+          "section": "Results/Performance",
+          "issue": "Citations for studies 501d2f7aff10 and a8d3bd592b84 are missing throughout the manuscript.",
+          "fix": "Add appropriate citations for these two studies wherever their findings are discussed."
+        },
+        {
+          "severity": "high",
+          "section": "Results/Performance",
+          "issue": "Numeric values 0.52 and 0.77 are reported but do not appear in the evidence table; they are derived from percentages (52% and 77%) not provided as decimals.",
+          "fix": "Report the values exactly as they appear in the table (e.g., 0.524, 0.768) or cite the correct source."
+        },
+        {
+          "severity": "high",
+          "section": "Results/Performance",
+          "issue": "Comparator AUC of 0.524 for logistic regression is unsupported; the table lists 0.624 for that study.",
+          "fix": "Correct the comparator AUC to 0.624 or remove the inaccurate statement."
+        },
+        {
+          "severity": "high",
+          "section": "Results/Performance",
+          "issue": "Comparator AUC of 0.6952 for logistic regression is not in the table; the table provides 69.52 (percent).",
+          "fix": "Present the comparator AUC as 0.6952 only if the source reports it in that format, otherwise use the reported value or clarify the conversion."
+        },
+        {
+          "severity": "high",
+          "section": "Results/Performance",
+          "issue": "Claims of comparator AUCs for the deep learning system (d331d78c3781) and PP cloglog GAM (98592436c077) are unsupported because comparator AUCs are not reported in the table.",
+          "fix": "Either locate and cite the missing comparator AUCs from the original articles or remove the comparative statements."
+        },
+        {
+          "severity": "high",
+          "section": "Results/Performance",
+          "issue": "Statement that ML models outperformed conventional approaches in five studies is inaccurate; only four studies have documented superiority.",
+          "fix": "Revise the count to reflect the correct number of studies with demonstrated superiority."
+        },
+        {
+          "severity": "high",
+          "section": "Risk of Bias",
+          "issue": "Risk‑of‑bias summary misclassifies study categories: only one low‑risk study exists, 663c237b3f19 is high risk not unclear, and high‑risk studies are double‑counted.",
+          "fix": "Update the risk‑of‑bias table to accurately reflect the ROB assessments for each study."
+        },
+        {
+          "severity": "medium",
+          "section": "Methods",
+          "issue": "No mention of a registered protocol (e.g., PROSPERO) or registration number, which is required by PRISMA.",
+          "fix": "Add a statement indicating whether the review was registered and provide the registration details."
+        }
+      ],
+      "overall_assessment": "The draft contains several high‑severity factual errors and unsupported quantitative claims that conflict with the provided evidence table, as well as misreporting of risk‑of‑bias classifications. Addressing citation gaps, correcting inaccurate numbers, and aligning the bias summary with the source data are essential before the manuscript can meet PRISMA standards."
+    },
+    "revision_requested": false
+  }
+]
