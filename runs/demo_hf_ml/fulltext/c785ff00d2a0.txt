@@ -1,0 +1,5368 @@
+Trajectory-guided discharge stratification for heart failure using short-context electronic
+health record sequence modeling
+Falk Dippela, Yinan Yub,g,∗, Annika Rosengrenc,d, Martin Lindgrenc,d, Christina E. Lundbergd,e, Erik Aertsb, Martin Adielsf, Helen
+Sjölandc,d,g
+aSahlgrenska University Hospital, Diagnosvägen 11, Gothenburg, 416 85, Sweden
+bDepartment of Computer Science and Engineering, Chalmers University of Technology and University of Gothenburg, Rännvägen 6B, Gothenburg, 412 96, Sweden
+cDepartment of Molecular and Clinical Medicine, Sahlgrenska Academy, University of Gothenburg, Bruna stråket 16, Gothenburg, 413 45, Sweden
+dDepartment of Medicine, Geriatrics and Emergency Medicine, Sahlgrenska University Hospital, Diagnosvägen 11, Gothenburg, 416 85, Sweden
+eDepartment of Food and Nutrition, and Sport Science, Faculty of Education, University of Gothenburg, Box 300, Gothenburg, 405 30, Sweden
+fSchool of Public Health and Community Medicine, Institute of Medicine, University of Gothenburg, Box 453, Gothenburg, 405 30, Sweden
+gCenter of Digital Health, Sahlgrenska University Hospital, Gothenburg, 413 45, Sweden
+Abstract
+Purpose: Heart failure (HF) discharge planning depends on identifying patients at risk of deterioration or death, yet accurate
+prediction from routinely collected electronic health records (EHRs) remains challenging. Methods: We develop trajectory-guided
+discharge stratification for heart failure (TGDS-HF), a methodology that reads the patient in-hospital trajectory of diagnoses, vital
+signs, laboratories, medications, and procedures end-to-end with a compact short-context autoregressive Transformer, and uses it to
+stratify one-year risks of clinical instability (a rehospitalization phenotype) or mortality for discharge care. We instantiate TGDS-HF
+on a Swedish HF cohort (N = 42,820) to predict one-year clinical instability or mortality at the initial HF diagnosis in-hospital.
+TGDS-HF has three components: category-level tokenization, recency-weighted temporal representation, and sequence model
+configuration. We run ablations on these components to show the effectiveness of TGDS-HF. Results: Against traditional eXtreme
+gradient boosting machine (XGBoost) and bidirectional encoder representations from Transformers (BERT)-based EHR sequencemodeling baselines, TGDS-HF (Llama backbone) achieved area under the precision-recall curves (AUPRCs) with 95% confidence
+intervals of 0.555 (0.535–0.575) and 0.574 (0.550–0.599) across the two tasks at the method default, with robust calibration. A
+task-specific refinement using daily aggregation of repeated continuous events improves the mortality task to 0.582 (0.558–0.608).
+Further, TGDS-HF maintains strong performance under reduced clinical concept availability and limited training data. Conclusion:
+Combined predictions of instability and mortality from TGDS-HF may support personalized discharge planning, ranging from
+follow-up in primary care to specialist-led management and, when appropriate, palliative care.
+Keywords: Electronic health record; Transformer; Mamba; Heart failure; Mortality prediction; Readmission prediction
+1. Introduction
+Heart failure (HF) is a chronic, progressive condition with
+frequent rehospitalizations and high mortality [1]. During a HF
+hospitalization, clinicians face a critical decision: what level of
+follow-up does this patient need? Patients identified as high risk
+for clinical instability (a phenotype of readmission to hospital)
+may benefit from specialized monitoring, whereas those at high
+risk of mortality may require tailored intensive care programs
+or palliative care referral. Conversely, patients at low risk may
+be appropriately managed through routine primary care followup, including annual clinical assessments. Such decisions are
+crucial for both appropriate care delivery and healthcare cost
+control. Currently, this risk stratification relies largely on clinical judgment, since alternatives such as simple scoring systems
+tend to perform poorly for decision making [2, 3]. Accurate,
+individualized predictions of one-year clinical instability and
+∗Corresponding author: yinan@chalmers.se
+mortality using artificial intelligence (AI) systems could transform discharge planning into a structured, data-driven process
+and decision support. However, unreliable predictions place considerable demands and cost on the healthcare system and lead to
+suboptimal patient care decisions, motivating the development
+of precise AI systems.
+Patient health information is commonly stored and collected
+in longitudinal electronic health records (EHRs) by healthcare
+providers, capturing a patient trajectory through irregular clinical
+visits including hospitalizations. An EHR comprises structured
+data, e.g. recorded vital signs or assessed diagnoses, and unstructured data, e.g. clinical text notes or medical images [4]. From a
+signal processing perspective, EHRs can be understood as multimodal, irregularly sampled time series [5]. In recent years, the
+application of AI on EHRs has gained significant research interest due to the growing availability of EHRs and advances in AI
+[6, 7]. The field of natural language processing, in particular, has
+highlighted its efficiency to learn patient representations from
+EHRs [7, 8, 9]. Transformers [10], the backbone architecture of
+most large language models, have emerged in several healthcare
+arXiv:2511.16839v4 [cs.LG] 5 Aug 2026
+
+applications, primarily clinical prediction tasks for structured
+EHRs [11], information extraction from clinical free-text notes
+[12] and medical imaging [13].
+Traditional deep learning (DL) approaches for EHR sequence
+modeling utilized convolutional neural networks [14] or recurrent neural networks (RNNs) [15]. However, RNNs struggle
+with long-range dependencies present in EHRs because of vanishing gradients [16]. Although RNN variants like long shortterm memory (LSTM) [17] reduce the gradient problem, its
+complexity scales poorly [18]. Transformers, primarily BERT
+(bidirectional encoder representations from Transformers) [19],
+have demonstrated their ability to capture long-range and interconcept dependencies inherent in EHRs efficiently through the attention mechanism [10], surpassing RNNs [20, 21] and LSTMs
+[21, 22, 23].
+While efficient, Transformers face quadratic training time
+and memory complexity as self-attention learns pairwise contextual representations between all input tokens [10]. The performance of Transformers also scales with the dataset size (tokens) and model size (parameters) [24]. Advanced Transformers (Transformers++) like Llama [25] incorporate architectural
+improvements, such as rotatory positional embeddings [26] or
+pre-normalization, enabling them to handle longer sequences.
+Attention-free designs like Mamba [27] achieve linear scaling
+by leveraging state space models (SSMs) equipped with contextaware selection mechanism and hardware-aware computation
+[28]. Due to its competitive performance with Transformer++,
+Mamba has found widespread applications in DL fields, including language models [29] or computer vision [30]. For
+longer EHR sequences, Mamba has been shown to outperform
+advanced Transformers [31, 32].
+Most previous works focus on general-purpose heterogeneous
+cohorts [20, 32, 33]. In contrast, the present analysis focuses
+on EHRs from a Swedish cohort with HF, a well-defined and
+validated condition [34]. We argue that disease-specific models
+tailored around defined diagnostic conditions are more likely to
+translate into clinical practice given that the availability and diversity of clinical concepts remain local or lack standardization.
+HF is characterized by relatively few hospitalizations during the
+early stage, whereas healthcare utilization and hospitalizations
+increase substantially during advanced disease [35, 36]. At the
+end stage, deterioration is already clinically apparent, limiting
+the value of prediction, whereas early prediction can still support
+intervention and care planning. Therefore, we focus on the initial
+HF diagnosis in-hospital as a clinically meaningful early-stage
+milestone. Since these patient trajectories have comparatively
+short longitudinal histories, we tailor our study to short-context
+settings (≤512 tokens) and tiny- to medium-sized models (2–35
+M parameters), reflecting a clinically realistic model deployment
+scenario with moderate computational requirements. Although
+long-context settings capture more historical information, for
+this specific setting we assume that their additional computational cost may not be justified.
+Our contributions summarize as follows:
+• Trajectory-guided discharge stratification for heart failure (TGDS-HF). We present TGDS-HF, an EHR-based
+sequence modeling framework for one-year prediction of
+clinical instability and mortality following the initial HF
+diagnosis. Rather than introducing a new sequence architecture or representation, TGDS-HF provides a unified
+formulation of compact end-to-end patient trajectories from
+structured in-hospital EHR, integrating category-level clinical concept tokenization, recency-aware temporal representation through short context, and autoregressive sequence
+modeling with a Llama backbone trained on a next token
+prediction (NTP) objective.
+• Systematic investigation of sequence modeling design
+choices. We provide a systematic study of key design
+choices that are often confounded in prior EHR sequence
+modeling approaches. This analysis characterizes which
+components contribute effectively to longitudinal HF trajectory modeling. Specifically, we investigate the contribution
+of tokenization granularity, temporal representation strategies, and sequence modeling configurations, including six
+model architectures (e.g., BERT, Llama, Mamba), model
+size and context length.
+• TGDS-HF improves risk prediction over established
+EHR baselines. On two one-year prediction tasks (clinical instability and mortality) in a Swedish HF cohort
+(N = 42,820), TGDS-HF outperforms a well-established
+BERT baseline, with improved calibration. The ablation
+study shows that the selected design performs consistently,
+with a tiny Llama variant already surpassing larger BERTbased baselines, suggesting that gains arise from architecture choice rather than model scale alone. Internal hospital
+validation strategies further demonstrate that TGDS-HF
+performs robust across independent clinical sites.
+• Translation into four discharge care pathways. Joint
+predictions of clinical instability and mortality partition patients into four risk-based discharge pathways, providing an
+interpretable foundation for future clinical decision-support
+applications.
+2. Related work
+Transformers, particularly BERT [19], have been widely applied to EHRs for predictive tasks, as demonstrated by models such as BEHRT [20], BRLTM [21], and Med-BERT [33].
+CEHR-BERT [22] and ExBEHRT [37] were pretrained on general patient populations and subsequently fine-tuned to predict
+30-day readmission in HF subcohorts. Similarly, Med-BERT
+[33] was finetuned on patients with both diabetes and HF for
+disease prediction and Antikainen et al. [38] predicted 6-month
+mortality in cardiac patients using Transformers. By incrementally optimizing BEHRT and applying techniques similar to
+those in Transformer++, CORE-BEHRT [39] identified substantial performance gains from enhanced data representations
+by incorporating medications and temporal encoding of patient
+age. CEHR-BERT [22] enhanced the temporal representation of
+EHR by introducing an artificial time token [ATT] which stores
+the time gap between two consecutive visits. In CEHR-BERT,
+2
+
+different patient representations were compared highlighting
+the importance of the [ATT] token, whereas Wornow et al.’s
+[32] findings indicate a model-dependent benefit of [ATT]. To
+avoid sequence truncation by the context length, ExBEHRT [37]
+stacked clinical concepts vertically through additional embeddings. Similarly, Hi-BEHRT [40] introduced a slicing window
+mechanism to capture long-term dependencies between each
+visit segment. In G-BERT [41], the learned ontology of medical concepts were improved through BERT embeddings combined with a graph neural network. Foresight [42] forecasts
+temporally-aware future clinical concepts within a patient trajectory leveraging structured and unstructured EHRs. BEHRT
+was integrated with observational causal inference techniques to
+estimate treatment effects, such as risk ratios [43].
+Recent EHR modeling works have shifted towards architectures beyond BERT, often surpassing it at longer context lengths
+[23, 31, 32, 38]. Antikainen et al. [38] demonstrated that XLNet
+[44] is a competitive alternative to BERT capturing more positive cases. TransformEHR [23] introduced a new pretraining
+objective by forecasting all diagnoses in a single visit using an
+encoder–decoder framework. EHRMamba [31] paired Mamba
+with multi-task learning and outperformed Transformers at a
+context length of 2048. However, the study did not investigate
+Transformer++ or Mamba at varying context lengths. Wornow
+et al. [32] evaluated sequence models on various benchmark
+prediction tasks and EHR properties, such as token repetition
+and visit irregularity, showing that Mamba is more robust at
+longer context lengths beyond 4k tokens but achieves a reduced
+discriminative performance at 1k tokens compared to Transformers++.
+3. Methods
+3.1. Heart failure cohort
+A HF cohort was defined consisting of patients ≥18 years old
+at their initial HF diagnosis in-hospital, identified by qualifying
+International Classification of Diseases 10th revision (ICD-10)
+codes (I110, I130, I132, any I42 or any I50 in any position). The
+study period for diagnostic inclusion spanned between January 1,
+2015 and December 31, 2022, resulting in N = 42,820 patients.
+To include one-year prediction outcomes (Section 3.3) for all
+patients, the observation period ended December 31, 2023. The
+patient data was extracted from EHRs covering all emergency inhospital and public specialized out-patient care from six hospital
+sites within the Region Västra Götaland (VGR) of Sweden (total
+population 1.8 million). Supplementary Table S1 shows the
+collected clinical concepts including demographics (age, sex,
+body mass index (BMI)), diagnoses (DX), vital signs (VIT),
+laboratories (LAB), medications (MED) and procedures (PRO).
+While DX and MED were assessed by international classification
+systems, ICD-10 and Anatomical Therapeutic Chemical (ATC)
+respectively, PRO were assessed by the Swedish Classification
+of Care Measures (KVÅ1) system.
+1https://www.socialstyrelsen.se/statistik-och-data/
+klassifikationer-och-koder/kva/
+3.2. TGDS-HF: Trajectory-guided discharge stratification for
+heart failure
+Structured longitudinal EHRs from real-world hospitalized
+HF patients are inherently irregular multivariate time series. Patients have diverse sets of clinical concepts recorded at irregular
+time points and frequency, varying across patients and over the
+course of individual patient trajectories and ranging from sparse
+to dense event trajectories. These EHR characteristics make
+sequence models a natural choice for learning latent patient embeddings. We develop TGDS-HF, a methodology that reads the
+patient’s recent in-hospital trajectory of diagnoses, vital signs,
+laboratories, medications, and procedures end-to-end with a
+compact autoregressive sequence model, to stratify the complementary one-year risks of clinical instability and mortality that
+drive HF discharge care. The overarching research question is:
+RQ How to design a methodology that reads the recent inhospital trajectory of a patient at their first HF diagnosis,
+stratified for one-year risks of clinical instability and mortality at discharge?
+The EHRs of a patient can be formulated as a sequence of clinical events e j = (cj, vj, tj, xj), where j denotes the event index,
+c j the clinical concept, v j the visit index, t j the irregular event
+time point and x j the concept-specific event value. TGDS-HF
+(Table 1) is defined by three explicit design choices: a categorylevel tokenization (Section 3.2.1), a recency-weighted temporal
+representation bounded by a short context (Section 3.2.2), and
+a Llama sequence model trained on NTP (Section 3.2.3). Two
+separate models with the same configuration produce the predictions for clinical instability and mortality, whose joint outcome
+stratifies patients into four discharge care pathways (Section 3.3
+and Table 3).
+3.2.1. Tokenization (chosen: Vb=10,i=3)
+TGDS-HF tokenizes each event value x j, conditioned on its
+concept cj, into a shared vocabulary via τ : (c j, xj) →ˆxj. Standardized categorical codes (ICD-10, ATC, KVÅ) are represented
+at the category level (i = 3 for ICD-10), and continuous numerical values (VIT, LAB, MED amounts) are discretized into
+b = 10 bins. This yields the vocabulary Vb=10,i=3 (Supplementary Table S5), which keeps the embedding space compact while
+preserving clinically meaningful resolution. Ablation A1 (Section 4.2.1) varies b ∈{5, 10} and i ∈{3, 4} to verify that finer or
+coarser tokenization does not improve over the chosen design.
+3.2.2. Temporal representation (chosen: Ht≤C with C = 512)
+Patient-specific clinical events are sorted chronologically
+from the earliest to the latest timestamp to form a patient sequence E = (e1, . . . , eL), where L denotes the sequence length,
+with [ATT] tokens inserted to mark inter-visit gaps. TGDSHF bounds the sequence right-sided by a short context length
+C = 512 tokens (Ht≤C), with C ≤L discarding earlier events.
+This recency-weighted design emphasizes events that are most
+predictive at discharge while remaining computationally compact. Ablation A2 (Section 4.2.2) explores both shorter observation horizons (truncation at t = 0, t ≤1y, t ≤3y) and temporal
+3
+
+Table 1: The three components of TGDS-HF, the chosen design for each component, and the alternatives explored by ablation
+(Section 4.2).
+Id
+Component
+Chosen design (TGDS-HF)
+Alternatives explored by ablation
+1
+Tokenization
+Category-level ICD-10 codes (i =
+3); 10-bin discretization of VIT,
+LAB, MED (Vb=10,i=3)
+Finer/coarser bins (b ∈{5, 10}) and code levels (i ∈{3, 4})
+(Section 4.2.1)
+2
+Temporal representation
+Chronologically ordered events with
+[ATT] visit-gap tokens, right-sided
+cutoff bounded by a short context
+C = 512 (Ht≤C)
+Truncation horizons (Ht=0, Ht≤1y, Ht≤3y) and daily/bi-daily
+aggregation (Ht≤C,w=1d, Ht≤C,w=2d) (Section 4.2.2)
+3
+Sequence model
+Llama with NTP objective, Medium
+size, C = 512
+MLM (BERT, ModernBERT), PLM (XLNet), NTP
+(Mamba, Mamba2); model size ∈{Tiny, Small, Medium};
+context C ∈{128, 256, 512} (Section 4.2.3)
+aggregation that compresses repeated continuous events into
+daily or bi-daily summaries (Ht≤C,w=1d, Ht≤C,w=2d). Daily aggregation is reported as a task-specific refinement that improves
+mortality predictions rather than as part of the TGDS-HF default.
+3.2.3. Sequence model (chosen: Llama with NTP)
+The patient sequence is represented as an embedding vector E ∈RC×dm with E = Eˆx + Ev + Et, where dm denotes
+the embedding size, Eˆx the same-sized embeddings of the tokenized values, Ev of the visit indices, and Et of the timestamps.
+TGDS-HF uses a Llama backbone [25] (rotary positional embeddings, RMSNorm pre-normalization, SwiGLU activations)
+pretrained autoregressively with an NTP objective. The Medium
+configuration (hidden dimension dm = 512, 6 hidden layers, 8
+attention heads) is the default. The autoregressive backbone with
+learnable weights θ maps the embedded sequence E to a latent
+patient representation z = fθ(E). Because clinically relevant signals in HF are concentrated within recent activity, short-context
+modeling fits the task; Ablation A3 (Section 4.2.3) verifies these
+design choices by comparing representative architectures (BERT,
+XLNet, ModernBERT, Llama, Mamba, Mamba2), their associated pretraining paradigms (masked language modeling (MLM),
+permutation language modeling (PLM), NTP), model sizes, and
+context lengths.
+3.3. Clinical prediction tasks
+A classifier with learnable weights ϕ predicts an outcome ˆy
+for a given patient representation z via ˆy = gϕ(z) aligned with
+clinical prediction task derived by domain experts. Patient trajectories can be defined at different entry points or endpoints,
+influencing clinical decision-making. For example, patient trajectories centered around a first time diagnostic index event
+provide different predictive insights and clinical implications
+than late-stage patient trajectories with progressed diseases.
+Two binary classification tasks were evaluated in the HF cohort at the initial HF diagnosis in-hospital, which defines the
+patient trajectory used for prediction (Fig 1a). The trajectory
+contains historical patient data up to and including the index
+hospitalization for HF. For both tasks, the prediction window
+was within one year after discharge from hospital following
+the initial HF diagnosis. The first task T1 predicted clinical instability (prevalence PT1 = 39.7%), a phenotype of unplanned
+readmission to hospital; the second task T2 predicted mortality
+(PT2 = 24.8%). At the initial HF admission, the demographic
+profile (Supplementary Table S3) of the HF cohort (N = 42,820,
+45.4% women) was median 80 (interquartile range (IQR) 72,
+87) years old, with a median of 153 (71, 324) recorded events
+per patient trajectory and 2 (1, 3) hospitalizations.
+Clinical instability was defined using a rule-based approach
+as rehospitalization for a period of at least 48 hours that met one
+of the following criteria (Supplementary Table S2): i) admission
+to a clinical service unit relevant to HF care (e.g., cardiology
+or internal medicine), or ii) admission in a surgical service unit
+where a patient underwent a surgical procedure relevant to HF
+determined by selected procedure codes (e.g., implantation of
+a cardiac device). The minimum duration was set to 48 hours
+to exclude hospitalizations which were less severe or possibly
+planned (e.g., routine checkups, precautionary in-hospital observation or planned interventions not caused by worsening of
+HF).
+3.4. Patient sequence representation
+To construct a patient sequence, hospitalizations with at least
+one diagnosis were chronologically ordered so that the latest
+event occurred right-sided. Consecutive hospitalizations less
+than 24 hours apart were merged into one. Hospitalizations
+that led to in-hospital death were excluded as not relevant for
+the outcomes. Out-patient encounters were excluded because
+they indicate low clinical severity. The events from all patient
+sequences were tokenized and mapped to a shared baseline
+vocabulary. ICD-10 and KVÅ were registered at the third codespecific hierarchical level. Related KVÅ codes with a digit in
+the third position were standardized by replacing the digit with
+an uncommon shared character. New MED concepts were constructed by concatenation of the ATC code (level 4), the route of
+administration (e.g., intravenous or oral) and the amount of medication. All VIT, LAB and MED concepts were independently
+discretized into 10 quantile bins. No unit normalization was
+applied, as all continuous measurements were recorded using
+standardized units, while MED were encoded as administration
+route-specific concepts, ensuring consistent units. Missing BMI
+values were median imputed, as BMI was part of the demographic embeddings and not a concept of the patient trajectory.
+Fig. 1b shows the embeddings of an example patient sequence.
+Each time-irregular visit contains a varying number and types
+4
+
+Fig. 1: (a) Overview of the clinical prediction tasks. Given a simplified, chronologically ordered patient sequence, separate sequence
+models were trained to predict at discharge: one-year clinical instability and one-year mortality, both following the initial HF
+diagnosis in-hospital. (b) Corresponding input sequence representation after the initial HF diagnosis trajectory highlighting the
+aggregated embeddings of tokenized concepts, concept token types, demographics (age, sex, BMI), time of events, visit numbers,
+alternating visit segments and absolute token positions.
+of clinical concepts. The sequence length is determined by
+the context length C, hence, events that have occurred earlier
+might be discarded. The embeddings are an aggregation of the
+same-sized individual embeddings of the concepts and token
+types to contextualize the events, demographic triplet (age, sex,
+body mass index), passed time in weeks given a reference date,
+visit number of the respective hospitalizations, visit segments to
+differentiate between consecutive hospitalizations and absolute
+position within the sequence. Following previous works [22,
+31], the tokenization includes special tokens like [CLS] and
+[PAD] to mark sequence boundaries, visit-specific tokens [VS]
+and [VE] to signal start and end of hospitalizations, and the
+artificial time token [ATT] to indicate temporal gaps between
+consecutive hospitalizations (e.g., [M2] for a two-month gap).
+The register token [REG] can be interpreted as a storage for
+global information after each encounter [45].
+3.5. Implementation
+This work investigated six sequence models across three
+architecture classes: (i) Transformers (BERT [19], XLNet
+[44]), (ii) Transformers++ (ModernBERT [46] abbreviated as
+MBERT, Llama [25]), and (iii) Mambas (Mamba [27], Mamba2
+[47]). Their associated learning objectives are: MLM (BERT,
+MBERT), PLM (XLNet), NTP (Llama, Mamba, Mamba2). To
+compare with traditional machine learning, the commonly used
+eXtreme gradient boosting machine (XGBoost) [48] was trained
+on the frequency of clinical concepts within a patient sequence
+[22, 31, 37]. Supplementary Section S2.1 describes the architectural variations across the sequence models while Supplementary
+Section S2.2 provides a theoretical comparison between Transformer and Mamba. The implementation details, including hardware and software versions, data split, and training procedure,
+are outlined in Supplementary Section S2.3.
+The prevalence of outcomes in the HF cohort (Supplementary Table S3) is low, e.g., the one-year mortality following the
+initial HF diagnosis is 24.8%. Therefore, the area under the
+precision-recall curve (AUPRC) was reported as primary metric
+for discriminative evaluation instead of the area under the receiver operating characteristic curve (AUROC) to better capture
+the model’s ability to identify true positives in the presence of
+class imbalance. The calibration capability was assessed using
+the Brier score which measures the mean squared error between
+predicted probabilities and actual outcomes. All metrics were
+reported with 95% confidence intervals (CIs), computed via
+bootstrapping (1000 iterations).
+4. Experiments and results
+We first report the main result addressing the overarching
+research question (RQ) (TGDS-HF vs. baselines), followed
+5
+
+by the ablation study (RQ1–RQ4) that perturbs one component
+of TGDS-HF at a time. Unless otherwise specified, all models
+were trained at the TGDS-HF defaults: vocabulary Vb=10,i=3,
+cutoff temporal representation Ht≤C, context length C = 512,
+and model size S = Medium.
+As baselines, we used the
+classical XGBoost on bag-of-concept frequencies [22, 31, 37]
+and a BERT backbone motivated by the strong performance
+of Transformer-based EHR sequence models such as BEHRT,
+Med-BERT, and CEHR-BERT. We further included ModernBERT (MBERT), an improved BERT architecture, and XLNet,
+a common BERT alternative, as baselines.
+4.1. Main results
+Table 2 reports AUPRC for TGDS-HF (Llama, NTP, Ht≤C,
+Medium) and the baselines; Supplementary Table S10 repeats
+the comparison for AUROC and Brier score. TGDS-HF achieves
+AUPRC of 0.555 (T1) and 0.574 (T2), improving over the trivial
+XGBoost baseline by +0.036 and +0.049 AUPRC, over MBERT,
+the strongest advanced baseline, by +0.021 and +0.017 AUPRC,
+with confidence intervals shifting upward across both tasks (Table 2). Calibration (Brier score) is similarly improved (Supplementary Table S10). A task-specific refinement of TGDS-HF using daily aggregation (Ht≤C,w=1d) further improves the mortality
+task to AUPRC 0.582 (T2); this refinement is part of Ablation A2
+rather than the method default. Tiny variants of Llama and Mambas already surpass the Medium BERT/XLNet/MBERT baselines on both tasks while requiring substantially fewer model
+parameters and giga multiply-add operations (GMACs), so the
+gain attributable to TGDS-HF cannot be reduced to model size
+alone.
+4.2. Ablation study
+The ablation study perturbs one component of TGDS-HF at
+a time, holding the rest at the default (Llama, NTP, Vb=10,i=3,
+Ht≤C, C = 512, Medium). The four sub-questions guiding the
+study are:
+RQ1 How effective is the chosen tokenization Vb=10,i=3 compared
+to finer or coarser alternatives across b ∈{5, 10} and i ∈
+{3, 4}?
+RQ2 How effective is the chosen temporal representation Ht≤C
+compared to truncation and aggregation alternatives?
+RQ3 How does the sequence-model configuration, including
+backbone, model size, and context length, shape the effectiveness on short-context patient trajectories?
+RQ4 How gracefully does TGDS-HF degrade under reduced
+clinical concept availability and limited training data?
+Visualizations of AUROC and Brier score along with all numerical metrics are reported in Supplementary Section S3.
+4.2.1. A1: Tokenization (RQ1)
+The granularity of the shared event vocabulary is perturbed
+in two ways: the discretization resolution of VIT, LAB and
+MED varies with b ∈{5, 10}, and the hierarchical ICD-10 code
+level varies with i ∈{3, 4}. The category-level encoding (i = 3)
+keeps the embedding space compact while preserving clinically
+meaningful resolution [37, 39]; the diagnosis level (i = 4, e.g.
+I509) provides more precise assessments by potentially identifying detailed phenotypes within the HF cohort, at the cost of a
+larger vocabulary. Supplementary Table S5 reports the resulting
+vocabulary sizes.
+Fig. 2 reports AUPRC for the four combinations, ordered
+by increasing unique-token count. For Llama (the TGDS-HF
+backbone), the chosen Vb=10,i=3 is at or above the best for T1
+across all four vocabularies and competitive on T2; the finest
+vocabulary Vb=10,i=4 does not improve over Vb=10,i=3, consistent
+with the conjecture that finer encodings add noise rather than
+predictive power. Mamba2 shows a similar pattern, while BERT,
+XLNet, and MBERT show no generalizable trend, with XLNet
+being the most sensitive to the tokenization choice. Supplementary Fig. S1 confirms the same ordering on AUROC and Brier
+score. The chosen Vb=10,i=3 in TGDS-HF is therefore supported
+by the ablation.
+0.48
+0.50
+0.52
+0.54
+0.56
+0.58
+0.60
+AUPRC
+T1: One-year clinical instability after initial HF diagnosis
+Vb = 5, i = 3
+Vb = 10, i = 3
+Vb = 5, i = 4
+Vb = 10, i = 4
+0.48
+0.50
+0.52
+0.54
+0.56
+0.58
+0.60
+AUPRC
+T2: One-year mortality after initial HF diagnosis
+95% CI
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+Fig. 2: Ablation of the vocabulary V with increasing resolution
+from lowest (left) to highest (right). All modifications are evaluated by bootstrapped AUPRC (↑) for Medium-sized sequence
+models and C = 512. Gray background highlights shared setup
+across all ablations.
+4.2.2. A2: Temporal representation (RQ2)
+The temporal representation of the patient history H is perturbed by truncation and aggregation before tokenization, with
+vocabulary Vb=10,i=3 and C = 512 held fixed. The chosen cutoff
+Ht≤C is the right-sided patient history bounded by C, where prior
+events are discarded. Truncation (Ht=0, Ht≤1y, Ht≤3y) limits the
+look-back to the most recent hospitalization or additionally includes {1, 3} years of prior records, motivated by if a systematic
+6
+
+Table 2: Main result: TGDS-HF (Llama, NTP, Ht≤C, Medium) vs. baselines (XGBoost as trivial baseline; BERT, XLNet, MBERT as
+advanced baselines), and additional TGDS-HF variants (Tiny size, task-specific daily aggregation for mortality). All entries use
+C = 512. Best AUPRC (95% CI) per task in bold, second-best underlined. Para.: Model parameters in M.
+Model
+Objective
+Temporal
+Model size
+Para.
+GMACs
+T1
+T2
+Baselines
+XGBoost
+—
+Cutoff
+—
+—
+—
+0.519 (0.497–0.540)
+0.525 (0.500–0.550)
+BERT
+MLM
+Cutoff
+Medium
+24.1
+96.2
+0.535 (0.516–0.556)
+0.540 (0.516–0.564)
+XLNet
+PLM
+Cutoff
+Medium
+28.4
+62.1
+0.529 (0.508–0.549)
+0.558 (0.533–0.584)
+MBERT
+MLM
+Cutoff
+Medium
+32.2
+114.2
+0.534 (0.513–0.556)
+0.557 (0.531–0.583)
+TGDS-HF (proposed)
+TGDS-HF (Llama)
+NTP
+Cutoff
+Medium
+34.4
+113.3
+0.555 (0.535–0.575)
+0.574 (0.550–0.599)
+Alternative NTP backbones (ablation A3)
+Mamba
+NTP
+Cutoff
+Medium
+25.5
+81.7
+0.543 (0.523–0.565)
+0.559 (0.534–0.585)
+Mamba2
+NTP
+Cutoff
+Medium
+26.6
+79.9
+0.542 (0.521–0.562)
+0.572 (0.547–0.596)
+Task-specific refinement: daily aggregation for the mortality task (T2)
+TGDS-HF (Llama, agg.)
+NTP
+Agg. (1d)
+Medium
+34.4
+113.3
+0.549 (0.529–0.570)
+0.582 (0.558–0.608)
+Mamba (agg.)
+NTP
+Agg. (1d)
+Medium
+25.5
+81.7
+0.543 (0.523–0.564)
+0.571 (0.547–0.596)
+Tiny variants of TGDS-HF already surpass Medium baselines
+TGDS-HF (Llama, Tiny)
+NTP
+Cutoff
+Tiny
+12.9
+25.1
+0.550 (0.529–0.570)
+0.566 (0.540–0.592)
+Mamba (Tiny)
+NTP
+Cutoff
+Tiny
+3.3
+3.8
+0.546 (0.526–0.566)
+0.561 (0.534–0.587)
+design can outperform Ht≤C. A short truncation horizon prioritizes recent events, whereas a long one can capture temporal
+dependencies. Aggregation (Ht≤C,w=1d, Ht≤C,w=2d) compresses repeated continuous events (VIT, LAB, MED) by averaging within
+w ∈{1, 2} hospitalization days; a longer w reduces the number of
+tokens but extends the prior history covered. Although heuristic,
+the choices for w were guided by clinical specialists to represent
+adjacent temporal resolutions for in-hospital care, balancing the
+preservation of clinically meaningful trajectories against excessive granularity. With w = 1 day-to-day changes in patient status
+are preserved, whereas w = 2 trades temporal resolutions against
+additional historical coverage. Larger w would compress ongoing events substantially, potentially missing clinically relevant
+changes. Supplementary Table S6 summarizes the temporal
+perturbations.
+Fig. 3 reports AUPRC for these temporal modifications. For
+Llama (the TGDS-HF backbone), the chosen Ht≤C is competitive across both tasks: T1 instability is best modeled by the cutoff, where Llama with Ht≤C matches or exceeds all truncations
+and aggregations; for the T2 mortality task, daily aggregation
+(Ht≤C,w=1d) provides an additional improvement, which we therefore report as a task-specific refinement of TGDS-HF rather
+than as part of the default. Truncations show model-specific
+gains in BERT (Ht≤3y) and MBERT (Ht≤1y) but do not match
+Ht≤C in Llama for T1. Mamba2 prefers cutoff, while Mamba
+benefits from daily aggregation in mortality. The ablation thus
+supports the cutoff choice in TGDS-HF as a single defensible default, with daily aggregation acknowledged as the recommended
+refinement when mortality is the primary target.
+4.2.3. A3: Sequence model, size, and context (RQ3)
+Three axes are perturbed jointly: architecture (BERT, XLNet, ModernBERT, Llama, Mamba, Mamba2) together with
+its associated learning objective (MLM, PLM, NTP), context length C ∈{128, 256, 512}, and architecture size S ∈
+{Tiny, Small, Medium} (abbreviated T, S, M). We focus on short
+contexts (C ≤512) as the realistic clinical operating regime.
+0.48
+0.50
+0.52
+0.54
+0.56
+0.58
+0.60
+0.62
+AUPRC
+T1: One-year clinical instability after initial HF diagnosis
+Ht = 0
+Ht
+1y
+Ht
+3y
+Ht
+C
+Ht
+C, w = 1d
+Ht
+C, w = 2d
+0.48
+0.50
+0.52
+0.54
+0.56
+0.58
+0.60
+0.62
+AUPRC
+T2: One-year mortality after initial HF diagnosis
+95% CI
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+Fig. 3: Ablation of the patient history H with increasing historical records from the latest available hospitalization (left) to a
+prolonged context (right). All modifications are evaluated by
+bootstrapped AUPRC (↑) using Medium-sized sequence models
+and C = 512. Gray background highlights shared setup across
+all ablations.
+Different architectures exhibit distinct characteristics for C, reflecting their original design goals, from shorter-context models
+(e.g., BERT) to long-range sequence modeling (e.g., Mamba).
+The vocabulary Vb=10,i=3 is held fixed. Architecture size S is
+controlled by the hidden dimension dm, feed-forward dimension
+d f , number of hidden layers nm, and number of attention heads
+nh (Transformers) or Mamba blocks nb (Mambas), with hyperparameters in Supplementary Table S8 as well as model parameter
+counts and GMACs in Supplementary Table S9. Supplementary
+Table S7 shows how C shapes the input sequence. To assess practical deployability, profiling results for all model configurations
+7
+
+are reported in Supplementary Table S26, which summarizes
+total training time, and Supplementary Fig. S6, which presents
+inference runtime and peak GPU memory consumption.
+Fig. 4 reports AUPRC for all combinations. The TGDS-HF
+default configuration (Llama, C = 512, Medium) achieves the
+best AUPRC on both T1 and T2, further validating the Llama
+backbone choice. The ablation also shows that the gain does not
+come from model size: T-Llama at C = 128 already surpasses
+the best M-BERT/XLNet/MBERT baselines at any C (except
+M-MBERT at C = 256 in T2) across both tasks, and T-Llama
+outperforms any Mambas for C ≤256 (except M-Mamba2 at
+C = 256 in T2). Extending C helps more than increasing S at
+the Tiny scale (T-Llama/T-Mambas at C = 256 beat their C =
+128 counterparts), and S-Llama/S-Mambas at C = 256 already
+approach the Medium variants, suggesting that performance
+gains stem primarily from data quantity (extended C) as opposed
+to representational capacity (increased S ). For deployment, the
+Medium default is a conservative choice and that Small variants
+are a viable lightweight version of TGDS-HF. MBERT shows
+parameter inefficiency in smaller configurations, with only MMBERT consistently beating BERT and XLNet.
+0.48
+0.50
+0.52
+0.54
+0.56
+0.58
+0.60
+AUPRC
+T1 with C = 128
+T1 with C = 256
+T1 with C = 512
+D
+T
+S
+M
+Model size
+0.48
+0.50
+0.52
+0.54
+0.56
+0.58
+0.60
+AUPRC
+T2 with C = 128
+D
+T
+S
+M
+Model size
+T2 with C = 256
+D
+T
+S
+M
+Model size
+T2 with C = 512
+95% CI
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+Fig. 4: Ablation of the model configuration through the context length C and model size. Within each C sequence modes
+are sorted by Tiny, Small, and Medium configuration, and compared to XGBoost’s Default configuration. All modifications
+are evaluated by bootstrapped AUPRC (↑). Gray background
+highlights shared setup across all ablations.
+4.2.4. A4: Robustness to data availability (RQ4)
+Two robustness studies assess how gracefully TGDS-HF degrades under reduced data availability. Both are run at the TGDSHF defaults (C = 512, Medium, Vb=10,i=3); for the concept
+augmentation, concept-specific vocabularies are extracted from
+Vb=10,i=3.
+Concept augmentation. We vary the available clinical concept
+groups by incrementally augmenting DX with VIT, LAB, MED,
+and PRO (Fig. 5). The order DX, VIT, LAB, MED, PRO reflects
+the accessibility and resource cost of EHR concepts: DX and
+VIT are routinely recorded at low cost, whereas LAB, MED and
+PRO require integration from external data sources. Concepts
+were augmented only within the pre-defined admissions forming
+the patient sequence, without introducing additional admissions
+or extending the temporal information beyond C. Llama (the
+TGDS-HF backbone) holds the best AUPRC across nearly all
+task and concept combinations. Adding all five concept groups
+benefits all models on T2, while DX+VIT+LAB+MED is competitive on T1, suggesting that PRO contributes primarily noise
+on the instability task. TGDS-HF therefore degrades gracefully
+as concept availability is reduced; in deployments with fewer
+recorded concept groups, the dominant signal is preserved.
+0.44
+0.46
+0.48
+0.50
+0.52
+0.54
+0.56
+0.58
+0.60
+AUPRC
+T1: One-year clinical instability after initial HF diagnosis
+DX
+DX+VIT
+DX+VIT
++LAB
+DX+VIT
++LAB+MED
+ALL
+0.44
+0.46
+0.48
+0.50
+0.52
+0.54
+0.56
+0.58
+0.60
+AUPRC
+T2: One-year mortality after initial HF diagnosis
+95% CI
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+Fig. 5: Incremental augmentation of DX with clinical concepts
+until all, including PRO, are added. All modifications are evaluated by bootstrapped AUPRC (↑) using Medium-sized sequence
+models and C = 512. Gray background highlights shared setup
+across all ablations.
+Training-set size. We vary the training-set fraction across
+{25%, 50%, 75%, 100%} of the development set (Fig. 6). Most
+sequence models at 50% training data already outperform XGBoost trained on 100%. Llama at 75% data surpasses other
+models trained on 100% on both tasks, and Llama converges between 75% and 100% on T2, indicating that TGDS-HF reaches
+its capacity with substantially less data than the baselines require. Mamba2 plateaus from 50% on T1, while Mamba benefits
+more from the full training set. TGDS-HF therefore degrades
+gracefully under reduced training data and remains the strongest
+predictor in the data-limited regime.
+4.3. Internal hospital validation
+4.3.1. Validation strategies
+To validate the robustness of our methodology, we studied
+TGDS-HF in two complementary internal hospital validation
+strategies against other design choices as the HF cohort consists
+of EHRs from six regional hospitals. Public datasets often differ
+substantially from the characteristics of the HF cohort, such as
+8
+
+0.44
+0.46
+0.48
+0.50
+0.52
+0.54
+0.56
+0.58
+0.60
+AUPRC
+T1: One-year clinical instability after initial HF diagnosis
+25
+50
+75
+100
+Size of training data in %
+0.44
+0.46
+0.48
+0.50
+0.52
+0.54
+0.56
+0.58
+0.60
+AUPRC
+T2: One-year mortality after initial HF diagnosis
+95% CI
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+Fig. 6: Ablation of different training sizes evaluated by bootstrapped AUPRC (↑) using Medium-sized sequence models and
+C = 512. Gray background highlights shared setup across all
+ablations.
+demographics, patient trajectories, or treatment strategies, and
+underlying EHR infrastructures. Consequently, internal hospital
+validation provides a more clinically relevant assessment. First,
+in single-hospital validation (SHV) models were trained and
+evaluated using data from a single hospital to assess the predictive power in individual clinical sites. Second, in cross-hospital
+validation (CHV) models were trained on four hospitals (H1–
+H4) and evaluated on two held-out hospitals (H5 and H6) to
+analyze the robustness across independent clinical sites. Patients
+were assigned to hospitals based on the location of their first HF
+diagnosis in-hospital. Sites H5 and H6 were chosen as held-out
+sites to represent a small and medium-sized hospital. Supplementary Table S27 presents the descriptive statistics stratified
+by hospital for both strategies.
+For SHV, the architecture of TGDS-HF was varied to retrospectively investigate the architecture choice (C = 512,
+S = Medium, Vb=10,i=3). For CHV, a heuristic subset of design choices was additionally evaluated due to computational
+constraints. The selection was guided by the principles of (i) covering all sequence architectures and (ii) evaluating each major
+ablation in at least two independent configurations. Within these
+constraints, the specific architecture-ablation pairings where
+chosen pragmatically rather than being optimized. To reduce selection bias, the subset was not restricted to the best-performing
+setups identified in the full-cohort experiments.
+4.3.2. Validation performance
+In SHV, TGDS-HF (Llama) achieves the best AUPRC on
+average for the clinical instability prediction and is among the
+best sequence models behind XGBoost for the mortality prediction (Supplementary Table S28). The SHV highlights that
+XGBoost tends to outperform sequence models in hospitals with
+few patients (e.g, H1 or H5), consistent with sequence models
+benefiting from larger training cohorts.
+Fig. 7 shows the AUPRC values using the CHV strategy for
+selected setups, with detailed comparison provided in Supplementary Table S29. Overall, all configurations demonstrated
+consistent performance across internal (H1–H4) and held-out
+sites (H5 and H6), suggesting robustness across clinical sites.
+Specifically, TGDS-HF and its variants remain among the topperforming configurations for both tasks across the three hospital
+test sets. Although BERT or Mamba2 with one-day aggregation
+perform better than TGDS-HF on T1 for internal sites, they do
+not maintain this result in T2, further highlighting the clinical
+value of TGDS-HF. BERT and XLNet setups perform worst
+with high AUPRC variability, while MBERT ones show taskdependent differences. Mamba configurations achieve consistent
+moderate scores regardless of design compared to the larger variability observed in Mamba2.
+5. Discussion
+5.1. Clinical implications
+HF is characterized by impaired cardiac function and reduced quality of life [1], with prevalence increasing steeply
+with age and frequently coexisting with, and causally interacting
+with, other cardiometabolic disorders and comorbidities [49, 50],
+rather than originating from single clinical event. Clinical instability and mortality represent two major adverse outcomes
+after the initial HF hospitalization. Their early identification
+may enable timely interventions, improve patient’s quality of
+life and optimize the allocation of healthcare resources. TGDSHF leverages longitudinal EHR sequences to capture temporal
+disease progression for accurate predictions, which provides a
+more comprehensive patient representation than static features.
+Furthermore, routinely collected EHR data can be utilized with
+low infrastructure requirements compared to other modalities,
+such as medical imaging or clinical text.
+Although related, clinical instability and mortality capture
+complementary aspects of HF progression. Clinical instability reflects the risk of recurrent decompensation and healthcare
+utilization, whereas mortality reflects the progression toward advanced disease. Combined, these predictions provide a comprehensive characterization of patient risk and enable differentiated
+care pathways. TGDS-HF is intended to be a decision-support
+tool that complements and not replaces clinical judgment. The
+predicted risks may support individualized follow-up planning,
+prioritization of healthcare resources, and the selection of appropriate discharge care pathways (Table 3).
+Unlike most studies that trained models on general-purpose
+cohorts [20, 39, 31, 32] or subsequently fine-tuned for diseasespecific subcohorts [21, 33, 37], TGDS-HF is trained directly on
+a disease-specific cohort and captures meaningful relationships
+for the two clinically relevant prediction tasks. From a realworld perspective where access to general-purpose cohorts can
+be limited, disease-specific modeling is justified as HF-specific
+trajectories, clinical concepts and comorbidity patterns may be
+underrepresented in general-purpose cohorts.
+9
+
+0.48
+0.50
+0.52
+0.54
+0.56
+0.58
+AUPRC
+Mamba2 (H6)
+Mamba (H6)
+Llama (H6)
+MBERT (H6)
+XLNet (H6)
+BERT (H6)
+Mamba2 (H5)
+Mamba (H5)
+Llama (H5)
+MBERT (H5)
+XLNet (H5)
+BERT (H5)
+Mamba2 (H1-H4)
+Mamba (H1-H4)
+Llama (H1-H4)
+MBERT (H1-H4)
+XLNet (H1-H4)
+BERT (H1-H4)
+Model architecture
+T1: One-year clinical instability after initial HF diagnosis
+0.48
+0.50
+0.52
+0.54
+0.56
+0.58
+AUPRC
+T2: One-year mortality after initial HF diagnosis
+Tokenization strategy
+Coarse
+Fine
+Temporal preprocessing
+Truncation (1y)
+Aggregation (1d)
+Model configuration
+Tiny (C = 128)
+Small (C = 256)
+Medium (C = 512)
+TGDS-HF
+Fig. 7: The AUPRC (↑) performance of different model configurations in the cross-hospital validation strategy, where only hospitals
+H1–H4 are part of the training set and hospitals H5 and H6 are held-out test sets. Unless stated otherwise, all models were trained
+with size Medium, C = 512 and Vb=10,i=3.
+Table 3: Clinical decision-making pathways based on the respective predicted one-year outcomes after the initial HF diagnosis
+in-hospital.
+Clinical instability
+prediction
+Mortality
+prediction
+Decision of care pathway
+Implication of care plan management
+Stable
+Survived
+Primary care
+The patient undergoes standard treatment in primary care. Emphasis is placed
+on early detection of potential deterioration through vital sign assessment
+and management of chronic conditions.
+Unstable
+Survived
+Specialized care
+The patient is referred to specialized care for targeted intervention and close
+monitoring. Emphasis is placed on mitigating risk of complications caused
+by potential acute deterioration through advanced diagnostics and timely
+therapeutic adjustments.
+Stable
+Deceased
+Regular home care
+Although the patient is predicted to be clinically stable, the mortality prediction suggests underlying disease progression. Enrollment in a regular home
+care program focuses on symptom control, continuity of care, and quality of
+life improvement.
+Unstable
+Deceased
+Intensive home care
+The patient is identified as high risk. Enrollment in an intensive home care
+program focuses on symptom relief, prevention of avoidable crises, and
+quality of life improvement.
+5.2. Key findings
+The overarching RQ is answered affirmatively: TGDS-HF
+outperforms both the trivial XGBoost baseline and the advanced
+baselines (BERT, XLNet, ModernBERT) across both one-year
+tasks, with overlapping or improved calibration. Each of its three
+design choices is independently supported by the corresponding
+ablation. The category-level tokenization Vb=10,i=3 (Ablation A1)
+matches or exceeds finer or coarser vocabularies. The recencyweighted cutoff Ht≤C (Ablation A2) is competitive across tasks,
+with daily aggregation reported as a task-specific refinement for
+mortality. The NTP-Llama backbone at C = 512 and Medium
+size (Ablation A3) outperforms MLM- and PLM-based architectures on both T1 and T2; the Tiny variant already surpasses
+larger MLM/PLM baselines, so the gain is attributable to the
+design rather than to model size. Finally, TGDS-HF degrades
+gracefully under reduced concept availability and training data
+(Ablation A4).
+5.3. Why each TGDS-HF design choice holds up
+Tokenization (A1, Fig. 2). The chosen Vb=10,i=3 is supported
+across both tasks: the finest vocabulary Vb=10,i=4 performs worst,
+consistent with prior reports that more granular diagnosis and
+10
+
+medication codes contribute only minor gains [39] and indicating
+that excessive resolution introduces noise rather than predictive
+power. BERT and MBERT show poor generalization across
+tokenizations, whereas XLNet is most sensitive to the choice.
+Temporal representation (A2, Fig. 3). The chosen Ht≤C is
+competitive across both tasks. For the T2 mortality task, daily
+aggregation (Ht≤C,w=1d) compresses repeated continuous events
+into semantically meaningful summaries and provides an additional gain, suggesting temporal dependencies are more important than event quantity. TGDS-HF reports this as a task-specific
+refinement: clinicians targeting mortality stratification should
+adopt Ht≤C,w=1d, while Ht≤C remains the unified default.
+Sequence model, size, and context (A3, Fig. 4). The chosen Llama backbone is supported by the architecture ablation. Tiny Llama and Mambas consistently outperform the best
+BERT/XLNet/MBERT configurations at matched C, so the gain
+is driven by the contextual learning capability of the NTP objective, not by model size. The autoregressive token generation
+may better capture the progression of patient trajectories, as
+sequence coherence learned through NTP can preserve clinically
+relevant risk signals. Among the NTP models, advanced attention mechanisms appear to learn representations more efficiently
+than state-space formulations in short-context settings (≤512
+tokens), consistent with prior observation that Llama performs
+better than Mamba in similar shorter C ranges [32]. The Small
+variant at C = 256 approaches the Medium default, offering a
+lightweight deployment option for TGDS-HF. Combined, these
+findings support that Llama is effective for short-context EHR
+settings.
+Robustness (A4, Figs. 5–6). TGDS-HF degrades gracefully
+along both data axes: concept diversity dominates training-set
+size (Llama at 75% with all concepts beats 100% with fewer
+concepts), and adding PRO is not always beneficial, possibly
+because the constructed standardization of KVÅ codes fails to
+account for hierarchical levels and could be improved with semantic similarity based on code descriptions. TGDS-HF maintains its lead with 25% less data than the advanced baselines
+need to match their full-data performance. Further, these findings highlight the importance of diverse clinical concepts and
+appropriate architectural choice rather than a large dataset.
+5.4. Robustness across hospital settings
+TGDS-HF demonstrated robustness across both SHV (Supplementary Table S28) and CHV (Fig. 7) strategies, aligning with
+the main findings observed in the full-cohort study (Table 2).
+The CHV analysis further suggests that differences between configurations are primarily architecture-dependent and secondarily
+configuration-specific, with greater variability found in architectures trained on objectives other than NTP. Consequently,
+selecting a sequence architecture appropriate for the clinical cohort and prediction tasks appears more important than extensive
+optimization of individual design choices.
+5.5. Limitations and future work
+There are several limitations in our work. Firstly, TGDS-HF
+was developed and evaluated on a Swedish HF cohort for a specific clinical milestone with internal hospital but no external
+validation; although HF represents a heterogeneous population,
+the absolute performance may not transfer to other healthcare
+systems. Secondly, laboratories and medications were selectively curated for HF, which potentially limits the model from
+learning out-of-domain knowledge. Alternative patient embeddings, such as the pre-concatenation of demographic information
+into the sequence instead of separate embeddings, were not explored. Thirdly, TGDS-HF establishes a predictive foundation
+for future decision-support applications; however, its clinical
+utility and implementation into clinical workflows have not yet
+been evaluated. Prospective studies involving clinicians and realworld workflow integration are required to determine whether
+TGDS-HF predictions can improve clinical decision-making.
+Future work should fuse TGDS-HF token sequences with multimodal EHR signals, such as cardiac images or clinical text
+notes, to explore additional performance benefits. The inclusion
+of information for medical disciplines and out-of-hospital visits
+could prospectively enrich the trajectory representation used in
+TGDS-HF.
+6. Conclusion
+We presented TGDS-HF, a methodology for trajectory-guided
+discharge stratification in HF that transforms structured EHRs
+into compact, recency-weighted patient sequences modeled by
+a short-context Llama backbone. On a Swedish HF cohort
+(N = 42,820), TGDS-HF outperforms a trivial XGBoost baseline, advanced baselines such as the well-known BERT architecture for EHR sequence modeling, and Mamba backbones
+on the two one-year prediction tasks (clinical instability and
+mortality after the initial HF diagnosis), with robust calibration.
+Component-by-component ablations support each design choice
+in TGDS-HF: category-level tokenization, the recency-weighted
+short-context representation, and the Llama backbone are each
+independently validated. Tiny variants already surpass larger
+advanced baselines, highlighting the importance of an NTP objective over model size. TGDS-HF also degrades gracefully
+under reduced clinical-concept availability and training data.
+The joint clinical instability and mortality predictions provide
+a framework for stratifying patients into four clinically meaningful risk profiles rather than standalone risk scores, which
+may support future discharge planning and personalized care
+pathways pending prospective clinical evaluation.
+CRediT authorship contribution statement
+Falk Dippel: Writing – review & editing, Writing – original
+draft, Visualization, Validation, Software, Project administration, Methodology, Investigation, Formal analysis, Data curation,
+Conceptualization. Yinan Yu: Writing – review & editing, Visualization, Validation, Supervision, Resources, Project administration, Methodology, Funding acquisition, Formal analysis, Conceptualization. Annika Rosengren: Writing – review & editing,
+Resources, Conceptualization. Martin Lindgren: Writing –
+review & editing, Conceptualization. Christina E. Lundberg:
+Writing – review & editing, Conceptualization. Erik Aerts:
+11
+
+Writing – review & editing, Conceptualization. Martin Adiels:
+Writing – review & editing, Formal analysis, Conceptualization.
+Helen Sjöland: Writing – review & editing, Validation, Supervision, Resources, Project administration, Methodology, Funding
+acquisition, Conceptualization.
+Ethics statement
+The study conforms to the principles outlined in the Declaration of Helsinki. The study was approved and informed consent
+from the study participants was waived by the Swedish Ethical Review Authority, through the Ethics Committee of Umeå
+University (EPN reference: DNR 2021-02786).
+Declaration of competing interest
+The authors declare no competing interest.
+Acknowledgments
+This work was supported by grants from the Swedish state under an agreement concerning research and education of doctors
+(ALFGBG-991470 [to H.S.]), the Swedish Research Council
+(VRREG 2023-06421 [to H.S.]), Forte – the Swedish Research
+Council for Health, Working Life and Welfare (DNR 202400277 [to H.S.]), and Vinnova Advanced Digitalization (DNR
+2024-01446 [to Y.Y. and H.S.]). The authors would like to thank
+the VGR AI platform for providing the essential GPU resources
+to conduct the experiments.
+Data availability
+The data underlying this paper are not available for sharing
+due to participant privacy and ethical restrictions.
+Code availability
+The code used in this paper is available at https://github.
+com/dipfa/tgds-hf.
+Supplementary data
+Supplementary material related to this article can be found
+attached.
+References
+[1] A. Groenewegen, F. H. Rutten, A. Mosterd, A. W. Hoes,
+Epidemiology of heart failure, European journal of heart
+failure 22 (8) (2020) 1342–1356. doi:10.1002/ejhf.
+1858.
+[2] M. Canepa, C. Fonseca, O. Chioncel, C. Laroche, M. G.
+Crespo-Leiro, A. J. Coats, A. Mebazaa, M. F. Piepoli,
+L. Tavazzi, A. P. Maggioni, et al., Performance of prognostic risk scores in chronic heart failure patients enrolled
+in the european society of cardiology heart failure longterm registry, JACC: Heart Failure 6 (6) (2018) 452–462.
+doi:10.1016/j.jchf.2018.02.001.
+[3] O. Miro, X. Rossello, E. Platz, J. Masip, D. M. Gualandro, W. F. Peacock, S. Price, L. Cullen, S. DiSomma,
+M. T. de Oliveira Jr, et al., Risk stratification scores
+for patients with acute heart failure in the emergency
+department: A systematic review, European Heart Journal. Acute Cardiovascular Care 9 (5) (2020) 375–398.
+doi:10.1177/2048872620930889.
+[4] K. Häyrinen, K. Saranto, P. Nykänen, Definition, structure, content, use and impacts of electronic health records:
+a review of the research literature, International journal
+of medical informatics 77 (5) (2008) 291–304.
+doi:
+10.1016/j.ijmedinf.2007.09.001.
+[5] P. Yadav, M. Steinbach, V. Kumar, G. Simon, Mining
+electronic health records (ehrs) a survey, ACM Computing Surveys (CSUR) 50 (6) (2018) 1–40. doi:10.1145/
+3127881.
+[6] E. Kim, S. M. Rubinstein, K. T. Nead, A. P. Wojcieszynski, P. E. Gabriel, J. L. Warner, The evolving use of electronic health records (ehr) for research, Seminars in radiation oncology 29 (4) (2019) 354–361. doi:10.1016/j.
+semradonc.2019.05.010.
+[7] Y. Juhn, H. Liu, Artificial intelligence approaches using
+natural language processing to advance ehr-based clinical research, Journal of Allergy and Clinical Immunology
+145 (2) (2020) 463–469. doi:10.1016/j.jaci.2019.
+12.897.
+[8] E. Steinberg, K. Jung, J. A. Fries, C. K. Corbin, S. R.
+Pfohl, N. H. Shah, Language models are an effective representation learning technique for electronic health record
+data, Journal of biomedical informatics 113 (2021) 103637.
+doi:10.1016/j.jbi.2020.103637.
+[9] M. Wornow, Y. Xu, R. Thapa, B. Patel, E. Steinberg,
+S. Fleming, M. A. Pfeffer, J. Fries, N. H. Shah, The shaky
+foundations of large language models and foundation models for electronic health records, npj digital medicine 6 (1)
+(2023) 135. doi:10.1038/s41746-023-00879-8.
+[10] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones,
+A. N. Gomez, Ł. Kaiser, I. Polosukhin, Attention is all you
+need, Advances in neural information processing systems
+30 (2017).
+URL
+https://dl.acm.org/doi/10.5555/3295222.
+3295349
+[11] S. Nerella, S. Bandyopadhyay, J. Zhang, M. Contreras,
+S. Siegel, A. Bumin, B. Silva, J. Sena, B. Shickel, A. Bihorac, et al., Transformers and large language models in
+12
+
+healthcare: A review, Artificial intelligence in medicine
+(2024) 102900doi:10.1016/j.artmed.2024.102900.
+[12] K. S. Kalyan, A. Rajasekharan, S. Sangeetha, Ammu: a survey of transformer-based biomedical pretrained language
+models, Journal of biomedical informatics 126 (2022)
+103982. doi:10.1016/j.jbi.2021.103982.
+[13] F. Shamshad, S. Khan, S. W. Zamir, M. H. Khan, M. Hayat,
+F. S. Khan, H. Fu, Transformers in medical imaging: A
+survey, Medical image analysis 88 (2023) 102802. doi:
+10.1016/j.media.2023.102802.
+[14] P. Nguyen, T. Tran, N. Wickramasinghe, S. Venkatesh,
+Deepr: a convolutional net for medical records, IEEE journal of biomedical and health informatics 21 (1) (2016)
+22–30. doi:https://doi.org/10.1109/JBHI.2016.
+2633963.
+[15] E. Choi, M. T. Bahadori, J. Sun, J. Kulas, A. Schuetz,
+W. Stewart, Retain: An interpretable predictive model for
+healthcare using reverse time attention mechanism, Advances in neural information processing systems 29 (2016).
+URL
+https://dl.acm.org/doi/10.5555/3157382.
+3157490
+[16] Y. Bengio, P. Simard, P. Frasconi, Learning long-term
+dependencies with gradient descent is difficult, IEEE
+transactions on neural networks 5 (2) (1994) 157–166.
+doi:10.1109/72.279181.
+[17] S. Hochreiter, J. Schmidhuber, Long short-term memory,
+Neural computation 9 (8) (1997) 1735–1780. doi:10.
+1162/neco.1997.9.8.1735.
+[18] S. M. Al-Selwi, M. F. Hassan, S. J. Abdulkadir, A. Muneer,
+E. H. Sumiea, A. Alqushaibi, M. G. Ragab, Rnnlstm: From applications to modeling techniques and beyond—systematic review, Journal of King Saud UniversityComputer and Information Sciences 36 (5) (2024) 102068.
+doi:10.1016/j.jksuci.2024.102068.
+[19] J. Devlin, M.-W. Chang, K. Lee, K. Toutanova, Bert: Pretraining of deep bidirectional transformers for language
+understanding, in: Proceedings of the 2019 conference of
+the North American chapter of the association for computational linguistics: human language technologies, volume 1 (long and short papers), 2019, pp. 4171–4186.
+doi:10.18653/v1/N19-1423.
+[20] Y. Li, S. Rao, J. R. A. Solares, A. Hassaine, R. Ramakrishnan, D. Canoy, Y. Zhu, K. Rahimi, G. SalimiKhorshidi, Behrt: transformer for electronic health records,
+Scientific reports 10 (1) (2020) 7155.
+doi:10.1038/
+s41598-020-62922-y.
+[21] Y. Meng, W. Speier, M. K. Ong, C. W. Arnold, Bidirectional representation learning from transformers using
+multimodal electronic health record data to predict depression, IEEE journal of biomedical and health informatics 25 (8) (2021) 3121–3129. doi:10.1109/JBHI.2021.
+3063721.
+[22] C. Pang, X. Jiang, K. S. Kalluri, M. Spotnitz, R. Chen,
+A. Perotte, K. Natarajan, Cehr-bert:
+Incorporating
+temporal information from structured ehr data to improve
+prediction tasks, in: Machine Learning for Health, PMLR,
+2021, pp. 239–260.
+URL
+https://proceedings.mlr.press/v158/
+pang21a.html
+[23] Z. Yang, A. Mitra, W. Liu, D. Berlowitz, H. Yu, Transformehr: transformer-based encoder-decoder generative
+model to enhance prediction of disease outcomes using
+electronic health records, Nature communications 14 (1)
+(2023) 7857. doi:10.1038/s41467-023-43715-z.
+[24] J. Kaplan, S. McCandlish, T. Henighan, T. B. Brown,
+B. Chess, R. Child, S. Gray, A. Radford, J. Wu, D. Amodei,
+Scaling laws for neural language models, arXiv preprint
+arXiv:2001.08361 (2020). doi:10.48550/arXiv.2001.
+08361.
+[25] H. Touvron, T. Lavril, G. Izacard, X. Martinet, M.-A.
+Lachaux, T. Lacroix, B. Rozière, N. Goyal, E. Hambro,
+F. Azhar, et al., Llama: Open and efficient foundation language models, arXiv preprint arXiv:2302.13971 (2023).
+doi:10.48550/arXiv.2302.13971.
+[26] J. Su, M. Ahmed, Y. Lu, S. Pan, W. Bo, Y. Liu, Roformer: Enhanced transformer with rotary position embedding, Neurocomputing 568 (2024) 127063.
+doi:
+10.1016/j.neucom.2023.127063.
+[27] A. Gu, T. Dao, Mamba: Linear-time sequence modeling
+with selective state spaces, in: COLM, 2023. doi:10.
+48550/arXiv.2312.00752.
+[28] H. Qu, L. Ning, R. An, W. Fan, T. Derr, H. Liu,
+X. Xu, Q. Li, A survey of mamba, arXiv preprint
+arXiv:2408.01129 (2024). doi:10.48550/arXiv.2408.
+01129.
+[29] R. Waleffe, W. Byeon, D. Riach, B. Norick, V. Korthikanti, T. Dao, A. Gu, A. Hatamizadeh, S. Singh,
+D. Narayanan, et al., An empirical study of mamba-based
+language models, arXiv preprint arXiv:2406.07887 (2024).
+doi:10.48550/arXiv.2406.07887.
+[30] X. Liu, C. Zhang, L. Zhang, Vision mamba:
+A
+comprehensive survey and taxonomy, arXiv preprint
+arXiv:2405.04404 (2024). doi:10.48550/arXiv.2405.
+04404.
+[31] A. Fallahpour, M. Alinoori, W. Ye, X. Cao, A. Afkanpour,
+A. Krishnan, Ehrmamba:
+Towards generalizable and
+scalable foundation models for electronic health records,
+in: Proceedings of the 4th Machine Learning for Health
+13
+
+Symposium, Vol. 259 of Proceedings of Machine Learning
+Research, PMLR, 2025, pp. 291–307.
+URL
+https://proceedings.mlr.press/v259/
+fallahpour25a.html
+[32] M. Wornow, S. Bedi, M. A. F. Hernandez, E. Steinberg,
+J. A. Fries, C. Ré, S. Koyejo, N. H. Shah, Context clues:
+Evaluating long context models for clinical prediction
+tasks on ehrs, in: ICLR, 2025.
+URL
+https://openreview.net/forum?id=
+zg3ec1TdAP
+[33] L. Rasmy, Y. Xiang, Z. Xie, C. Tao, D. Zhi, Med-bert:
+pretrained contextualized embeddings on large-scale structured electronic health records for disease prediction,
+NPJ digital medicine 4 (1) (2021) 86. doi:10.1038/
+s41746-021-00455-y.
+[34] M. Schaufelberger, S. Ekestubbe, S. Hultgren, H. Persson,
+A. Reimstad, M. Schaufelberger, A. Rosengren, Validity
+of heart failure diagnoses made in 2000–2012 in western
+sweden, ESC heart failure 7 (1) (2020) 37–46. doi:10.
+1002/ehf2.12519.
+[35] A. S. Desai, L. W. Stevenson, Rehospitalization for heart
+failure: predict or prevent?, Circulation 126 (4) (2012) 501–
+506. doi:10.1161/circulationaha.112.125435.
+[36] S. M. Dunlay, M. M. Redfield, R. Jiang, S. A. Weston,
+V. L. Roger, Care in the last year of life for community
+patients with heart failure, Circulation: Heart Failure 8 (3)
+(2015) 489–496.
+doi:10.1161/circheartfailure.
+114.001826.
+[37] M. Rupp, O. Peter, T. Pattipaka, Exbehrt: Extended
+transformer for electronic health records, in: International Workshop on Trustworthy Machine Learning for
+Healthcare, Springer, 2023, pp. 73–84. doi:10.1007/
+978-3-031-39539-0\_7.
+[38] E. Antikainen, J. Linnosmaa, A. Umer, N. Oksala, M. Eskola, M. van Gils, J. Hernesniemi, M. Gabbouj, Transformers for cardiac patient mortality risk prediction from heterogeneous electronic health records, Scientific Reports 13 (1)
+(2023) 3517. doi:10.1038/s41598-023-30657-1.
+[39] M. Odgaard, K. V. Klein, S. M. Thysen, E. Jimenez-Solem,
+M. Sillesen, M. Nielsen, Core-behrt: A carefully optimized
+and rigorously evaluated behrt, in: Proceedings of the 9th
+Machine Learning for Healthcare Conference, Vol. 252 of
+Proceedings of Machine Learning Research, PMLR, 2024,
+pp. 1–33.
+URL
+https://proceedings.mlr.press/v252/
+odgaard24a.html
+[40] Y. Li, M. Mamouei, G. Salimi-Khorshidi, S. Rao, A. Hassaine, D. Canoy, T. Lukasiewicz, K. Rahimi, Hi-behrt:
+hierarchical transformer-based model for accurate prediction of clinical events using multimodal longitudinal
+electronic health records, IEEE journal of biomedical
+and health informatics 27 (2) (2022) 1106–1117. doi:
+10.1109/JBHI.2022.3224727.
+[41] J. Shang, T. Ma, C. Xiao, J. Sun, Pre-training of graph
+augmented transformers for medication recommendation,
+in: International Joint Conference on Artificial Intelligence,
+2019. doi:10.24963/ijcai.2019/825.
+[42] Z. Kraljevic, D. Bean, A. Shek, R. Bendayan, H. Hemingway, J. A. Yeung, A. Deng, A. Balston, J. Ross, E. Idowu, et al., Foresight—a generative pretrained transformer
+for modelling of patient timelines using electronic health
+records: a retrospective modelling study, The Lancet
+Digital Health 6 (4) (2024) e281–e290. doi:10.1016/
+S2589-7500(24)00025-6.
+[43] S. Rao, M. Mamouei, G. Salimi-Khorshidi, Y. Li, R. Ramakrishnan, A. Hassaine, D. Canoy, K. Rahimi, Targetedbehrt: deep learning for observational causal inference on
+longitudinal electronic health records, IEEE Transactions
+on Neural Networks and Learning Systems 35 (4) (2022)
+5027–5038. doi:10.1109/tnnls.2022.3183864.
+[44] Z. Yang, Z. Dai, Y. Yang, J. Carbonell, R. R. Salakhutdinov,
+Q. V. Le, Xlnet: Generalized autoregressive pretraining for
+language understanding, Advances in neural information
+processing systems 32 (2019).
+URL
+https://dl.acm.org/doi/10.5555/3454287.
+3454804
+[45] T. Darcet, M. Oquab, J. Mairal, P. Bojanowski, Vision
+transformers need registers, in: ICLR, 2024.
+URL
+https://openreview.net/forum?id=
+2dnO3LLiJ1
+[46] B. Warner, A. Chaffin, B. Clavié, O. Weller, O. Hallström, S. Taghadouini, A. Gallagher, R. Biswas, F. Ladhak,
+T. Aarsen, G. T. Adams, J. Howard, I. Poli, Smarter, better, faster, longer: A modern bidirectional encoder for
+fast, memory efficient, and long context finetuning and
+inference, in: Proceedings of the 63rd Annual Meeting
+of the Association for Computational Linguistics (Volume 1: Long Papers), Association for Computational Linguistics, 2025, pp. 2526–2547. doi:10.18653/v1/2025.
+acl-long.127.
+[47] T. Dao, A. Gu, Transformers are ssms: Generalized models and efficient algorithms through structured state space
+duality, in: ICML, 2024.
+URL
+https://dl.acm.org/doi/10.5555/3692070.
+3692469
+[48] T. Chen, C. Guestrin, Xgboost: A scalable tree boosting
+system, in: Proceedings of the 22nd acm sigkdd international conference on knowledge discovery and data mining,
+2016, pp. 785–794. doi:10.1145/2939672.2939785.
+[49] V. M. van Deursen, R. Urso, C. Laroche, K. Damman,
+U. Dahlström, L. Tavazzi, A. P. Maggioni, A. A. Voors,
+Co-morbidities in patients with heart failure: an analysis of
+14
+
+the european heart failure pilot survey, European journal of
+heart failure 16 (1) (2014) 103–111. doi:10.1002/ejhf.
+30.
+[50] N. Azad, G. Lemay, Management of chronic heart failure in
+the older population, Journal of geriatric cardiology: JGC
+11 (4) (2014) 329. doi:10.11909/j.issn.1671-5411.
+2014.04.008.
+[51] J. Su, M. Ahmed, Y. Lu, S. Pan, W. Bo, Y. Liu, Roformer:
+Enhanced transformer with rotary position embedding,
+Neurocomputing 568 (2024) 127063.
+URL
+https://doi.org/10.1016/j.neucom.2023.
+127063
+[52] N. Shazeer, Glu variants improve transformer, arXiv
+preprint arXiv:2002.05202 (2020).
+URL
+https://doi.org/10.48550/arXiv.2002.
+05202
+[53] R. Xiong, Y. Yang, D. He, K. Zheng, S. Zheng, C. Xing,
+H. Zhang, Y. Lan, L. Wang, T. Liu, On layer normalization
+in the transformer architecture, in: ICML, 2020.
+URL
+https://dl.acm.org/doi/10.5555/3524938.
+3525913
+[54] B. Zhang, R. Sennrich, Root mean square layer normalization, Advances in neural information processing systems
+32 (2019).
+URL
+https://dl.acm.org/doi/abs/10.5555/
+3454287.3455397
+[55] B. Warner, A. Chaffin, B. Clavié, O. Weller, O. Hallström,
+S. Taghadouini, A. Gallagher, R. Biswas, F. Ladhak,
+T. Aarsen, G. T. Adams, J. Howard, I. Poli, Smarter,
+better, faster, longer: A modern bidirectional encoder for
+fast, memory efficient, and long context finetuning and
+inference, in: Proceedings of the 63rd Annual Meeting of
+the Association for Computational Linguistics (Volume 1:
+Long Papers), Association for Computational Linguistics,
+2025, pp. 2526–2547.
+URL
+https://doi.org/10.18653/v1/2025.
+acl-long.127
+[56] I. Loshchilov, F. Hutter, Decoupled weight decay regularization, in: ICLR, 2019.
+URL
+https://openreview.net/forum?id=
+Bkg6RiCqY7
+Supplementary material
+S1. Data
+This section provides additional information regarding the
+patient data or clinical prediction tasks. Table S1 highlights
+the extracted clinical concepts from electronic health records
+(EHRs). The eligibility criteria for clinical instability is shown
+in Table S2. Table S3 presents the statistical properties of the
+heart failure (HF) cohort at the initial HF diagnosis in-hospital.
+Table S1: The patient data consists of six different feature groups.
+Anatomical Therapeutic Chemical (ATC)=Anatomical Therapeutic Chemical. International Classification of Diseases 10th
+revision (ICD-10)=International Classification of Diseases 10th
+revision.
+Concept
+Subconcept
+Demographics
+Age, sex, body mass index
+Diagnosis (DX)
+Any ICD-10 code
+Vital signs (VIT)
+Body temperature, diastolic blood pressure,
+systolic blood pressure, pulse rate, respiratory
+rate, oxygen saturation
+Laboratories (LAB)
+Albumin, bilirubin, blood urea nitrogen, Creactive protein, creatinine, ferritin, fasting
+glucose, plasma glucose, hemoglobin, glycated hemoglobin, N-terminal pro b-type
+natriuretic peptide, potassium, sodium, alanine transaminase, aspartate transaminase,
+troponin I, troponin T, uric acid
+Procedures (PRO)
+Any KVÅ code
+Medications (MED)
+Following ATC code levels: A02B, A08, B01,
+B03, C, H03, R03
+Table S2: Eligibility criteria for unplanned hospitalizations in
+the clinical instability prediction task.
+Hospitalization
+type
+Eligibility criteria
+Unplanned
+HF
+hospitalization
+Service units: ÖS Med/Ger/Akut, Medicinklinik,
+Kardiologi, Medicin, Internmedicin, Specialistmedicin, MS Medicin o Akutmottagning, M210
+Medicin Lidköping, Akutmedicin & Geriatri,
+M360 Kardiologi, Infektion-hematologi-hud, MS
+Geriatrik, Geriatrik neurologi och rehabilitering,
+Thorax, M220 Medicin Falköping, M420 AVA,
+Infektion, M330 Infektion, Njurmedicin, M350
+Njurmedicin, Lungmedicin, Allergologi och Palliativ medicin, M130 Lungmedicin och neurologi,
+M120 Hematologi, M110 Stroke och rehabilitering, Akutmedicin, M230 Medicin Mariestad,
+K250 Palliativ vård, M160 Medicin slutenvård,
+M110 Stroke, neurologi och rehabilitering, M130
+Lungmedicin och medicin, Klinik för nära vård,
+M365 Mag och tarm, M390 Geriatrik
+Unplanned non-HF
+hospitalization
+Surgical KVÅ codes: F, G, J, N, TF, V, XF, ZF;
+Medical KVÅ codes: AF, AG, AP, DF, DG, DP
+S2. Methods
+S2.1. Sequence model architectures
+This section compares the different architectural design
+choices while Table S4 summarizes the design choices.
+Bidirectional encoder representations from Transformers
+(BERT) captures bidirectional contextual information via selfattention and is pre-trained on a masked language modeling
+(MLM) objective, where tokens of the input sequence are randomly masked and predicted given the surrounding context. XLNet predicts tokens autoregressively utilizing a permutation language modeling (PLM) objective. In PLM, tokens are randomly
+permuted based on a factorization order allowing to capture more
+long-range dependencies beyond the fixed context provided by
+auto-encoders [44]. Although PLM undermines the temporal
+15
+
+Table S3: Descriptive statistics and outcome prevalence for
+the clinical prediction tasks in the HF cohort at the initial HF
+diagnosis in-hospital. IQR: interquartile range.
+Information
+Initial HF diagnosis
+N
+42,820
+Age (right-sided)
+IQR: 80 (72, 87),
+min: 18, max: 107
+Sex (% women)
+45.4%
+Hospitalizations
+IQR: 2 (1, 3),
+min: 1, max: 61
+All events
+IQR: 153 (71, 324),
+min: 1, max: 9552
+DX events
+IQR: 9 (5, 16),
+min: 1, max: 311
+VIT events
+IQR: 30 (0, 91),
+min: 0, max: 2634
+LAB events
+IQR: 23 (8, 55),
+min: 0, max: 3845
+MED events
+IQR: 63 (26, 137),
+min: 0, max: 5746
+PRO events
+IQR: 3 (1, 7),
+min: 0, max: 339
+Prevalence of
+one-year instability
+39.7%
+Prevalence of
+one-year mortality
+24.8%
+Table S4: Comparison of architectural key design choices.
+MBERT=ModernBERT.
+Model
+Learning
+objective
+Position
+encodings
+Activation
+function
+Applied
+normalization
+BERT
+MLM
+Absolute
+GeLU
+LayerNorm (post)
+XLNet
+PLM
+Relative
+GeLU
+LayerNorm (post)
+MBERT
+MLM
+RoPE
+GeGLU
+LayerNorm (pre)
+Llama
+NTP
+RoPE
+SwiGLU
+RMSNorm (pre)
+Mamba
+NTP
+—
+SiLU
+RMSNorm (pre)
+Mamba2
+NTP
+—
+SiLU
+RMSNorm (pre)
+structure of EHR sequences, this flexibility can be advantageous
+when capturing interactions among co-occurring clinical events.
+ModernBERT (hereafter referred to as MBERT) and Llama include several improvements over BERT. The absolute position
+embedding is replaced with rotary position embedding (RoPE)
+[51] capturing both the absolute position of tokens and the relative distance between tokens through rotation encoding. MBERT
+replaces the Gaussian error linear unit (GeLU) activation function with Gaussian error gated linear unit (GeGLU) and Llama
+with a combination of GLU and Swish activation (SwiGLU) due
+to the apparent performance gains [52]. The post-normalization
+of the input after passing through a Transformer sub-layer is replaced with pre-normalization to improve training stability [53].
+Llama replaces LayerNorm with root mean square layer normalization (RMSNorm) [54] reducing the computational burden by
+eliminating the mean calculation required in LayerNorm. For
+better representation learning MBERT introduces an alternating
+mechanism between global and local attention every three layers
+[55].
+Mambas like Llama are pre-trained on the next token prediction (NTP) objective, where the next token is predicted based on
+only past tokens. Unlike Transformers where the attention mechanism causes quadratic training time, the Mamba architecture
+combines discretized state space model (SSM) with a contextaware selection mechanism that parameterizes the SSM to learn
+relevant context while hardware-aware algorithms enable linear
+scaling with sequence length [27]. Mamba2 improves Mamba’s
+efficiency by introducing the state space duality which connects
+SSM with attention heads and simplifies the structure of the
+matrix A in the state equation of SSM into a scalar multiple of
+the identity [47]. Both Mambas utilize a sigmoid linear unit
+(SiLU) activation function and RMSNorm as pre-normalization.
+S2.2. Model theory
+This section explains the theoretical concepts behind the attention mechanism in Transformer and SSM modeling in Mamba.
+S2.2.1. Multihead attention in Transformer
+To calculate the attention weights, a scaled dot-product attention is formulated as
+A = Softmax
+ QK⊺
+√dk
+!
+V
+(B.1)
+where Q, K, V denote the query, key and value matrices and
+dk the dimension of keys [10]. The vectors Q, K, V are linear
+projections of the input sequence x using weights as Q = xWQ,
+K = xWK, V = xWV where the weights WQ ∈Rdm×dk, WK ∈
+Rdm×dk and WV ∈Rdm×dv are trainable model parameters with
+dm being the dimension of the embeddings and dv being the
+dimension of value. The MHA weights are calculated as
+MHA = (Ai ⊕. . . ⊕Anh)WO
+(B.2)
+by concatenating the outputs of nh parallelized attention heads,
+followed by a linear projection with the trainable output matrix
+WO ∈Rnhdv×dmodel.
+S2.2.2. State space model in Mamba
+The Mamba architecture is based on a discrete SSM formulation paired with convolutional computation power. In general, a
+continuous SSM describes the system dynamics through a state
+equation
+h′(t) = Ah(t) + Bx(t)
+(B.3)
+using n-dimensional hidden states h(t) ∈Rn and maps a state to
+an output y(t) ∈R through the observation equation
+y(t) = Ch(t) + Dx(t)
+(B.4)
+for a given input x(t) ∈R at current time t using system matrices
+A ∈Rn×n, B ∈Rn×1, C ∈R1×n, D ∈R with the common choice
+of D = 0. Given a discrete time step k, the discrete SSM is
+expressed as
+hk = ¯Ahk−1 + ¯Bxk
+(B.5)
+yk = ¯Chk
+(B.6)
+16
+
+with the discretised matrix versions ¯A = exp(∆A) and ¯B =
+(∆A)−1(exp(∆A) −I) obtained from zero-order hold discretization over a constant interval ∆= [tk−1, tk] [27]. Similar to multihead attention, the matrix calculation is formulated using a
+global convolution kernel ¯K
+y = x ∗¯K
+(B.7)
+with ¯K = (C ¯B, . . . , C ¯Ak ¯B, . . .).
+S2.3. Implementation
+For each clinical task, the data was divided into a development
+(85%) and testing (15%) set stratified by the outcome of interest.
+The development set was further split into a training (90%) and
+validation set (10%). No patient appeared in more than one
+set. Here, the development set was used for both pre-training
+the sequence model on a model-specific learning objective and
+fine-tuning on the relevant clinical task. Patients were consistently assigned to the same set and split across both stages. We
+motivate this choice by our pre-selection of only HF patients
+as opposed to other, larger cohorts with more general clinical
+profiles [20, 33, 22, 37].
+Our code implementation is adapted from [31]. Code was implemented using Python 3.10.12, Ubuntu 22.04, and the following major packages: torch 2.2.0, transformers 4.49.0, mambassm 2.2.2, causal-conv1d 1.4.0, and xgboost 2.0.0. Data processing used 32 INTEL(R) XEON(R) PLATINUM 8568Y+ CPUs.
+All sequence models were trained on a single NVIDIA H200
+with 50% GPU resource allocation (∼70 GB memory) and the
+same patient embeddings. Pre-training was set to 30 epochs
+with a patience of 5 epochs, fine-tuning to 10 with a patience
+of 2 epochs. In both stages, the optimizer choice was AdamW
+[56] with a learning rate of 5 · 10−5 and a batch size of 32. In
+all dropout layers, the probability was set to 0.1. The MLM
+objective was masked with a probability of 0.15 in BERT and
+MBERT. For both Mambas, the size of the space state vector
+was set to 16, the size of the convolutional kernel to 4 and the
+Mamba block expansion to 2 matching the size of Transformer
+blocks [27]. EXtreme gradient boosting machine (XGBoost)
+was trained using the default parameters (a total of 100 trees, a
+maximum depth of 6 per tree, learning rate of 0.3). During finetuning, predicted probabilities were obtained through a two-layer
+feedforward classification head applied on the last hidden state
+of the rightmost non-padded token, and the backbone model was
+further trained using binary cross-entropy loss.
+S2.4. Experiments
+Tables S5–S7 highlight the varying properties of the patient
+sequences given the respective conducted ablation. For varying
+model configurations (Tiny, Small, Medium), Table S8 lists the
+hyperparameters while Table S9 compares the model parameter
+counts and giga multiply-add operations (GMACs).
+S3. Additional results
+S3.1. Additional metrics for ablation study
+This section presents additional results, primarily the evaluation of area under the receiver operating characteristic curve
+Table S5: Ablation of vocabulary V: The vocabulary size is
+influenced by the number of bins b to represent vital signs (VIT),
+laboratories (LAB) and medications (MED), as well as if diagnoses (DX) are represented by category (i = 3) or diagnosis
+ICD-10 codes (i = 4).
+Vocabulary
+Total
+DX
+VIT
+LAB
+MED
+PRO
+Vb=5,i=3
+3293
+1343
+36
+108
+858
+948
+Vb=10,i=3
+4128
+1343
+66
+198
+1573
+948
+Vb=5,i=4
+6450
+4500
+36
+108
+858
+948
+Vb=10,i=4
+7285
+4500
+66
+198
+1573
+948
+Table S6: Ablation of patient’s medical history H with context
+length C = 512: Truncation includes encounter information only
+within the latest admission (t = 0) or up to t ∈{1, 3} years of
+prior H. Cutoff refers to the unprocessed H determined by C.
+Aggregation averages continuous features within w ∈{1, 2} days
+during the encounter duration extending the longitudinal gap
+∆Days between the first and last event within H.
+Dataset
+Modification
+Tokens
+Visits
+∆Days
+Ht=0
+Truncation
+96 (50, 179)
+1 (1, 1)
+6 (3, 11)
+Ht≤1y
+Truncation
+124 (61, 248)
+1 (1, 2)
+10 (4, 50)
+Ht≤3y
+Truncation
+143 (68, 297)
+1 (1, 2)
+17 (5, 276)
+Ht≤C
+Cutoff
+153 (71, 324)
+1 (1, 3)
+27 (6, 542)
+Ht≤C,w=1d
+Aggregation
+112 (55, 229)
+1 (1, 3)
+31 (6, 647)
+Ht≤C,w=2d
+Aggregation
+81 (42, 161)
+1 (1, 3)
+32 (6, 704)
+Table S7: Ablation of context length C: The value of C influences the number of tokens, the number of hospitalizations
+(visits), and the longitudinal gap ∆Days between last and first
+event.
+Vocabulary
+C
+Tokens
+Visits
+∆Days
+Vb=10,i=3
+128
+128 (71, 128)
+1 (1, 2)
+11 (5, 46)
+Vb=10,i=3
+256
+153 (71, 256)
+1 (1, 2)
+19 (6, 280)
+Vb=10,i=3
+512
+153 (71, 324)
+1 (1, 3)
+27 (6, 542)
+Table S8: Ablation of model size S : All model hyperparameters
+are listed in the order of Tiny/Small/Medium configurations.
+The dimension of the hidden layers is denoted as dm, the number
+of hidden layers as nm, the number of (attention) heads nh, the
+number of Mamba blocks as nb and the dimension of heads
+dp. The dimension of the feed-forward layer df was set to
+512/1024/2048.
+Model
+dm
+nm
+nh
+nb
+dp
+BERT
+256/512/512
+4/4/6
+4/4/8
+—
+—
+XLNet
+256/512/512
+4/4/6
+4/4/8
+—
+—
+MBERT
+256/512/512
+4/4/6
+4/4/8
+—
+—
+Llama
+256/512/512
+4/4/6
+4/4/8
+—
+—
+Mamba
+256/512/512
+—
+—
+2/6/12
+—
+Mamba2
+256/512/512
+—
+16/16/16
+2/6/12
+32/64/64
+(AUROC) and Brier score. Table S10 highlights the main findings of this paper. For all conducted ablations the AUROC and
+Brier score are visualized in Figs. S1–S5 and numerical results
+of all metrics, including area under the precision-recall curve
+17
+
+Table S9: Total model parameters in M (MParams) and GMACs
+are listed in the order of Tiny/Small/Medium configurations
+for fine-tuned models including classifier head. GMACs were
+calculated using the ptflops package (version 0.7.5).
+Model
+MParams
+GMACs
+BERT
+3.4/13.6/24.1
+13.3/57.3/96.2
+XLNet
+6.7/17.3/28.4
+7.0/27.4/62.1
+MBERT
+10.7/17.6/32.2
+26.2/54.1/114.2
+Llama
+12.9/19.7/34.4
+25.1/53.1/113.3
+Mamba
+3.3/15.3/25.5
+3.8/41.5/81.7
+Mamba2
+4.3/16.9/26.6
+3.7/40.6/79.9
+(AUPRC), are presented in Tables S11– S25.
+S3.2. Profiling
+Regarding profiling, Table S26 provides an overview of the
+training time for both pre-training and fine-tune stages, whereas
+Fig. S6 highlights the runtime and peak GPU memory usage in
+inference mode.
+S3.3. Internal hospital validation
+The descriptive statistics for the single-hospital validation
+(SHV) and cross-hospital validation (CHV) are provided in Table S27. Table S28 shows the numerical metrics (AUPRC, AUROC, Brier score) for SHV, whereas Tables S29–S31 show them
+for CHV with corresponding design choices, and also visualized
+in Fig. S7–S8.
+18
+
+Table S10: Main result of trajectory-guided discharge stratification for heart failure (TGDS-HF) vs. established baselines for C = 512,
+mirroring Table 2 in the manuscript for AUROC and Brier score.
+(a) Best AUROC (95% confidence interval (CI)) performances per task are highlighted in bold.
+Model
+Objective
+Temporal
+Model size
+GMACs
+T1
+T2
+Established baselines
+XGBoost
+—
+Cutoff
+—
+—
+0.646 (0.632–0.659)
+0.778 (0.765–0.790)
+BERT
+MLM
+Cutoff
+Medium
+96.2
+0.650 (0.636–0.663)
+0.787 (0.775–0.799)
+XLNet
+PLM
+Cutoff
+Medium
+62.1
+0.651 (0.637–0.664)
+0.795 (0.783–0.808)
+MBERT
+MLM
+Cutoff
+Medium
+114.2
+0.656 (0.643–0.670)
+0.793 (0.781–0.805)
+TGDS-HF (proposed)
+TGDS-HF (Llama)
+NTP
+Cutoff
+Medium
+113.3
+0.673 (0.660–0.686)
+0.805 (0.794–0.817)
+Alternative NTP backbones (ablation A3)
+Mamba
+NTP
+Cutoff
+Medium
+81.7
+0.657 (0.644–0.671)
+0.799 (0.787–0.811)
+Mamba2
+NTP
+Cutoff
+Medium
+79.9
+0.666 (0.653-0.680)
+0.801 (0.790–0.813)
+Task-specific refinement: daily aggregation for the mortality task (T2)
+TGDS-HF (Llama, agg.)
+NTP
+Agg. (1d)
+Medium
+113.3
+0.665 (0.651–0.678)
+0.806 (0.795–0.818)
+Mamba (agg.)
+NTP
+Agg. (1d)
+Medium
+81.7
+0.668 (0.654–0.681)
+0.802 (0.791–0.814)
+Tiny variants of TGDS-HF already surpass Medium baselines
+TGDS-HF (Llama, Tiny)
+NTP
+Cutoff
+Tiny
+25.1
+0.668 (0.654–0.681)
+0.800 (0.789–0.812)
+Mamba (Tiny)
+NTP
+Cutoff
+Tiny
+3.8
+0.668 (0.655–0.681)
+0.798 (0.786–0.810)
+(b) Best Brier score (95% CI) performances per task are highlighted in bold.
+Model
+Objective
+Temporal
+Model size
+GMACs
+T1
+T2
+Established baselines
+XGBoost
+—
+Cutoff
+—
+—
+0.229 (0.224–0.233)
+0.153 (0.148–0.159)
+BERT
+MLM
+Cutoff
+Medium
+96.2
+0.225 (0.221–0.229)
+0.151 (0.145–0.156)
+XLNet
+PLM
+Cutoff
+Medium
+62.1
+0.224 (0.221–0.228)
+0.148 (0.142–0.153)
+MBERT
+MLM
+Cutoff
+Medium
+114.2
+0.223 (0.219–0.226)
+0.148 (0.143–0.154)
+TGDS-HF (proposed)
+TGDS-HF (Llama)
+NTP
+Cutoff
+Medium
+113.3
+0.219 (0.215–0.223)
+0.146 (0.140–0.151)
+Alternative NTP backbones (ablation A3)
+Mamba
+NTP
+Cutoff
+Medium
+81.7
+0.223 (0.219–0.227)
+0.148 (0.142–0.154)
+Mamba2
+NTP
+Cutoff
+Medium
+79.9
+0.221 (0.218–0.224)
+0.147 (0.141–0.153)
+Task-specific refinement: daily aggregation for the mortality task (T2)
+TGDS-HF (Llama, agg.)
+NTP
+Agg. (1d)
+Medium
+113.3
+0.222 (0.218–0.227)
+0.144 (0.138–0.149)
+Mamba (agg.)
+NTP
+Agg. (1d)
+Medium
+81.7
+0.223 (0.218–0.228)
+0.145 (0.140–0.150)
+Tiny variants of TGDS-HF already surpass Medium baselines
+TGDS-HF (Llama, Tiny)
+NTP
+Cutoff
+Tiny
+25.1
+0.220 (0.217–0.224)
+0.146 (0.141–0.151)
+Mamba (Tiny)
+NTP
+Cutoff
+Tiny
+3.8
+0.221 (0.217–0.225)
+0.148 (0.142–0.153)
+Table S11: Ablation of the vocabulary V across the two clinical tasks T evaluated by AUPRC (↑) for Medium-sized sequence models
+and C = 512. Gray background highlights shared setup across all ablations.
+Vocabulary
+XGBoost
+BERT
+XLNet
+ModernBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+Vb=5,i=3
+0.515 (0.494–0.535) 0.525 (0.506–0.547) 0.539 (0.518–0.558) 0.536 (0.516–0.558) 0.547 (0.527–0.567) 0.552 (0.532–0.573) 0.543 (0.522–0.564)
+Vb=10,i=3
+0.519 (0.497–0.540) 0.535 (0.516–0.556) 0.529 (0.508–0.549) 0.534 (0.513–0.556) 0.555 (0.535–0.575) 0.543 (0.523–0.565) 0.542 (0.521–0.562)
+Vb=5,i=4
+0.521 (0.500–0.541) 0.535 (0.515–0.555) 0.544 (0.524–0.564) 0.546 (0.526–0.567) 0.549 (0.529–0.570) 0.545 (0.526–0.566) 0.545 (0.525–0.567)
+Vb=10,i=4
+0.523 (0.502–0.544) 0.527 (0.507–0.547) 0.535 (0.515–0.555) 0.533 (0.514–0.553) 0.550 (0.529–0.570) 0.544 (0.523–0.564) 0.536 (0.516–0.556)
+T2: One-year mortality after initial HF diagnosis
+Vb=5,i=3
+0.525 (0.501–0.552) 0.549 (0.525–0.574) 0.549 (0.523–0.575) 0.561 (0.537–0.586) 0.563 (0.537–0.589) 0.563 (0.537–0.588) 0.566 (0.542–0.591)
+Vb=10,i=3
+0.525 (0.500–0.550) 0.540 (0.516–0.564) 0.558 (0.533–0.584) 0.557 (0.531–0.583) 0.574 (0.550–0.599) 0.559 (0.534–0.585) 0.572 (0.547–0.596)
+Vb=5,i=4
+0.513 (0.489–0.538) 0.539 (0.514–0.565) 0.552 (0.526–0.579) 0.560 (0.535–0.584) 0.562 (0.536–0.586) 0.545 (0.521–0.570) 0.562 (0.536–0.586)
+Vb=10,i=4
+0.524 (0.498–0.549) 0.522 (0.496–0.545) 0.540 (0.514–0.566) 0.546 (0.521–0.570) 0.565 (0.541–0.592) 0.553 (0.528–0.579) 0.559 (0.533–0.585)
+19
+
+0.60
+0.62
+0.64
+0.66
+0.68
+0.70
+AUROC
+T1: One-year clinical instability after initial HF diagnosis
+Vb = 5, i = 3
+Vb = 10, i = 3
+Vb = 5, i = 4
+Vb = 10, i = 4
+0.74
+0.76
+0.78
+0.80
+0.82
+0.84
+AUROC
+T2: One-year mortality after initial HF diagnosis
+95% CI
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+(a)
+0.20
+0.22
+0.24
+Brier
+T1: One-year clinical instability after initial HF diagnosis
+Vb = 5, i = 3
+Vb = 10, i = 3
+Vb = 5, i = 4
+Vb = 10, i = 4
+0.12
+0.14
+0.16
+0.18
+Brier
+T2: One-year mortality after initial HF diagnosis
+95% CI
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+(b)
+Fig. S1: Ablation of the vocabulary V across the two clinical tasks T evaluated by (a) AUROC (↑) and (b) Brier score (↓) for
+Medium-sized sequence models and C = 512. The resolution of the vocabulary increases from lowest (left) to highest (right). Gray
+background highlights shared setup across all ablations.
+0.60
+0.62
+0.64
+0.66
+0.68
+0.70
+AUROC
+T1: One-year clinical instability after initial HF diagnosis
+Ht = 0
+Ht
+1y
+Ht
+3y
+Ht
+C
+Ht
+C, w = 1d
+Ht
+C, w = 2d
+0.74
+0.76
+0.78
+0.80
+0.82
+0.84
+AUROC
+T2: One-year mortality after initial HF diagnosis
+95% CI
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+(a)
+0.20
+0.22
+0.24
+Brier
+T1: One-year clinical instability after initial HF diagnosis
+Ht = 0
+Ht
+1y
+Ht
+3y
+Ht
+C
+Ht
+C, w = 1d
+Ht
+C, w = 2d
+0.12
+0.14
+0.16
+0.18
+Brier
+T2: One-year mortality after initial HF diagnosis
+95% CI
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+(b)
+Fig. S2: Ablation of the patient history through temporal modifications: The historical record is extended from the latest available
+admission (left) to a prolonged context (right). All modifications are evaluated by (a) AUROC (↑) and (b) Brier score (↓) using
+Medium-sized sequence models and C = 512. Gray background highlights shared setup across all ablations.
+20
+
+0.60
+0.62
+0.64
+0.66
+0.68
+0.70
+AUROC
+T1 with C = 128
+T1 with C = 256
+T1 with C = 512
+D
+T
+S
+M
+Model size
+0.74
+0.76
+0.78
+0.80
+0.82
+0.84
+AUROC
+T2 with C = 128
+D
+T
+S
+M
+Model size
+T2 with C = 256
+D
+T
+S
+M
+Model size
+T2 with C = 512
+95% CI
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+(a)
+0.20
+0.22
+0.24
+Brier
+T1 with C = 128
+T1 with C = 256
+T1 with C = 512
+D
+T
+S
+M
+Model size
+0.12
+0.14
+0.16
+0.18
+Brier
+T2 with C = 128
+D
+T
+S
+M
+Model size
+T2 with C = 256
+D
+T
+S
+M
+Model size
+T2 with C = 512
+95% CI
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+(b)
+Fig. S3: Ablation of the context length C and model size evaluated by (a) AUROC (↑) and (b) Brier score (↓) across the two clinical
+tasks. Within each C the size of the sequence models is sorted by Tiny, Small, Medium and compared with the Default XGBoost
+configuration. Gray background highlights shared setup across all ablations.
+0.60
+0.62
+0.64
+0.66
+0.68
+0.70
+AUROC
+T1: One-year clinical instability after initial HF diagnosis
+DX
+DX+VIT
+DX+VIT
++LAB
+DX+VIT
++LAB+MED
+ALL
+0.72
+0.74
+0.76
+0.78
+0.80
+0.82
+0.84
+AUROC
+T2: One-year mortality after initial HF diagnosis
+95% CI
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+(a)
+0.20
+0.22
+0.24
+Brier
+T1: One-year clinical instability after initial HF diagnosis
+DX
+DX+VIT
+DX+VIT
++LAB
+DX+VIT
++LAB+MED
+ALL
+0.12
+0.14
+0.16
+0.18
+Brier
+T2: One-year mortality after initial HF diagnosis
+95% CI
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+(b)
+Fig. S4: Incremental augmentation of DX with clinical concepts until all, including procedures (PRO), are added. Each augmentation
+is evaluated by (a) AUROC (↑) and (b) Brier score (↓) using Medium-sized sequence models and C = 512. Gray background
+highlights shared setup across all ablations.
+21
+
+0.60
+0.62
+0.64
+0.66
+0.68
+0.70
+AUROC
+T1: One-year clinical instability after initial HF diagnosis
+25
+50
+75
+100
+Size of training data in %
+0.72
+0.74
+0.76
+0.78
+0.80
+0.82
+0.84
+AUROC
+T2: One-year mortality after initial HF diagnosis
+95% CI
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+(a)
+0.20
+0.22
+0.24
+Brier
+T1: One-year clinical instability after initial HF diagnosis
+25
+50
+75
+100
+Size of training data in %
+0.12
+0.14
+0.16
+0.18
+Brier
+T2: One-year mortality after initial HF diagnosis
+95% CI
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+(b)
+Fig. S5: Ablation of different training sizes for Medium-sized sequence models and C = 512 evaluated by (a) AUROC (↑) and (b)
+Brier score (↓). Gray background highlights shared setup across all ablations.
+Table S12: Ablation of the vocabulary V across the two clinical tasks T evaluated by AUROC (↑) for Medium-sized sequence models
+and C = 512. Gray background highlights shared setup across all ablations.
+Vocabulary
+XGBoost
+BERT
+XLNet
+ModernBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+Vb=5,i=3
+0.641 (0.627–0.655) 0.646 (0.632–0.660) 0.657 (0.643–0.671) 0.658 (0.645–0.671) 0.664 (0.650–0.677) 0.672 (0.659–0.685) 0.667 (0.653–0.680)
+Vb=10,i=3
+0.646 (0.632–0.659) 0.650 (0.636–0.663) 0.651 (0.637–0.664) 0.656 (0.643–0.670) 0.673 (0.660–0.686) 0.657 (0.644–0.671) 0.666 (0.653–0.680)
+Vb=5,i=4
+0.645 (0.631–0.659) 0.650 (0.636–0.663) 0.657 (0.643–0.670) 0.662 (0.649–0.676) 0.669 (0.655–0.681) 0.666 (0.652–0.679) 0.663 (0.650–0.677)
+Vb=10,i=4
+0.647 (0.633–0.661) 0.645 (0.631–0.658) 0.655 (0.641–0.668) 0.658 (0.645–0.671) 0.667 (0.654–0.681) 0.663 (0.650–0.676) 0.657 (0.642–0.671)
+T2: One-year mortality after initial HF diagnosis
+Vb=5,i=3
+0.781 (0.769–0.793) 0.790 (0.779–0.802) 0.795 (0.784–0.808) 0.797 (0.786–0.809) 0.803 (0.792–0.815) 0.798 (0.787–0.810) 0.801 (0.789–0.812)
+Vb=10,i=3
+0.778 (0.765–0.790) 0.787 (0.775–0.799) 0.795 (0.783–0.808) 0.793 (0.781–0.805) 0.805 (0.794–0.817) 0.799 (0.787–0.811) 0.801 (0.790–0.813)
+Vb=5,i=4
+0.772 (0.761–0.785) 0.785 (0.773–0.798) 0.798 (0.786–0.810) 0.793 (0.782–0.805) 0.801 (0.789–0.813) 0.791 (0.780–0.804) 0.799 (0.788–0.811)
+Vb=10,i=4
+0.777 (0.765–0.789) 0.778 (0.767–0.790) 0.791 (0.780–0.803) 0.789 (0.777–0.801) 0.801 (0.790–0.813) 0.793 (0.782–0.806) 0.795 (0.784–0.807)
+Table S13: Ablation of the vocabulary V across the two clinical tasks T evaluated by Brier score (↓) for Medium-sized sequence
+models and C = 512. Gray background highlights shared setup across all ablations.
+Vocabulary
+XGBoost
+BERT
+XLNet
+ModernBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+Vb=5,i=3
+0.230 (0.225–0.234) 0.225 (0.221–0.228) 0.225 (0.221–0.228) 0.222 (0.219–0.226) 0.221 (0.218–0.225) 0.220 (0.216–0.224) 0.221 (0.216–0.225)
+Vb=10,i=3
+0.229 (0.224–0.233) 0.225 (0.221–0.229) 0.224 (0.221–0.228) 0.223 (0.219–0.226) 0.219 (0.215–0.223) 0.223 (0.219–0.227) 0.221 (0.218–0.224)
+Vb=5,i=4
+0.228 (0.223–0.232) 0.224 (0.220–0.228) 0.223 (0.219–0.227) 0.223 (0.218–0.227) 0.220 (0.216–0.224) 0.223 (0.220–0.227) 0.223 (0.219–0.228)
+Vb=10,i=4
+0.227 (0.223–0.232) 0.227 (0.223–0.231) 0.223 (0.219–0.227) 0.223 (0.219–0.226) 0.219 (0.216–0.223) 0.222 (0.218–0.225) 0.223 (0.219–0.227)
+T2: One-year mortality after initial HF diagnosis
+Vb=5,i=3
+0.153 (0.147–0.158) 0.149 (0.144–0.155) 0.151 (0.146–0.156) 0.148 (0.144–0.153) 0.145 (0.140–0.150) 0.148 (0.143–0.153) 0.146 (0.141–0.151)
+Vb=10,i=3
+0.153 (0.148–0.159) 0.151 (0.145–0.156) 0.148 (0.142–0.153) 0.148 (0.143–0.154) 0.146 (0.140–0.151) 0.148 (0.142–0.154) 0.147 (0.141–0.153)
+Vb=5,i=4
+0.155 (0.150–0.161) 0.151 (0.145–0.156) 0.148 (0.143–0.153) 0.148 (0.143–0.153) 0.147 (0.141–0.152) 0.152 (0.147–0.157) 0.147 (0.142–0.153)
+Vb=10,i=4
+0.153 (0.148–0.159) 0.153 (0.148–0.158) 0.153 (0.148–0.157) 0.149 (0.145–0.154) 0.147 (0.141–0.152) 0.150 (0.144–0.155) 0.147 (0.142–0.152)
+22
+
+Table S14: Ablation of the history H across the two clinical tasks T evaluated by AUPRC (↑) for Medium-sized sequence models
+and C = 512. Gray background highlights shared setup across all ablations.
+History
+XGBoost
+BERT
+XLNet
+ModernBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+Ht=0
+0.515 (0.495–0.536) 0.531 (0.510–0.552) 0.531 (0.511–0.552) 0.536 (0.516–0.557) 0.541 (0.521–0.562) 0.526 (0.506–0.546) 0.528 (0.508–0.549)
+Ht≤1y
+0.518 (0.498–0.539) 0.535 (0.515–0.555) 0.535 (0.514–0.555) 0.542 (0.521–0.561) 0.557 (0.537–0.576) 0.533 (0.513–0.553) 0.536 (0.516–0.557)
+Ht≤3y
+0.523 (0.502–0.545) 0.536 (0.515–0.556) 0.541 (0.519–0.561) 0.543 (0.522–0.563) 0.555 (0.535–0.576) 0.534 (0.513–0.554) 0.541 (0.520–0.560)
+Ht≤C
+0.519 (0.497–0.540) 0.535 (0.516–0.556) 0.529 (0.508–0.549) 0.534 (0.513–0.556) 0.555 (0.535–0.575) 0.543 (0.523–0.565) 0.542 (0.521–0.562)
+Ht≤C,w=1d 0.514 (0.494–0.536) 0.536 (0.515–0.557) 0.543 (0.522–0.563) 0.534 (0.514–0.554) 0.549 (0.529–0.570) 0.543 (0.523–0.564) 0.533 (0.513–0.553)
+Ht≤C,w=2d 0.515 (0.495–0.537) 0.518 (0.496–0.538) 0.543 (0.523–0.563) 0.543 (0.521–0.563) 0.551 (0.530–0.572) 0.546 (0.526–0.566) 0.536 (0.516–0.556)
+T2: One-year mortality after initial HF diagnosis
+Ht=0
+0.533 (0.506–0.559) 0.542 (0.518–0.567) 0.558 (0.533–0.583) 0.562 (0.538–0.587) 0.575 (0.551–0.600) 0.545 (0.519–0.569) 0.555 (0.530–0.580)
+Ht≤1y
+0.540 (0.514–0.567) 0.540 (0.515–0.565) 0.529 (0.504–0.554) 0.568 (0.544–0.593) 0.565 (0.539–0.589) 0.552 (0.525–0.578) 0.556 (0.530–0.582)
+Ht≤3y
+0.531 (0.504–0.558) 0.547 (0.520–0.572) 0.548 (0.522–0.572) 0.552 (0.526–0.578) 0.577 (0.552–0.602) 0.548 (0.522–0.573) 0.564 (0.539–0.590)
+Ht≤C
+0.525 (0.500–0.550) 0.540 (0.516–0.564) 0.558 (0.533–0.584) 0.557 (0.531–0.583) 0.574 (0.550–0.599) 0.559 (0.534–0.585) 0.572 (0.547–0.596)
+Ht≤C,w=1d 0.529 (0.503–0.555) 0.544 (0.518–0.571) 0.556 (0.531–0.583) 0.558 (0.533–0.583) 0.582 (0.558–0.608) 0.571 (0.547–0.596) 0.558 (0.532–0.583)
+Ht≤C,w=2d 0.525 (0.499–0.550) 0.533 (0.507–0.559) 0.549 (0.524–0.576) 0.559 (0.532–0.584) 0.581 (0.556–0.605) 0.575 (0.552–0.600) 0.566 (0.541–0.591)
+Table S15: Ablation of the history H across the two clinical tasks T evaluated by AUROC (↑) for Medium-sized sequence models
+and C = 512. Gray background highlights shared setup across all ablations.
+History
+XGBoost
+BERT
+XLNet
+ModernBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+Ht=0
+0.638 (0.625–0.652) 0.654 (0.640–0.668) 0.652 (0.638–0.665) 0.655 (0.641–0.667) 0.666 (0.653–0.679) 0.649 (0.636–0.663) 0.656 (0.642–0.669)
+Ht≤1y
+0.638 (0.624–0.652) 0.652 (0.639–0.666) 0.655 (0.641–0.668) 0.661 (0.647–0.675) 0.673 (0.659–0.686) 0.653 (0.639–0.666) 0.662 (0.650–0.676)
+Ht≤3y
+0.644 (0.629–0.658) 0.650 (0.637–0.664) 0.658 (0.644–0.672) 0.661 (0.647–0.674) 0.669 (0.655–0.682) 0.653 (0.640–0.667) 0.661 (0.648–0.675)
+Ht≤C
+0.646 (0.632–0.659) 0.650 (0.636–0.663) 0.651 (0.637–0.664) 0.656 (0.643–0.670) 0.673 (0.660–0.686) 0.657 (0.644–0.671) 0.666 (0.653–0.680)
+Ht≤C,w=1d 0.644 (0.630–0.658) 0.652 (0.638–0.666) 0.661 (0.647–0.675) 0.657 (0.643–0.671) 0.665 (0.651–0.678) 0.668 (0.654–0.681) 0.661 (0.647–0.674)
+Ht≤C,w=2d 0.645 (0.630–0.658) 0.643 (0.629–0.657) 0.662 (0.649–0.675) 0.665 (0.651–0.679) 0.669 (0.655–0.681) 0.667 (0.654–0.681) 0.660 (0.647–0.673)
+T2: One-year mortality after initial HF diagnosis
+Ht=0
+0.780 (0.767–0.792) 0.785 (0.774–0.797) 0.796 (0.784–0.808) 0.794 (0.782–0.805) 0.803 (0.793–0.816) 0.790 (0.779–0.802) 0.791 (0.779–0.803)
+Ht≤1y
+0.785 (0.773–0.798) 0.787 (0.776–0.799) 0.783 (0.771–0.794) 0.798 (0.786–0.810) 0.801 (0.789–0.812) 0.793 (0.781–0.805) 0.792 (0.780–0.804)
+Ht≤3y
+0.783 (0.770–0.795) 0.790 (0.779–0.802) 0.791 (0.779–0.803) 0.792 (0.780–0.803) 0.803 (0.792–0.816) 0.794 (0.783–0.806) 0.797 (0.785–0.809)
+Ht≤C
+0.778 (0.765–0.790) 0.787 (0.775–0.799) 0.795 (0.783–0.808) 0.793 (0.781–0.805) 0.805 (0.794–0.817) 0.799 (0.787–0.811) 0.801 (0.790–0.813)
+Ht≤C,w=1d 0.779 (0.767–0.792) 0.790 (0.778–0.802) 0.798 (0.787–0.811) 0.793 (0.781–0.805) 0.806 (0.795–0.818) 0.802 (0.791–0.814) 0.799 (0.788–0.811)
+Ht≤C,w=2d 0.778 (0.766–0.791) 0.779 (0.767–0.791) 0.796 (0.783–0.808) 0.793 (0.781–0.805) 0.808 (0.797–0.819) 0.800 (0.788–0.812) 0.798 (0.786–0.809)
+Table S16: Ablation of the history H across the two clinical tasks T evaluated by Brier score (↓) for Medium-sized sequence models
+and C = 512. Gray background highlights shared setup across all ablations.
+History
+XGBoost
+BERT
+XLNet
+ModernBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+Ht=0
+0.229 (0.225–0.233) 0.224 (0.220–0.227) 0.224 (0.220–0.227) 0.223 (0.220–0.227) 0.220 (0.217–0.224) 0.226 (0.222–0.230) 0.223 (0.220–0.226)
+Ht≤1y
+0.229 (0.225–0.234) 0.224 (0.220–0.228) 0.223 (0.219–0.226) 0.222 (0.218–0.226) 0.219 (0.215–0.222) 0.225 (0.220–0.229) 0.223 (0.219–0.227)
+Ht≤3y
+0.228 (0.224–0.233) 0.224 (0.220–0.227) 0.223 (0.219–0.227) 0.222 (0.218–0.226) 0.222 (0.218–0.227) 0.225 (0.221–0.229) 0.222 (0.219–0.225)
+Ht≤C
+0.229 (0.224–0.233) 0.225 (0.221–0.229) 0.224 (0.221–0.228) 0.223 (0.219–0.226) 0.219 (0.215–0.223) 0.223 (0.219–0.227) 0.221 (0.218–0.224)
+Ht≤C,w=1d 0.229 (0.225–0.234) 0.226 (0.222–0.230) 0.222 (0.218–0.226) 0.222 (0.218–0.226) 0.222 (0.218–0.227) 0.223 (0.218–0.228) 0.225 (0.220–0.229)
+Ht≤C,w=2d 0.229 (0.225–0.234) 0.228 (0.224–0.232) 0.221 (0.218–0.225) 0.222 (0.218–0.226) 0.219 (0.216–0.223) 0.223 (0.218–0.227) 0.223 (0.219–0.228)
+T2: One-year mortality after initial HF diagnosis
+Ht=0
+0.152 (0.147–0.158) 0.152 (0.147–0.156) 0.147 (0.142–0.152) 0.149 (0.143–0.154) 0.146 (0.140–0.151) 0.150 (0.145–0.155) 0.150 (0.144–0.155)
+Ht≤1y
+0.151 (0.146–0.156) 0.152 (0.146–0.157) 0.155 (0.150–0.159) 0.148 (0.142–0.153) 0.146 (0.142–0.151) 0.150 (0.144–0.156) 0.149 (0.143–0.154)
+Ht≤3y
+0.152 (0.147–0.157) 0.149 (0.144–0.154) 0.150 (0.145–0.155) 0.149 (0.144–0.154) 0.145 (0.140–0.151) 0.150 (0.145–0.155) 0.147 (0.142–0.153)
+Ht≤C
+0.153 (0.148–0.159) 0.151 (0.145–0.156) 0.148 (0.142–0.153) 0.148 (0.143–0.154) 0.146 (0.140–0.151) 0.148 (0.142–0.154) 0.147 (0.141–0.153)
+Ht≤C,w=1d 0.153 (0.148–0.158) 0.150 (0.144–0.155) 0.148 (0.143–0.153) 0.148 (0.142–0.153) 0.144 (0.138–0.149) 0.145 (0.140–0.150) 0.146 (0.141–0.151)
+Ht≤C,w=2d 0.153 (0.147–0.159) 0.152 (0.147–0.158) 0.148 (0.143–0.153) 0.148 (0.142–0.153) 0.144 (0.139–0.150) 0.145 (0.140–0.150) 0.146 (0.141–0.151)
+23
+
+Table S17: Ablation of the context length C and model size S across the two clinical tasks T evaluated by AUPRC (↑). Here, T,
+S, M denote the Tiny, Small, Medium model sizes. XGBoost’s default configuration is merged with size T for readability. Gray
+background highlights shared setup across all ablations.
+C
+S
+XGBoost
+BERT
+XLNet
+ModernBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+128 T
+0.517 (0.496–0.538) 0.526 (0.505–0.547) 0.529 (0.508–0.550) 0.530 (0.509–0.551) 0.542 (0.522–0.563) 0.538 (0.517–0.559) 0.539 (0.518–0.560)
+128 S
+0.511 (0.491–0.533) 0.525 (0.504–0.548) 0.528 (0.507–0.549) 0.543 (0.523–0.563) 0.539 (0.518–0.560) 0.538 (0.517–0.561)
+128 M 0.533 (0.511–0.555) 0.529 (0.507–0.551) 0.536 (0.515–0.558) 0.543 (0.523–0.563) 0.529 (0.508–0.550) 0.531 (0.510–0.551)
+256 T
+0.522 (0.501–0.542) 0.531 (0.512–0.551) 0.534 (0.513–0.556) 0.520 (0.500–0.542) 0.551 (0.530–0.572) 0.542 (0.522–0.562) 0.545 (0.526–0.567)
+256 S
+0.536 (0.515–0.556) 0.532 (0.512–0.553) 0.539 (0.519–0.561) 0.551 (0.531–0.572) 0.543 (0.523–0.564) 0.543 (0.522–0.564)
+256 M 0.527 (0.507–0.547) 0.530 (0.508–0.551) 0.540 (0.520–0.562) 0.554 (0.534–0.575) 0.537 (0.516–0.559) 0.537 (0.516–0.558)
+512 T
+0.519 (0.497–0.540) 0.526 (0.505–0.545) 0.535 (0.513–0.556) 0.541 (0.520–0.562) 0.550 (0.529–0.570) 0.546 (0.526–0.566) 0.549 (0.529–0.570)
+512 S
+0.539 (0.519–0.560) 0.537 (0.516–0.559) 0.538 (0.519–0.559) 0.553 (0.533–0.574) 0.545 (0.525–0.566) 0.547 (0.526–0.567)
+512 M 0.535 (0.516–0.556) 0.529 (0.508–0.549) 0.534 (0.513–0.556) 0.555 (0.535–0.575) 0.543 (0.523–0.565) 0.542 (0.521–0.562)
+T2: One-year mortality after initial HF diagnosis
+128 T
+0.538 (0.512–0.563) 0.546 (0.518–0.572) 0.553 (0.526–0.579) 0.544 (0.517–0.569) 0.564 (0.538–0.589) 0.557 (0.531–0.583) 0.553 (0.525–0.580)
+128 S
+0.555 (0.530–0.580) 0.555 (0.529–0.582) 0.542 (0.516–0.567) 0.569 (0.543–0.594) 0.547 (0.522–0.574) 0.560 (0.535–0.585)
+128 M 0.549 (0.523–0.575) 0.556 (0.530–0.581) 0.562 (0.536–0.588) 0.556 (0.529–0.582) 0.548 (0.521–0.574) 0.560 (0.535–0.585)
+256 T
+0.539 (0.514–0.562) 0.549 (0.523–0.575) 0.554 (0.527–0.578) 0.538 (0.513–0.564) 0.565 (0.539–0.589) 0.561 (0.535–0.586) 0.562 (0.536–0.587)
+256 S
+0.539 (0.513–0.564) 0.538 (0.513–0.563) 0.557 (0.531–0.582) 0.568 (0.542–0.592) 0.563 (0.538–0.588) 0.561 (0.534–0.587)
+256 M 0.542 (0.516–0.567) 0.553 (0.528–0.579) 0.565 (0.540–0.591) 0.558 (0.532–0.582) 0.559 (0.532–0.585) 0.569 (0.544–0.593)
+512 T
+0.525 (0.500–0.550) 0.538 (0.512–0.564) 0.550 (0.524–0.575) 0.532 (0.507–0.560) 0.566 (0.540–0.592) 0.561 (0.534–0.587) 0.558 (0.533–0.584)
+512 S
+0.540 (0.513–0.565) 0.554 (0.528–0.580) 0.540 (0.516–0.565) 0.571 (0.545–0.595) 0.558 (0.532–0.583) 0.571 (0.544–0.597)
+512 M 0.540 (0.516–0.564) 0.558 (0.533–0.584) 0.557 (0.531–0.583) 0.574 (0.550–0.599) 0.559 (0.534–0.585) 0.572 (0.547–0.596)
+Table S18: Ablation of the context length C and model size S across the two clinical tasks T evaluated by AUROC (↑). Here, T,
+S, M denote the Tiny, Small, Medium model sizes. XGBoost’s default configuration is merged with size T for readability. Gray
+background highlights shared setup across all ablations.
+C
+S
+XGBoost
+BERT
+XLNet
+ModernBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+128 T
+0.638 (0.624–0.652) 0.652 (0.638–0.665) 0.649 (0.636–0.662) 0.652 (0.638–0.666) 0.663 (0.649–0.676) 0.662 (0.648–0.675) 0.661 (0.647–0.674)
+128 S
+0.641 (0.627–0.655) 0.645 (0.631–0.659) 0.649 (0.636–0.663) 0.666 (0.652–0.679) 0.661 (0.648–0.674) 0.660 (0.646–0.673)
+128 M 0.651 (0.637–0.664) 0.650 (0.637–0.664) 0.656 (0.642–0.670) 0.666 (0.652–0.679) 0.650 (0.636–0.664) 0.652 (0.639–0.666)
+256 T
+0.648 (0.634–0.661) 0.650 (0.635–0.663) 0.655 (0.641–0.668) 0.642 (0.628–0.656) 0.668 (0.654–0.680) 0.666 (0.652–0.678) 0.670 (0.657–0.683)
+256 S
+0.654 (0.640–0.667) 0.658 (0.645–0.672) 0.657 (0.644–0.671) 0.669 (0.656–0.682) 0.665 (0.652–0.679) 0.666 (0.652–0.679)
+256 M 0.651 (0.638–0.665) 0.651 (0.637–0.664) 0.658 (0.645–0.673) 0.673 (0.659–0.685) 0.655 (0.641–0.669) 0.658 (0.644–0.672)
+512 T
+0.646 (0.632–0.659) 0.649 (0.635–0.663) 0.648 (0.635–0.662) 0.661 (0.647–0.674) 0.668 (0.654–0.681) 0.668 (0.655–0.681) 0.667 (0.654–0.680)
+512 S
+0.657 (0.643–0.670) 0.659 (0.646–0.672) 0.658 (0.644–0.672) 0.673 (0.660–0.686) 0.668 (0.655–0.681) 0.667 (0.654–0.680)
+512 M 0.650 (0.636–0.663) 0.651 (0.637–0.664) 0.656 (0.643–0.670) 0.673 (0.660–0.686) 0.657 (0.644–0.671) 0.666 (0.653–0.680)
+T2: One-year mortality after initial HF diagnosis
+128 T
+0.786 (0.775–0.799) 0.791 (0.779–0.803) 0.794 (0.781–0.806) 0.784 (0.772–0.797) 0.795 (0.784–0.808) 0.792 (0.781–0.804) 0.789 (0.777–0.802)
+128 S
+0.792 (0.781–0.804) 0.791 (0.779–0.804) 0.783 (0.770–0.795) 0.798 (0.786–0.810) 0.786 (0.774–0.799) 0.796 (0.784–0.808)
+128 M 0.788 (0.776–0.800) 0.793 (0.781–0.805) 0.791 (0.780–0.803) 0.794 (0.783–0.807) 0.791 (0.779–0.803) 0.794 (0.782–0.805)
+256 T
+0.779 (0.767–0.790) 0.789 (0.778–0.801) 0.791 (0.779–0.803) 0.783 (0.773–0.795) 0.796 (0.785–0.808) 0.796 (0.784–0.807) 0.793 (0.782–0.805)
+256 S
+0.781 (0.769–0.793) 0.785 (0.774–0.797) 0.792 (0.780–0.804) 0.796 (0.784–0.808) 0.792 (0.781–0.804) 0.798 (0.786–0.810)
+256 M 0.788 (0.776–0.800) 0.790 (0.778–0.802) 0.797 (0.786–0.808) 0.797 (0.786–0.809) 0.796 (0.784–0.808) 0.796 (0.784–0.807)
+512 T
+0.778 (0.765–0.790) 0.788 (0.776–0.801) 0.792 (0.780–0.804) 0.781 (0.769–0.793) 0.800 (0.789–0.812) 0.798 (0.786–0.810) 0.794 (0.782–0.807)
+512 S
+0.785 (0.774–0.797) 0.793 (0.781–0.806) 0.784 (0.772–0.796) 0.797 (0.785–0.809) 0.796 (0.784–0.807) 0.804 (0.793–0.816)
+512 M 0.787 (0.775–0.799) 0.795 (0.783–0.808) 0.793 (0.781–0.805) 0.805 (0.794–0.817) 0.799 (0.787–0.811) 0.801 (0.790–0.813)
+24
+
+Table S19: Ablation of the context length C and model size S across the two clinical tasks T evaluated by Brier score (↓). Here, T,
+S, M denote the Tiny, Small, Medium model sizes. XGBoost’s default configuration is merged with size T for readability. Gray
+background highlights shared setup across all ablations.
+C
+S
+XGBoost
+BERT
+XLNet
+ModernBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+128 T
+0.228 (0.224–0.233) 0.223 (0.220–0.227) 0.224 (0.221–0.228) 0.224 (0.220–0.227) 0.223 (0.219–0.227) 0.222 (0.218–0.226) 0.222 (0.218–0.226)
+128 S
+0.227 (0.223–0.231) 0.225 (0.221–0.229) 0.224 (0.220–0.228) 0.220 (0.216–0.224) 0.223 (0.220–0.227) 0.223 (0.219–0.228)
+128 M 0.224 (0.221–0.229) 0.225 (0.221–0.229) 0.223 (0.219–0.226) 0.221 (0.217–0.225) 0.226 (0.222–0.230) 0.224 (0.220–0.228)
+256 T
+0.227 (0.223–0.231) 0.224 (0.220–0.227) 0.224 (0.221–0.228) 0.231 (0.227–0.234) 0.222 (0.219–0.226) 0.221 (0.217–0.226) 0.220 (0.216–0.224)
+256 S
+0.223 (0.219–0.227) 0.222 (0.219–0.226) 0.223 (0.219–0.227) 0.220 (0.217–0.224) 0.223 (0.218–0.227) 0.222 (0.218–0.227)
+256 M 0.224 (0.220–0.228) 0.224 (0.220–0.227) 0.222 (0.219–0.226) 0.220 (0.216–0.224) 0.225 (0.221–0.229) 0.223 (0.220–0.226)
+512 T
+0.229 (0.224–0.233) 0.224 (0.221–0.228) 0.227 (0.223–0.230) 0.222 (0.218–0.226) 0.220 (0.217–0.224) 0.221 (0.217–0.225) 0.220 (0.216–0.224)
+512 S
+0.222 (0.219–0.226) 0.223 (0.220–0.227) 0.222 (0.219–0.227) 0.219 (0.215–0.223) 0.222 (0.219–0.226) 0.221 (0.217–0.225)
+512 M 0.225 (0.221–0.229) 0.224 (0.221–0.228) 0.223 (0.219–0.226) 0.219 (0.215–0.223) 0.223 (0.219–0.227) 0.221 (0.218–0.224)
+T2: One-year mortality after initial HF diagnosis
+128 T
+0.151 (0.145–0.156) 0.150 (0.144–0.156) 0.149 (0.144–0.154) 0.150 (0.145–0.156) 0.147 (0.142–0.152) 0.149 (0.144–0.154) 0.149 (0.144–0.154)
+128 S
+0.150 (0.144–0.155) 0.152 (0.147–0.157) 0.151 (0.145–0.156) 0.146 (0.141–0.152) 0.149 (0.144–0.155) 0.147 (0.142–0.152)
+128 M 0.150 (0.144–0.155) 0.148 (0.143–0.154) 0.148 (0.144–0.153) 0.149 (0.144–0.153) 0.150 (0.144–0.155) 0.151 (0.145–0.157)
+256 T
+0.152 (0.147–0.157) 0.151 (0.145–0.156) 0.150 (0.145–0.155) 0.151 (0.146–0.157) 0.147 (0.142–0.153) 0.148 (0.143–0.153) 0.147 (0.142–0.152)
+256 S
+0.151 (0.146–0.156) 0.151 (0.146–0.156) 0.149 (0.143–0.154) 0.147 (0.142–0.153) 0.148 (0.142–0.154) 0.147 (0.141–0.152)
+256 M 0.150 (0.145–0.156) 0.150 (0.145–0.155) 0.148 (0.142–0.153) 0.148 (0.143–0.152) 0.148 (0.142–0.154) 0.151 (0.145–0.157)
+512 T
+0.153 (0.148–0.159) 0.151 (0.145–0.156) 0.150 (0.145–0.155) 0.151 (0.146–0.156) 0.146 (0.141–0.151) 0.148 (0.142–0.153) 0.148 (0.143–0.153)
+512 S
+0.150 (0.145–0.155) 0.149 (0.144–0.154) 0.152 (0.146–0.157) 0.146 (0.141–0.152) 0.149 (0.144–0.155) 0.145 (0.139–0.150)
+512 M 0.151 (0.145–0.156) 0.148 (0.142–0.153) 0.148 (0.143–0.154) 0.146 (0.140–0.151) 0.148 (0.142–0.154) 0.147 (0.141–0.153)
+Table S20: Ablation of incremental concept augmentation across the two clinical tasks T evaluated by AUPRC (↑) for Mediumsized sequence models and C = 512. Here, feature group F1 refers to DX, F2 to DX+VIT, F3 to DX+VIT+LAB, F4 to
+DX+VIT+LAB+MED and F5 to F4 inclusive PRO. Gray background highlights shared setup across all ablations.
+Feature
+XGBoost
+BERT
+XLNet
+ModernBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+F1
+0.487 (0.467–0.507) 0.502 (0.483–0.523) 0.518 (0.498–0.538) 0.510 (0.490–0.530) 0.518 (0.498–0.538) 0.514 (0.494–0.534) 0.520 (0.500–0.540)
+F2
+0.498 (0.478–0.519) 0.513 (0.492–0.534) 0.518 (0.497–0.538) 0.517 (0.497–0.538) 0.537 (0.516–0.557) 0.526 (0.505–0.546) 0.531 (0.509–0.551)
+F3
+0.506 (0.486–0.526) 0.521 (0.500–0.541) 0.523 (0.502–0.545) 0.512 (0.491–0.532) 0.527 (0.507–0.549) 0.519 (0.498–0.540) 0.521 (0.502–0.542)
+F4
+0.515 (0.494–0.534) 0.537 (0.517–0.557) 0.543 (0.523–0.564) 0.537 (0.516–0.558) 0.553 (0.533–0.574) 0.538 (0.516–0.558) 0.552 (0.533–0.572)
+ALL
+0.519 (0.497–0.540) 0.535 (0.516–0.556) 0.529 (0.508–0.549) 0.534 (0.513–0.556) 0.555 (0.535–0.575) 0.543 (0.523–0.565) 0.542 (0.521–0.562)
+T2: One-year mortality after initial HF diagnosis
+F1
+0.495 (0.471–0.521) 0.482 (0.456–0.506) 0.499 (0.473–0.525) 0.491 (0.466–0.517) 0.507 (0.481–0.533) 0.500 (0.473–0.525) 0.497 (0.471–0.524)
+F2
+0.522 (0.497–0.545) 0.519 (0.494–0.544) 0.522 (0.497–0.548) 0.530 (0.504–0.555) 0.538 (0.512–0.564) 0.530 (0.503–0.557) 0.521 (0.497–0.546)
+F3
+0.518 (0.492–0.543) 0.529 (0.503–0.553) 0.538 (0.512–0.562) 0.551 (0.527–0.575) 0.549 (0.523–0.574) 0.523 (0.498–0.550) 0.553 (0.528–0.579)
+F4
+0.511 (0.486–0.535) 0.542 (0.517–0.569) 0.555 (0.529–0.580) 0.549 (0.523–0.575) 0.569 (0.544–0.595) 0.558 (0.533–0.583) 0.561 (0.536–0.587)
+ALL
+0.525 (0.500–0.550) 0.540 (0.516–0.564) 0.558 (0.533–0.584) 0.557 (0.531–0.583) 0.574 (0.550–0.599) 0.559 (0.534–0.585) 0.572 (0.547–0.596)
+Table S21: Ablation of incremental concept augmentation across the two clinical tasks T evaluated by AUROC (↑) for Medium-sized
+sequence models and C = 512. Here, F1 refers to DX, F2 to DX+VIT, F3 to DX+VIT+LAB, F4 to DX+VIT+LAB+MED and F5
+to F4 inclusive PRO. Gray background highlights shared setup across all ablations.
+Feature
+XGBoost
+BERT
+XLNet
+ModernBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+F1
+0.619 (0.605–0.633) 0.624 (0.610–0.638) 0.637 (0.623–0.649) 0.631 (0.617–0.645) 0.640 (0.626–0.654) 0.639 (0.626–0.652) 0.640 (0.625–0.653)
+F2
+0.628 (0.614–0.642) 0.639 (0.624–0.653) 0.645 (0.631–0.658) 0.641 (0.626–0.654) 0.655 (0.642–0.668) 0.649 (0.635–0.662) 0.651 (0.636–0.664)
+F3
+0.633 (0.619–0.646) 0.644 (0.631–0.658) 0.644 (0.630–0.658) 0.633 (0.618–0.646) 0.650 (0.637–0.664) 0.639 (0.625–0.654) 0.646 (0.631–0.659)
+F4
+0.636 (0.623–0.650) 0.658 (0.644–0.672) 0.659 (0.645–0.673) 0.657 (0.642–0.671) 0.672 (0.659–0.686) 0.660 (0.647–0.674) 0.669 (0.655–0.682)
+ALL
+0.646 (0.632–0.659) 0.650 (0.636–0.663) 0.651 (0.637–0.664) 0.656 (0.643–0.670) 0.673 (0.660–0.686) 0.657 (0.644–0.671) 0.666 (0.653–0.680)
+T2: One-year mortality after initial HF diagnosis
+F1
+0.756 (0.744–0.769) 0.748 (0.735–0.761) 0.756 (0.743–0.770) 0.752 (0.738–0.765) 0.766 (0.753–0.779) 0.761 (0.747–0.773) 0.755 (0.742–0.767)
+F2
+0.763 (0.751–0.776) 0.772 (0.760–0.784) 0.774 (0.762–0.786) 0.772 (0.760–0.786) 0.783 (0.771–0.795) 0.778 (0.766–0.791) 0.774 (0.762–0.786)
+F3
+0.772 (0.759–0.785) 0.779 (0.767–0.792) 0.782 (0.770–0.795) 0.784 (0.771–0.796) 0.789 (0.777–0.802) 0.782 (0.769–0.794) 0.792 (0.780–0.804)
+F4
+0.776 (0.764–0.788) 0.786 (0.774–0.798) 0.795 (0.784–0.807) 0.789 (0.777–0.801) 0.802 (0.791–0.813) 0.799 (0.788–0.811) 0.798 (0.786–0.810)
+ALL
+0.778 (0.765–0.790) 0.787 (0.775–0.799) 0.795 (0.783–0.808) 0.793 (0.781–0.805) 0.805 (0.794–0.817) 0.799 (0.787–0.811) 0.801 (0.790–0.813)
+25
+
+Table S22: Ablation of incremental concept augmentation across the two clinical tasks T evaluated by Brier score (↓) for Mediumsized sequence models and C = 512. Here, F1 refers to DX, F2 to DX+VIT, F3 to DX+VIT+LAB, F4 to DX+VIT+LAB+MED
+and F5 to F4 inclusive PRO. Gray background highlights shared setup across all ablations.
+Feature
+XGBoost
+BERT
+XLNet
+ModernBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+F1
+0.232 (0.228–0.236) 0.228 (0.225–0.232) 0.227 (0.223–0.230) 0.228 (0.225–0.230) 0.226 (0.223–0.230) 0.226 (0.222–0.230) 0.227 (0.224–0.230)
+F2
+0.231 (0.227–0.235) 0.225 (0.222–0.229) 0.225 (0.221–0.228) 0.226 (0.223–0.230) 0.225 (0.220–0.229) 0.224 (0.220–0.228) 0.223 (0.220–0.227)
+F3
+0.230 (0.226–0.234) 0.224 (0.221–0.228) 0.225 (0.222–0.228) 0.228 (0.224–0.232) 0.223 (0.220–0.227) 0.227 (0.224–0.231) 0.226 (0.222–0.229)
+F4
+0.230 (0.226–0.235) 0.222 (0.218–0.226) 0.222 (0.218–0.227) 0.223 (0.219–0.227) 0.219 (0.215–0.222) 0.221 (0.218–0.225) 0.220 (0.216–0.224)
+ALL
+0.229 (0.224–0.233) 0.225 (0.221–0.229) 0.224 (0.221–0.228) 0.223 (0.219–0.226) 0.219 (0.215–0.223) 0.223 (0.219–0.227) 0.221 (0.218–0.224)
+T2: One-year mortality after initial HF diagnosis
+F1
+0.158 (0.153–0.164) 0.161 (0.156–0.166) 0.158 (0.153–0.163) 0.159 (0.154–0.164) 0.156 (0.151–0.162) 0.157 (0.152–0.162) 0.162 (0.158–0.167)
+F2
+0.156 (0.150–0.161) 0.155 (0.150–0.160) 0.154 (0.148–0.159) 0.153 (0.148–0.159) 0.151 (0.146–0.157) 0.152 (0.147–0.157) 0.157 (0.152–0.161)
+F3
+0.155 (0.150–0.161) 0.152 (0.147–0.158) 0.151 (0.146–0.156) 0.150 (0.145–0.155) 0.151 (0.146–0.157) 0.154 (0.148–0.159) 0.148 (0.143–0.153)
+F4
+0.155 (0.150–0.160) 0.153 (0.148–0.159) 0.151 (0.145–0.156) 0.152 (0.148–0.156) 0.146 (0.141–0.152) 0.148 (0.142–0.153) 0.147 (0.142–0.151)
+ALL
+0.153 (0.148–0.159) 0.151 (0.145–0.156) 0.148 (0.142–0.153) 0.148 (0.143–0.154) 0.146 (0.140–0.151) 0.148 (0.142–0.154) 0.147 (0.141–0.153)
+Table S23: Ablation of varying training set ratios across the two clinical tasks T evaluated by AUPRC (↑) for Medium-sized sequence
+models and C = 512. Gray background highlights shared setup across all ablations.
+Ratio
+XGBoost
+BERT
+XLNet
+ModernBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+25%
+0.502 (0.482–0.522) 0.516 (0.496–0.537) 0.523 (0.503–0.544) 0.522 (0.501–0.541) 0.521 (0.501–0.542) 0.528 (0.508–0.550) 0.514 (0.493–0.534)
+50%
+0.510 (0.492–0.531) 0.531 (0.511–0.551) 0.522 (0.502–0.542) 0.535 (0.515–0.556) 0.545 (0.525–0.566) 0.526 (0.506–0.546) 0.543 (0.521–0.562)
+75%
+0.515 (0.495–0.536) 0.527 (0.507–0.546) 0.529 (0.508–0.549) 0.539 (0.518–0.560) 0.547 (0.526–0.568) 0.523 (0.503–0.545) 0.541 (0.521–0.561)
+100% 0.519 (0.497–0.540) 0.535 (0.516–0.556) 0.529 (0.508–0.549) 0.534 (0.513–0.556) 0.555 (0.535–0.575) 0.543 (0.523–0.565) 0.542 (0.521–0.562)
+T2: One-year mortality after initial HF diagnosis
+25%
+0.506 (0.481–0.533) 0.473 (0.448–0.499) 0.475 (0.450–0.500) 0.521 (0.497–0.547) 0.518 (0.493–0.544) 0.510 (0.485–0.535) 0.483 (0.457–0.507)
+50%
+0.508 (0.481–0.534) 0.523 (0.498–0.548) 0.521 (0.496–0.546) 0.534 (0.508–0.561) 0.564 (0.539–0.589) 0.539 (0.511–0.563) 0.528 (0.503–0.553)
+75%
+0.516 (0.492–0.541) 0.525 (0.499–0.550) 0.539 (0.513–0.565) 0.545 (0.520–0.571) 0.574 (0.548–0.600) 0.552 (0.525–0.577) 0.553 (0.529–0.577)
+100% 0.525 (0.500–0.550) 0.540 (0.516–0.564) 0.558 (0.533–0.584) 0.557 (0.531–0.583) 0.574 (0.550–0.599) 0.559 (0.534–0.585) 0.572 (0.547–0.596)
+Table S24: Ablation of varying training set ratios across the two clinical tasks T evaluated by AUROC (↑) for Medium-sized sequence
+models and C = 512. Gray background highlights shared setup across all ablations.
+Ratio
+XGBoost
+BERT
+XLNet
+ModernBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+25%
+0.624 (0.610–0.638) 0.641 (0.628–0.655) 0.637 (0.624–0.651) 0.644 (0.629–0.657) 0.645 (0.631–0.660) 0.646 (0.633–0.660) 0.640 (0.626–0.654)
+50%
+0.631 (0.617–0.644) 0.645 (0.631–0.659) 0.641 (0.627–0.656) 0.652 (0.639–0.666) 0.663 (0.650–0.677) 0.646 (0.632–0.660) 0.663 (0.649–0.676)
+75%
+0.639 (0.625–0.653) 0.647 (0.634–0.661) 0.648 (0.634–0.662) 0.659 (0.645–0.672) 0.666 (0.653–0.679) 0.647 (0.635–0.661) 0.663 (0.650–0.677)
+100% 0.646 (0.632–0.659) 0.650 (0.636–0.663) 0.651 (0.637–0.664) 0.656 (0.643–0.670) 0.673 (0.660–0.686) 0.657 (0.644–0.671) 0.666 (0.653–0.680)
+T2: One-year mortality after initial HF diagnosis
+25%
+0.759 (0.746–0.772) 0.743 (0.729–0.756) 0.751 (0.738–0.764) 0.769 (0.757–0.782) 0.777 (0.765–0.790) 0.767 (0.755–0.780) 0.759 (0.746–0.771)
+50%
+0.771 (0.757–0.783) 0.774 (0.762–0.786) 0.779 (0.767–0.791) 0.781 (0.770–0.794) 0.796 (0.784–0.808) 0.786 (0.774–0.798) 0.781 (0.769–0.793)
+75%
+0.770 (0.757–0.783) 0.776 (0.763–0.789) 0.783 (0.771–0.796) 0.788 (0.777–0.801) 0.803 (0.791–0.815) 0.790 (0.778–0.802) 0.790 (0.778–0.802)
+100% 0.778 (0.765–0.790) 0.787 (0.775–0.799) 0.795 (0.783–0.808) 0.793 (0.781–0.805) 0.805 (0.794–0.817) 0.799 (0.787–0.811) 0.801 (0.790–0.813)
+Table S25: Ablation of varying training set ratios across the two clinical tasks T evaluated by Brier score (↓) for Medium-sized
+sequence models and C = 512. Gray background highlights shared setup across all ablations.
+Ratio
+XGBoost
+BERT
+XLNet
+ModernBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+25%
+0.238 (0.233–0.243) 0.225 (0.222–0.229) 0.227 (0.223–0.230) 0.227 (0.223–0.231) 0.225 (0.221–0.230) 0.226 (0.222–0.229) 0.230 (0.225–0.235)
+50%
+0.234 (0.229–0.238) 0.228 (0.224–0.232) 0.226 (0.223–0.229) 0.225 (0.221–0.229) 0.224 (0.220–0.228) 0.224 (0.221–0.228) 0.221 (0.217–0.224)
+75%
+0.231 (0.226–0.235) 0.225 (0.221–0.229) 0.223 (0.220–0.227) 0.222 (0.218–0.226) 0.222 (0.218–0.226) 0.227 (0.222–0.231) 0.223 (0.218–0.227)
+100% 0.229 (0.224–0.233) 0.225 (0.221–0.229) 0.224 (0.221–0.228) 0.223 (0.219–0.226) 0.219 (0.215–0.223) 0.223 (0.219–0.227) 0.221 (0.218–0.224)
+T2: One-year mortality after initial HF diagnosis
+25%
+0.160 (0.154–0.165) 0.163 (0.158–0.169) 0.159 (0.155–0.164) 0.155 (0.150–0.160) 0.153 (0.149–0.158) 0.157 (0.151–0.162) 0.159 (0.154–0.163)
+50%
+0.156 (0.151–0.162) 0.153 (0.149–0.158) 0.154 (0.150–0.159) 0.153 (0.147–0.159) 0.149 (0.143–0.155) 0.151 (0.145–0.156) 0.154 (0.148–0.160)
+75%
+0.156 (0.150–0.161) 0.153 (0.148–0.157) 0.151 (0.146–0.156) 0.151 (0.146–0.156) 0.148 (0.143–0.154) 0.148 (0.143–0.154) 0.153 (0.147–0.159)
+100% 0.153 (0.148–0.159) 0.151 (0.145–0.156) 0.148 (0.142–0.153) 0.148 (0.143–0.154) 0.146 (0.140–0.151) 0.148 (0.142–0.154) 0.147 (0.141–0.153)
+26
+
+Table S26: Comparison of total training time and completed epochs reached for different sequence model configurations (context
+length C, model size S ) in pre-training and fine-tuning setting, with measurements based on the prediction of one-year mortality
+after the initial HF diagnosis.
+(a) Pre-training setting (epoch limit: 30).
+Total training time in min
+Completed epochs
+C
+S
+BERT
+MBERT
+XLNet
+Llama
+Mamba
+Mamba2
+BERT
+MBERT
+XLNet
+Llama
+Mamba
+Mamba2
+128
+Tiny
+14.7
+14.9
+19.6
+18.2
+12.9
+35.3
+30
+30
+30
+30
+30
+30
+128
+Small
+21.5
+23.8
+33.9
+24.7
+18.7
+29.4
+30
+30
+30
+30
+19
+19
+128
+Medium
+29.5
+29.7
+41.2
+34.7
+24.7
+40.1
+30
+30
+30
+30
+16
+15
+256
+Tiny
+16.4
+20.2
+23.6
+19.7
+15.3
+23.0
+30
+30
+30
+30
+30
+30
+256
+Small
+25.5
+34.0
+44.3
+27.6
+26.0
+36.4
+30
+30
+30
+30
+24
+21
+256
+Medium
+35.0
+35.2
+55.6
+40.1
+32.9
+49.1
+30
+30
+30
+30
+18
+17
+512
+Tiny
+18.8
+25.3
+39.9
+23.5
+19.2
+27.7
+30
+30
+30
+30
+30
+30
+512
+Small
+34.5
+38.3
+70.6
+37.1
+39.4
+50.0
+30
+30
+30
+30
+27
+25
+512
+Medium
+45.4
+40.6
+103.8
+45.6
+41.7
+52.4
+30
+30
+30
+30
+20
+18
+128
+Tiny
+12.4
+12.7
+15.5
+13.7
+11.7
+18.3
+30
+30
+30
+30
+30
+30
+128
+Small
+18.9
+18.2
+25.6
+21.2
+15.8
+24.4
+30
+30
+30
+30
+21
+18
+128
+Medium
+25.6
+27.7
+37.1
+28.9
+20.0
+37.8
+30
+30
+30
+30
+16
+15
+256
+Tiny
+13.8
+15.0
+19.0
+15.1
+13.4
+19.9
+30
+30
+30
+30
+30
+30
+256
+Small
+21.2
+21.0
+34.5
+23.8
+21.4
+32.5
+30
+30
+30
+30
+23
+22
+256
+Medium
+30.0
+34.7
+47.9
+33.1
+28.6
+42.2
+30
+30
+30
+30
+18
+16
+512
+Tiny
+16.9
+19.6
+27.7
+20.3
+15.7
+23.1
+30
+30
+30
+30
+30
+30
+512
+Small
+29.9
+28.2
+60.0
+32.1
+36.5
+46.1
+30
+30
+30
+30
+29
+26
+512
+Medium
+46.0
+46.1
+105.2
+46.5
+40.0
+48.1
+30
+30
+30
+30
+19
+17
+(b) Fine-tuning setting (epoch limit: 10).
+Total training time in min
+Completed epochs
+C
+S
+BERT
+MBERT
+XLNet
+Llama
+Mamba
+Mamba2
+BERT
+MBERT
+XLNet
+Llama
+Mamba
+Mamba2
+128
+Tiny
+2.4
+3.7
+4.1
+3.3
+3.0
+4.7
+5
+6
+6
+5
+6
+6
+128
+Small
+5.3
+4.8
+4.2
+3.6
+4.0
+15.7
+7
+6
+4
+4
+4
+10
+128
+Medium
+5.1
+9.5
+10.6
+5.8
+5.3
+13.4
+5
+5
+7
+5
+4
+5
+256
+Tiny
+2.7
+2.4
+4.9
+3.0
+3.1
+4.6
+6
+3
+6
+5
+6
+6
+256
+Small
+8.6
+5.4
+9.9
+4.1
+5.0
+15.4
+10
+6
+6
+4
+5
+10
+256
+Medium
+6.8
+6.1
+12.7
+6.7
+7.4
+11.4
+6
+5
+7
+5
+4
+4
+512
+Tiny
+3.9
+5.8
+9.3
+2.9
+3.9
+5.7
+6
+6
+7
+4
+6
+6
+512
+Small
+7.8
+6.1
+14.9
+5.5
+5.8
+18.6
+7
+6
+6
+5
+4
+10
+512
+Medium
+11.6
+6.9
+13.8
+7.6
+8.1
+11.1
+8
+5
+4
+5
+4
+4
+128
+Tiny
+2.3
+3.2
+4.5
+2.5
+2.4
+3.5
+6
+7
+8
+5
+6
+6
+128
+Small
+3.8
+2.6
+5.9
+4.3
+3.2
+13.7
+6
+4
+7
+6
+4
+10
+128
+Medium
+4.2
+5.1
+8.5
+3.9
+6.4
+10.0
+5
+5
+7
+4
+5
+4
+256
+Tiny
+4.3
+2.7
+5.3
+2.8
+2.6
+4.0
+10
+5
+8
+5
+6
+6
+256
+Small
+3.0
+5.1
+4.6
+4.8
+3.7
+14.7
+4
+7
+4
+6
+4
+10
+256
+Medium
+4.8
+6.9
+11.1
+4.5
+7.7
+10.5
+5
+6
+7
+4
+5
+4
+512
+Tiny
+5.2
+5.9
+8.3
+3.4
+3.0
+3.7
+10
+9
+8
+5
+6
+5
+512
+Small
+3.8
+3.9
+13.8
+6.3
+6.0
+17.5
+4
+4
+7
+6
+5
+10
+512
+Medium
+7.4
+8.5
+17.4
+7.7
+10.2
+11.2
+5
+6
+5
+5
+5
+4
+27
+
+BERT
+MBERT
+XLNet
+Llama
+Mamba Mamba2
+Model
+Tiny-128
+Tiny-256
+Tiny-512
+Small-128
+Small-256
+Small-512
+Medium-128
+Medium-256
+Medium-512
+Configuration
+13.8
+±25.3
+40.9
+±51.6
+35.1
+±45.6
+8.2
+±0.7
+7.9
+±4.8
+25.6
+±24.3
+38.5
+±33.0
+69.5
+±57.2
+286.7
+±204.7
+20.2
+±15.6
+27.5
+±28.5
+43.2
+±44.9
+19.0
+±1.6
+15.9
+±3.0
+333.1
+±172.1
+10.9
+±1.0
+24.7
+±18.9
+31.5
+±5.6
+5.6
+±0.6
+16.3
+±6.3
+115.2
+±116.8
+73.3
+±42.4
+12.0
+±1.4
+40.0
+±26.9
+33.0
+±30.4
+157.3
+±36.6
+274.2
+±195.4
+50.5
+±42.2
+66.5
+±47.9
+130.8
+±64.3
+95.1
+±70.2
+158.0
+±86.7
+350.2
+±182.5
+21.8
+±21.5
+71.2
+±18.7
+38.7
+±10.8
+31.4
+±32.7
+25.3
+±22.1
+217.0
+±174.1
+23.4
+±26.0
+65.5
+±53.4
+28.1
+±1.3
+40.4
+±42.3
+153.3
+±85.7
+107.6
+±52.1
+18.1
+±27.5
+85.5
+±114.6
+38.8
+±6.0
+71.6
+±32.2
+162.3
+±93.8
+49.2
+±36.8
+52.8
+±41.2
+96.0
+±72.6
+50.3
+±4.8
+50
+100
+150
+200
+250
+300
+350
+Mean inference time in ms/batch
+(a) Mean inference runtime in pre-training setting.
+BERT
+MBERT
+XLNet
+Llama
+Mamba Mamba2
+Model
+Tiny-128
+Tiny-256
+Tiny-512
+Small-128
+Small-256
+Small-512
+Medium-128
+Medium-256
+Medium-512
+Configuration
+320
+444
+356
+468
+446
+414
+642
+740
+750
+796
+796
+786
+1322
+1410
+1678
+1514
+1560
+1520
+464
+516
+546
+606
+670
+544
+824
+858
+998
+1098
+1202
+1126
+1686
+1626
+2166
+2104
+2216
+2094
+566
+642
+682
+850
+858
+754
+956
+1080
+1256
+1478
+1492
+1432
+2028
+2008
+2644
+2772
+2732
+2634
+500
+1000
+1500
+2000
+2500
+Peak GPU memory in MB
+(b) Mean inference runtime in fine-tuning setting.
+BERT
+MBERT
+XLNet
+Llama
+Mamba Mamba2
+Model
+Tiny-128
+Tiny-256
+Tiny-512
+Small-128
+Small-256
+Small-512
+Medium-128
+Medium-256
+Medium-512
+Configuration
+12.8
+±19.1
+22.1
+±37.1
+79.0
+±74.3
+10.4
+±1.3
+13.2
+±20.2
+8.2
+±4.2
+11.0
+±5.8
+83.0
+±75.5
+222.9
+±122.4
+27.5
+±27.9
+9.7
+±4.8
+42.4
+±40.1
+20.8
+±10.7
+19.7
+±4.4
+274.5
+±129.5
+53.5
+±37.7
+26.2
+±2.3
+18.8
+±1.9
+41.6
+±50.3
+26.9
+±33.0
+360.4
+±234.9
+22.3
+±32.3
+18.7
+±18.5
+22.8
+±10.9
+16.8
+±9.9
+199.2
+±111.0
+332.8
+±129.4
+19.0
+±1.5
+73.3
+±70.7
+48.2
+±47.7
+33.1
+±40.8
+22.5
+±8.8
+292.6
+±149.1
+13.5
+±2.8
+49.5
+±40.3
+28.3
+±1.9
+37.2
+±80.7
+22.4
+±21.6
+57.7
+±42.1
+8.8
+±0.6
+69.1
+±38.4
+23.8
+±3.3
+72.4
+±58.4
+113.4
+±98.6
+322.3
+±151.4
+15.0
+±12.7
+97.3
+±60.0
+34.7
+±3.0
+64.5
+±43.7
+21.6
+±1.7
+39.8
+±4.3
+34.8
+±31.0
+113.5
+±39.3
+43.1
+±2.1
+50
+100
+150
+200
+250
+300
+350
+Mean inference time in ms/batch
+(c) Inference peak GPU memory usage in pre-training setting.
+BERT
+MBERT
+XLNet
+Llama
+Mamba Mamba2
+Model
+Tiny-128
+Tiny-256
+Tiny-512
+Small-128
+Small-256
+Small-512
+Medium-128
+Medium-256
+Medium-512
+Configuration
+210
+312
+238
+316
+160
+162
+478
+502
+488
+472
+266
+248
+1180
+922
+1130
+858
+502
+464
+412
+384
+394
+426
+392
+370
+814
+604
+692
+726
+658
+580
+2036
+1138
+1530
+1340
+1140
+1014
+658
+514
+504
+614
+546
+520
+1466
+846
+906
+1036
+912
+878
+4336
+1540
+1898
+1888
+1634
+1526
+500
+1000
+1500
+2000
+2500
+3000
+3500
+4000
+Peak GPU memory in MB
+(d) Inference peak GPU memory usage in fine-tuning setting.
+Fig. S6: Inference measurements for runtime and peak GPU memory usage across 10 runs with a batch size of 32, stratified by
+models during pre-training and fine-tuning setting, with measurements based on the prediction of one-year mortality after the initial
+HF diagnosis.
+28
+
+Table S27: Descriptive statistics and prevalence of clinical prediction tasks of each hospital H for two different internal hospital
+validation strategies.
+(a) Single-hospital validation.
+Information
+H1
+H2
+H3
+H4
+H5
+H6
+N
+3,279
+9,028
+15,852
+5,325
+1,803
+7,533
+Age (right-sided)
+IQR: 81 (74, 87),
+min: 18, max: 101
+IQR: 81 (73, 87),
+min: 18, max: 105
+IQR: 79 (70, 86),
+min: 18, max: 106
+IQR: 81 (73, 87),
+min: 18, max: 107
+IQR: 81 (73, 87),
+min: 18, max: 106
+IQR: 81 (73, 87),
+min: 18, max: 105
+Sex (% women)
+44.0%
+45.4%
+45.5%
+46.3%
+43.8%
+45.6%
+Hospitalizations
+IQR:
+2
+(1,
+3),
+min: 1, max: 32
+IQR:
+1
+(1,
+3),
+min: 1, max: 41
+IQR:
+1
+(1,
+3),
+min: 1, max: 61
+IQR:
+2
+(1,
+3),
+min: 1, max: 39
+IQR:
+1
+(1,
+3),
+min: 1, max: 42
+IQR:
+2
+(1,
+3),
+min: 1, max: 47
+All events
+IQR: 146 (64, 328),
+min: 5, max: 3306
+IQR: 146 (67, 310),
+min: 2, max: 4471
+IQR: 144 (61, 313),
+min: 1, max: 9552
+IQR: 175 (86, 361),
+min: 2, max: 5747
+IQR: 148 (66, 322),
+min: 2, max: 4659
+IQR: 128 (60, 274),
+min: 2, max: 8974
+DX events
+IQR: 10 (6,
+19),
+min: 1, max: 213
+IQR: 10 (6,
+19),
+min: 1, max: 265
+IQR:
+8
+(5,
+16),
+min: 1, max: 290
+IQR:
+7
+(4,
+14),
+min: 1, max: 121
+IQR:
+8
+(5,
+16),
+min: 1, max: 172
+IQR:
+8
+(5,
+15),
+min: 1, max: 311
+VIT events
+IQR: 31 (0,
+97),
+min: 0, max: 1192
+IQR: 26 (0,
+79),
+min: 0, max: 1457
+IQR: 28 (0,
+89),
+min: 0, max: 2634
+IQR: 43 (0, 115),
+min: 0, max: 2368
+IQR: 45 (0, 110),
+min: 0, max: 1788
+IQR: 30 (0,
+83),
+min: 0, max: 2337
+LAB events
+IQR: 24 (9,
+60),
+min: 0, max: 1804
+IQR: 23 (9,
+52),
+min: 0, max: 2029
+IQR: 24 (9,
+64),
+min: 0, max: 3845
+IQR: 31 (13, 66),
+min: 0, max: 1587
+IQR: 19 (7,
+44),
+min: 0, max: 1579
+IQR: 15 (6,
+37),
+min: 0, max: 2176
+MED events
+IQR: 61 (25, 136),
+min: 0, max: 1589
+IQR: 70 (29, 148),
+min: 0, max: 2902
+IQR: 57 (22, 126),
+min: 0, max: 5746
+IQR: 75 (35, 154),
+min: 0, max: 2224
+IQR: 60 (25, 127),
+min: 0, max: 1951
+IQR: 59 (25, 132),
+min: 0, max: 4655
+PRO events
+IQR:
+4
+(2,
+9),
+min: 0, max: 76
+IQR:
+3
+(1,
+6),
+min: 0, max: 121
+IQR:
+4
+(1,
+8),
+min: 0, max: 110
+IQR:
+4
+(2,
+7),
+min: 0, max: 59
+IQR:
+4
+(2,
+8),
+min: 0, max: 46
+IQR:
+3
+(1,
+5),
+min: 0, max: 339
+Prevalence of
+one-year instability
+40.3%
+40.3%
+38.5%
+41.4%
+39.1%
+40.2%
+Prevalence of
+one-year mortality
+23.3%
+25.4%
+23.5%
+26.2%
+25.3%
+26.5%
+(b) Cross-hospital validation.
+Information
+All
+H1–H4
+H5
+H6
+(Development set)
+(Test set 1)
+(Test set 2)
+N
+42,820
+33,484
+1,803
+7,533
+Age (right-sided)
+IQR: 80 (72, 87),
+min: 18, max: 107
+IQR: 81 (73, 87),
+min: 18, max: 107
+IQR: 81 (73, 87),
+min: 18, max: 106
+IQR: 81 (73, 87),
+min: 18, max: 105
+Sex (% women)
+45.4%
+45.5%
+43.8%
+45.6%
+Hospitalizations
+IQR:
+2
+(1,
+3),
+min: 1, max: 61
+IQR:
+2
+(1,
+3),
+min: 1, max: 61
+IQR:
+1
+(1,
+3),
+min: 1, max: 42
+IQR:
+2
+(1,
+3),
+min: 1, max: 47
+All events
+IQR: 145 (65, 312),
+min: 1, max: 9552
+IQR: 149 (67, 321),
+min: 1, max: 9552
+IQR: 148 (66, 322),
+min: 2, max: 4659
+IQR: 128 (60, 274),
+min: 2, max: 8974
+DX events
+IQR:
+9
+(5,
+16),
+min: 1, max: 311
+IQR:
+9
+(5,
+17),
+min: 1, max: 290
+IQR:
+8
+(5,
+16),
+min: 1, max: 172
+IQR:
+8
+(5,
+15),
+min: 1, max: 311
+VIT events
+IQR: 30 (0,
+91),
+min: 0, max: 2634
+IQR: 30 (0,
+91),
+min: 0, max: 2634
+IQR: 45 (0, 110),
+min: 0, max: 1788
+IQR: 30 (0,
+83),
+min: 0, max: 2337
+LAB events
+IQR: 23 (8,
+55),
+min: 0, max: 3845
+IQR: 25 (10, 60),
+min: 0, max: 3845
+IQR: 19 (7,
+44),
+min: 0, max: 1579
+IQR: 15 (6,
+37),
+min: 0, max: 2176
+MED events
+IQR: 63 (26, 137),
+min: 0, max: 5746
+IQR: 64 (26, 138),
+min: 0, max: 5746
+IQR: 60 (25, 127),
+min: 0, max: 1951
+IQR: 59 (25, 132),
+min: 0, max: 4655
+PRO events
+IQR:
+3
+(1,
+7),
+min: 0, max: 339
+IQR:
+3
+(1,
+7),
+min: 0, max: 121
+IQR:
+4
+(2,
+8),
+min: 0, max: 46
+IQR:
+3
+(1,
+5),
+min: 0, max: 339
+Prevalence of
+one-year instability
+39.7%
+39.6%
+39.1%
+40.2%
+Prevalence of
+one-year mortality
+24.8%
+24.4%
+25.3%
+26.5%
+29
+
+Table S28: Evaluation of singe-hospital validation. Each model was trained with vocabulary Vb=10,i=3, C = 512, Medium model size.
+Best and second best task-specific performances for each hospital H and the average across hospitals for each model are highlighted
+in bold or underlined.
+(a) Evaluation of AUPRC (↑).
+H
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+Avg. 0.506±0.035
+0.511±0.038
+0.504±0.042
+0.505±0.041
+0.516±0.043
+0.492±0.042
+0.503±0.033
+1
+0.517 (0.448–0.584) 0.504 (0.439–0.574) 0.509 (0.445–0.580) 0.488 (0.419–0.558) 0.480 (0.414–0.547) 0.484 (0.416–0.555) 0.471 (0.401–0.545)
+2
+0.505 (0.462–0.547) 0.519 (0.476–0.561) 0.513 (0.472–0.558) 0.522 (0.481–0.568) 0.553 (0.509–0.597) 0.507 (0.462–0.551) 0.522 (0.480–0.567)
+3
+0.535 (0.499–0.567) 0.532 (0.495–0.569) 0.524 (0.491–0.558) 0.536 (0.504–0.572) 0.536 (0.501–0.574) 0.526 (0.491–0.562) 0.531 (0.496–0.567)
+4
+0.515 (0.461–0.574) 0.554 (0.496–0.610) 0.542 (0.486–0.597) 0.544 (0.487–0.600) 0.550 (0.492–0.607) 0.535 (0.477–0.596) 0.540 (0.481–0.599)
+5
+0.438 (0.348–0.532) 0.441 (0.353–0.531) 0.422 (0.338–0.515) 0.431 (0.348–0.523) 0.446 (0.360–0.541) 0.417 (0.345–0.501) 0.463 (0.367–0.568)
+6
+0.526 (0.479–0.574) 0.513 (0.467–0.561) 0.514 (0.471–0.563) 0.508 (0.461–0.557) 0.527 (0.479–0.578) 0.485 (0.438–0.531) 0.491 (0.444–0.538)
+T2: One-year mortality after initial HF diagnosis
+Avg. 0.498±0.060
+0.442±0.027
+0.449±0.049
+0.480±0.058
+0.483±0.042
+0.468±0.057
+0.486±0.034
+1
+0.545 (0.446–0.639) 0.467 (0.375–0.569) 0.492 (0.400–0.587) 0.513 (0.420–0.613) 0.444 (0.355–0.539) 0.518 (0.424–0.616) 0.511 (0.420–0.603)
+2
+0.473 (0.421–0.528) 0.448 (0.394–0.499) 0.476 (0.422–0.529) 0.506 (0.448–0.560) 0.506 (0.452–0.559) 0.507 (0.452–0.560) 0.501 (0.446–0.557)
+3
+0.485 (0.443–0.527) 0.441 (0.399–0.485) 0.507 (0.462–0.550) 0.536 (0.494–0.580) 0.537 (0.493–0.586) 0.520 (0.476–0.564) 0.518 (0.474–0.562)
+4
+0.405 (0.340–0.470) 0.435 (0.365–0.502) 0.414 (0.355–0.481) 0.422 (0.360–0.487) 0.513 (0.440–0.582) 0.427 (0.360–0.497) 0.500 (0.433–0.575)
+5
+0.579 (0.461–0.696) 0.394 (0.290–0.500) 0.387 (0.287–0.493) 0.392 (0.293–0.495) 0.437 (0.322–0.546) 0.380 (0.284–0.496) 0.435 (0.321–0.550)
+6
+0.500 (0.441–0.559) 0.466 (0.413–0.526) 0.417 (0.361–0.475) 0.511 (0.449–0.573) 0.458 (0.403–0.519) 0.459 (0.401–0.517) 0.453 (0.395–0.514)
+(b) Evaluation of AUROC (↑).
+H
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+Avg. 0.616±0.034
+0.622±0.041
+0.617±0.039
+0.621±0.048
+0.635±0.037
+0.620±0.037
+0.620±0.038
+1
+0.614 (0.561–0.663) 0.605 (0.556–0.656) 0.613 (0.567–0.663) 0.576 (0.526–0.629) 0.597 (0.546–0.647) 0.590 (0.541–0.642) 0.582 (0.532–0.630)
+2
+0.611 (0.579–0.644) 0.641 (0.609–0.671) 0.630 (0.599–0.659) 0.643 (0.612–0.673) 0.666 (0.636–0.694) 0.640 (0.611–0.668) 0.646 (0.616–0.673)
+3
+0.654 (0.631–0.677) 0.652 (0.630–0.673) 0.650 (0.629–0.673) 0.665 (0.643–0.689) 0.658 (0.637–0.680) 0.667 (0.645–0.689) 0.666 (0.645–0.689)
+4
+0.619 (0.578–0.658) 0.655 (0.617–0.693) 0.641 (0.602–0.679) 0.653 (0.615–0.692) 0.658 (0.620–0.695) 0.645 (0.608–0.683) 0.643 (0.604–0.679)
+5
+0.555 (0.484–0.626) 0.546 (0.474–0.620) 0.541 (0.464–0.614) 0.546 (0.471–0.618) 0.579 (0.509–0.648) 0.569 (0.498–0.644) 0.574 (0.502–0.646)
+6
+0.640 (0.604–0.673) 0.633 (0.600–0.663) 0.627 (0.593–0.659) 0.641 (0.610–0.674) 0.652 (0.621–0.684) 0.611 (0.578–0.643) 0.606 (0.572–0.639)
+T2: One-year mortality after initial HF diagnosis
+Avg. 0.744±0.025
+0.718±0.03
+0.726±0.042
+0.742±0.042
+0.746±0.036
+0.737±0.045
+0.744±0.023
+1
+0.763 (0.710–0.813) 0.739 (0.691–0.788) 0.757 (0.709–0.805) 0.767 (0.719–0.815) 0.747 (0.702–0.792) 0.773 (0.726–0.820) 0.752 (0.708–0.798)
+2
+0.746 (0.719–0.775) 0.740 (0.711–0.767) 0.754 (0.726–0.782) 0.765 (0.735–0.792) 0.768 (0.739–0.795) 0.766 (0.737–0.793) 0.764 (0.735–0.792)
+3
+0.757 (0.736–0.779) 0.733 (0.710–0.754) 0.770 (0.749–0.791) 0.777 (0.755–0.798) 0.796 (0.776–0.816) 0.774 (0.752–0.796) 0.759 (0.736–0.781)
+4
+0.697 (0.657–0.736) 0.699 (0.660–0.737) 0.715 (0.675–0.752) 0.730 (0.691–0.768) 0.751 (0.713–0.785) 0.723 (0.684–0.761) 0.756 (0.718–0.793)
+5
+0.762 (0.692–0.833) 0.666 (0.593–0.738) 0.663 (0.586–0.733) 0.663 (0.587–0.736) 0.695 (0.621–0.763) 0.659 (0.584–0.731) 0.706 (0.629–0.774)
+6
+0.740 (0.708–0.772) 0.733 (0.700–0.764) 0.694 (0.659–0.726) 0.749 (0.719–0.779) 0.719 (0.684–0.750) 0.728 (0.693–0.760) 0.723 (0.689–0.753)
+(c) Evaluation of Brier score (↓).
+H
+XGBoost
+BERT
+XLNet
+MBERT
+Llama
+Mamba
+Mamba2
+T1: One-year clinical instability after initial HF diagnosis
+Avg. 0.251±0.021
+0.230±0.008
+0.230±0.006
+0.232±0.007
+0.229±0.007
+0.233±0.01
+0.232±0.006
+1
+0.256 (0.234–0.279) 0.239 (0.225–0.254) 0.232 (0.221–0.243) 0.238 (0.228–0.249) 0.236 (0.223–0.249) 0.235 (0.224–0.246) 0.237 (0.224–0.251)
+2
+0.245 (0.233–0.256) 0.228 (0.220–0.235) 0.229 (0.223–0.235) 0.231 (0.227–0.235) 0.224 (0.213–0.233) 0.228 (0.221–0.235) 0.227 (0.220–0.233)
+3
+0.225 (0.217–0.233) 0.221 (0.215–0.228) 0.221 (0.215–0.227) 0.222 (0.214–0.230) 0.221 (0.215–0.227) 0.220 (0.212–0.227) 0.222 (0.214–0.230)
+4
+0.253 (0.237–0.270) 0.226 (0.215–0.236) 0.228 (0.219–0.235) 0.229 (0.221–0.237) 0.226 (0.215–0.236) 0.229 (0.216–0.239) 0.230 (0.219–0.242)
+5
+0.288 (0.253–0.323) 0.240 (0.227–0.254) 0.241 (0.225–0.256) 0.242 (0.222–0.262) 0.238 (0.216–0.261) 0.247 (0.223–0.272) 0.237 (0.225–0.249)
+6
+0.239 (0.226–0.252) 0.227 (0.219–0.236) 0.229 (0.221–0.238) 0.227 (0.221–0.233) 0.229 (0.219–0.239) 0.242 (0.231–0.254) 0.237 (0.226–0.247)
+T2: One-year mortality after initial HF diagnosis
+Avg. 0.169±0.017
+0.169±0.01
+0.169±0.016
+0.163±0.013
+0.164±0.013
+0.166±0.015
+0.164±0.012
+1
+0.151 (0.129–0.176) 0.156 (0.137–0.175) 0.152 (0.134–0.170) 0.151 (0.136–0.166) 0.156 (0.139–0.173) 0.148 (0.129–0.169) 0.152 (0.133–0.172)
+2
+0.172 (0.158–0.185) 0.166 (0.157–0.176) 0.163 (0.152–0.173) 0.159 (0.148–0.170) 0.158 (0.149–0.169) 0.159 (0.148–0.171) 0.159 (0.149–0.169)
+3
+0.157 (0.147–0.167) 0.159 (0.151–0.167) 0.151 (0.144–0.160) 0.148 (0.140–0.156) 0.147 (0.139–0.156) 0.151 (0.142–0.162) 0.152 (0.143–0.162)
+4
+0.198 (0.179–0.219) 0.179 (0.163–0.194) 0.175 (0.160–0.189) 0.175 (0.164–0.187) 0.169 (0.156–0.182) 0.175 (0.159–0.191) 0.164 (0.149–0.179)
+5
+0.163 (0.128–0.197) 0.179 (0.152–0.208) 0.184 (0.158–0.210) 0.179 (0.152–0.207) 0.178 (0.151–0.206) 0.183 (0.159–0.208) 0.183 (0.151–0.217)
+6
+0.175 (0.159–0.190) 0.173 (0.160–0.186) 0.187 (0.176–0.197) 0.167 (0.155–0.180) 0.180 (0.167–0.194) 0.178 (0.165–0.192) 0.173 (0.162–0.186)
+30
+
+Table S29: Evaluation of cross-hospital validation. Best and second best task-specific AUPRC (↑) performances are highlighted in
+bold or underlined across hospital stratifications. †TGDS-HF configuration..
+Model
+C
+S
+Vocabulary
+History
+H1–H4
+H5
+H6
+T1: One-year clinical instability after initial HF diagnosis
+Variation of architecture
+BERT
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.533 (0.508–0.556)
+0.523 (0.485–0.561)
+0.545 (0.527–0.565)
+XLNet
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.532 (0.508–0.556)
+0.526 (0.487–0.563)
+0.535 (0.516–0.553)
+MBERT
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.524 (0.499–0.546)
+0.537 (0.498–0.578)
+0.544 (0.526–0.563)
+Llama†
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.540 (0.516–0.563)
+0.524 (0.486–0.561)
+0.553 (0.534–0.572)
+Mamba
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.537 (0.513–0.560)
+0.524 (0.484–0.563)
+0.543 (0.524–0.563)
+Mamba2
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.539 (0.515–0.563)
+0.522 (0.484–0.561)
+0.546 (0.526–0.564)
+Variation of tokenization
+MBERT
+512
+Medium
+Vb=5,i=3
+Ht≤C
+0.534 (0.511–0.558)
+0.529 (0.490–0.566)
+0.536 (0.516–0.555)
+Llama
+512
+Medium
+Vb=5,i=3
+Ht≤C
+0.544 (0.519–0.567)
+0.541 (0.504–0.579)
+0.557 (0.536–0.576)
+XLNet
+512
+Medium
+Vb=10,i=4
+Ht≤C
+0.521 (0.498–0.545)
+0.520 (0.482–0.558)
+0.538 (0.519–0.557)
+Mamba2
+512
+Medium
+Vb=10,i=4
+Ht≤C
+0.534 (0.512–0.557)
+0.523 (0.485–0.559)
+0.552 (0.532–0.571)
+Variation of temporal preprocessing
+MBERT
+512
+Medium
+Vb=10,i=3
+Ht≤1y
+0.531 (0.507–0.554)
+0.530 (0.489–0.567)
+0.549 (0.528–0.568)
+Mamba
+512
+Medium
+Vb=10,i=3
+Ht≤1y
+0.536 (0.511–0.558)
+0.530 (0.490–0.569)
+0.541 (0.523–0.561)
+BERT
+512
+Medium
+Vb=10,i=3
+Ht≤C,w=1d
+0.543 (0.521–0.566)
+0.511 (0.474–0.548)
+0.547 (0.528–0.567)
+Mamba2
+512
+Medium
+Vb=10,i=3
+Ht≤C,w=1d
+0.552 (0.528–0.575)
+0.531 (0.493–0.569)
+0.567 (0.547–0.586)
+Variation of model scale (context length C; model size S )
+BERT
+128
+Tiny
+Vb=10,i=3
+Ht≤C
+0.447 (0.427–0.468)
+0.431 (0.397–0.466)
+0.460 (0.443–0.477)
+Llama
+128
+Tiny
+Vb=10,i=3
+Ht≤C
+0.538 (0.516–0.560)
+0.532 (0.493–0.572)
+0.549 (0.529–0.567)
+XLNet
+256
+Small
+Vb=10,i=3
+Ht≤C
+0.510 (0.487–0.531)
+0.513 (0.475–0.548)
+0.539 (0.519–0.558)
+Mamba
+256
+Small
+Vb=10,i=3
+Ht≤C
+0.536 (0.513–0.558)
+0.526 (0.487–0.566)
+0.549 (0.529–0.568)
+T2: One-year mortality after initial HF diagnosis
+Variation of architecture
+BERT
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.503 (0.472–0.534)
+0.528 (0.480–0.577)
+0.516 (0.493–0.540)
+XLNet
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.531 (0.502–0.562)
+0.541 (0.494–0.590)
+0.536 (0.513–0.559)
+MBERT
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.539 (0.508–0.569)
+0.547 (0.500–0.596)
+0.553 (0.529–0.577)
+Llama†
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.565 (0.536–0.596)
+0.566 (0.518–0.616)
+0.566 (0.542–0.589)
+Mamba
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.531 (0.501–0.561)
+0.539 (0.494–0.585)
+0.538 (0.515–0.562)
+Mamba2
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.538 (0.508–0.569)
+0.550 (0.502–0.599)
+0.551 (0.527–0.575)
+Variation of tokenization
+MBERT
+512
+Medium
+Vb=5,i=3
+Ht≤C
+0.544 (0.515–0.575)
+0.549 (0.501–0.598)
+0.537 (0.514–0.562)
+Llama
+512
+Medium
+Vb=5,i=3
+Ht≤C
+0.553 (0.525–0.583)
+0.568 (0.519–0.613)
+0.561 (0.537–0.584)
+XLNet
+512
+Medium
+Vb=10,i=4
+Ht≤C
+0.492 (0.461–0.521)
+0.481 (0.432–0.529)
+0.494 (0.471–0.518)
+Mamba2
+512
+Medium
+Vb=10,i=4
+Ht≤C
+0.529 (0.499–0.560)
+0.562 (0.515–0.611)
+0.548 (0.524–0.572)
+Variation of temporal preprocessing
+MBERT
+512
+Medium
+Vb=10,i=3
+Ht≤1y
+0.552 (0.521–0.583)
+0.565 (0.518–0.613)
+0.559 (0.536–0.583)
+Mamba
+512
+Medium
+Vb=10,i=3
+Ht≤1y
+0.524 (0.493–0.555)
+0.560 (0.510–0.608)
+0.545 (0.520–0.569)
+BERT
+512
+Medium
+Vb=10,i=3
+Ht≤C,w=1d
+0.524 (0.493–0.554)
+0.530 (0.480–0.578)
+0.537 (0.513–0.560)
+Mamba2
+512
+Medium
+Vb=10,i=3
+Ht≤C,w=1d
+0.531 (0.501–0.562)
+0.551 (0.501–0.599)
+0.546 (0.522–0.570)
+Variation of model scale (context length C; model size S )
+BERT
+128
+Tiny
+Vb=10,i=3
+Ht≤C
+0.380 (0.353–0.408)
+0.382 (0.340–0.426)
+0.398 (0.378–0.419)
+Llama
+128
+Tiny
+Vb=10,i=3
+Ht≤C
+0.546 (0.517–0.577)
+0.555 (0.506–0.604)
+0.557 (0.534–0.580)
+XLNet
+256
+Small
+Vb=10,i=3
+Ht≤C
+0.520 (0.490–0.553)
+0.553 (0.504–0.602)
+0.541 (0.517–0.566)
+Mamba
+256
+Small
+Vb=10,i=3
+Ht≤C
+0.530 (0.500–0.560)
+0.521 (0.474–0.570)
+0.533 (0.509–0.559)
+31
+
+Table S30: Evaluation of cross-hospital validation. Best and second best task-specific AUROC (↑) performances are highlighted in
+bold or underlined across hospital stratifications. †TGDS-HF configuration.
+Model
+C
+S
+Vocabulary
+History
+H1–H4
+H5
+H6
+T1: One-year clinical instability after initial HF diagnosis
+Variation of architecture
+BERT
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.658 (0.642–0.673)
+0.653 (0.628–0.679)
+0.661 (0.648–0.673)
+XLNet
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.656 (0.641–0.671)
+0.655 (0.629–0.680)
+0.650 (0.637–0.662)
+MBERT
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.653 (0.637–0.669)
+0.665 (0.640–0.690)
+0.662 (0.649–0.674)
+Llama†
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.666 (0.651–0.680)
+0.661 (0.635–0.686)
+0.667 (0.654–0.679)
+Mamba
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.659 (0.645–0.675)
+0.658 (0.631–0.683)
+0.664 (0.651–0.676)
+Mamba2
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.657 (0.641–0.672)
+0.654 (0.629–0.680)
+0.663 (0.651–0.675)
+Variation of tokenization
+MBERT
+512
+Medium
+Vb=5,i=3
+Ht≤C
+0.652 (0.636–0.668)
+0.658 (0.633–0.683)
+0.655 (0.643–0.668)
+Llama
+512
+Medium
+Vb=5,i=3
+Ht≤C
+0.669 (0.654–0.684)
+0.673 (0.648–0.697)
+0.672 (0.660–0.684)
+XLNet
+512
+Medium
+Vb=10,i=4
+Ht≤C
+0.647 (0.632–0.662)
+0.653 (0.626–0.678)
+0.649 (0.636–0.661)
+Mamba2
+512
+Medium
+Vb=10,i=4
+Ht≤C
+0.653 (0.640–0.668)
+0.652 (0.628–0.676)
+0.659 (0.647–0.672)
+Variation of temporal preprocessing
+MBERT
+512
+Medium
+Vb=10,i=3
+Ht≤1y
+0.656 (0.640–0.671)
+0.659 (0.633–0.684)
+0.665 (0.652–0.677)
+Mamba
+512
+Medium
+Vb=10,i=3
+Ht≤1y
+0.658 (0.644–0.674)
+0.656 (0.630–0.682)
+0.660 (0.648–0.672)
+BERT
+512
+Medium
+Vb=10,i=3
+Ht≤C,w=1d
+0.662 (0.648–0.678)
+0.654 (0.628–0.679)
+0.655 (0.643–0.667)
+Mamba2
+512
+Medium
+Vb=10,i=3
+Ht≤C,w=1d
+0.669 (0.653–0.685)
+0.657 (0.632–0.682)
+0.671 (0.659–0.683)
+Variation of model scale (context length C; model size S )
+BERT
+128
+Tiny
+Vb=10,i=3
+Ht≤C
+0.571 (0.555–0.587)
+0.556 (0.529–0.581)
+0.580 (0.567–0.594)
+Llama
+128
+Tiny
+Vb=10,i=3
+Ht≤C
+0.655 (0.640–0.670)
+0.655 (0.630–0.681)
+0.661 (0.649–0.674)
+XLNet
+256
+Small
+Vb=10,i=3
+Ht≤C
+0.641 (0.624–0.656)
+0.646 (0.619–0.672)
+0.654 (0.641–0.667)
+Mamba
+256
+Small
+Vb=10,i=3
+Ht≤C
+0.657 (0.642–0.671)
+0.658 (0.632–0.684)
+0.667 (0.654–0.679)
+T2: One-year mortality after initial HF diagnosis
+Variation of architecture
+BERT
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.773 (0.758–0.787)
+0.788 (0.764–0.810)
+0.757 (0.744–0.769)
+XLNet
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.784 (0.770–0.798)
+0.791 (0.770–0.814)
+0.770 (0.758–0.781)
+MBERT
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.790 (0.775–0.804)
+0.794 (0.771–0.816)
+0.779 (0.767–0.789)
+Llama†
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.800 (0.786–0.813)
+0.804 (0.781–0.825)
+0.785 (0.774–0.796)
+Mamba
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.780 (0.765–0.793)
+0.790 (0.767–0.812)
+0.770 (0.758–0.781)
+Mamba2
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.791 (0.777–0.805)
+0.792 (0.769–0.814)
+0.777 (0.766–0.788)
+Variation of tokenization
+MBERT
+512
+Medium
+Vb=5,i=3
+Ht≤C
+0.791 (0.777–0.804)
+0.790 (0.766–0.812)
+0.771 (0.758–0.781)
+Llama
+512
+Medium
+Vb=5,i=3
+Ht≤C
+0.795 (0.781–0.808)
+0.804 (0.780–0.825)
+0.783 (0.771–0.794)
+XLNet
+512
+Medium
+Vb=10,i=4
+Ht≤C
+0.762 (0.748–0.776)
+0.759 (0.735–0.782)
+0.751 (0.740–0.763)
+Mamba2
+512
+Medium
+Vb=10,i=4
+Ht≤C
+0.782 (0.767–0.796)
+0.795 (0.772–0.818)
+0.774 (0.762–0.785)
+Variation of temporal preprocessing
+MBERT
+512
+Medium
+Vb=10,i=3
+Ht≤1y
+0.791 (0.777–0.804)
+0.799 (0.776–0.821)
+0.778 (0.765–0.789)
+Mamba
+512
+Medium
+Vb=10,i=3
+Ht≤1y
+0.782 (0.767–0.796)
+0.788 (0.764–0.812)
+0.772 (0.760–0.783)
+BERT
+512
+Medium
+Vb=10,i=3
+Ht≤C,w=1d
+0.777 (0.763–0.792)
+0.791 (0.768–0.814)
+0.770 (0.758–0.781)
+Mamba2
+512
+Medium
+Vb=10,i=3
+Ht≤C,w=1d
+0.780 (0.765–0.794)
+0.786 (0.763–0.807)
+0.772 (0.761–0.783)
+Variation of model scale (context length C; model size S )
+BERT
+128
+Tiny
+Vb=10,i=3
+Ht≤C
+0.666 (0.650–0.683)
+0.660 (0.631–0.688)
+0.669 (0.656–0.683)
+Llama
+128
+Tiny
+Vb=10,i=3
+Ht≤C
+0.786 (0.772–0.800)
+0.796 (0.773–0.818)
+0.774 (0.763–0.785)
+XLNet
+256
+Small
+Vb=10,i=3
+Ht≤C
+0.779 (0.764–0.793)
+0.792 (0.769–0.815)
+0.767 (0.755–0.778)
+Mamba
+256
+Small
+Vb=10,i=3
+Ht≤C
+0.785 (0.771–0.798)
+0.782 (0.759–0.804)
+0.769 (0.758–0.780)
+32
+
+Table S31: Evaluation of cross-hospital validation. Best and second best task-specific Brier score (↓) performances are highlighted
+in bold or underlined across hospital stratifications. †TGDS-HF configuration.
+Model
+C
+S
+Vocabulary
+History
+H1–H4
+H5
+H6
+T1: One-year clinical instability after initial HF diagnosis
+Variation of architecture
+BERT
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.222 (0.218–0.225)
+0.223 (0.216–0.229)
+0.222 (0.219–0.225)
+XLNet
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.224 (0.219–0.229)
+0.223 (0.216–0.231)
+0.227 (0.223–0.230)
+MBERT
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.226 (0.221–0.231)
+0.222 (0.214–0.230)
+0.224 (0.220–0.228)
+Llama†
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.224 (0.219–0.229)
+0.224 (0.216–0.232)
+0.224 (0.220–0.228)
+Mamba
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.222 (0.217–0.227)
+0.223 (0.215–0.231)
+0.222 (0.219–0.226)
+Mamba2
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.223 (0.218–0.228)
+0.223 (0.215–0.231)
+0.222 (0.218–0.225)
+Variation of tokenization
+MBERT
+512
+Medium
+Vb=5,i=3
+Ht≤C
+0.223 (0.219–0.227)
+0.221 (0.215–0.228)
+0.223 (0.220–0.227)
+Llama
+512
+Medium
+Vb=5,i=3
+Ht≤C
+0.220 (0.215–0.224)
+0.218 (0.211–0.225)
+0.220 (0.217–0.224)
+XLNet
+512
+Medium
+Vb=10,i=4
+Ht≤C
+0.225 (0.221–0.230)
+0.223 (0.216–0.230)
+0.225 (0.221–0.229)
+Mamba2
+512
+Medium
+Vb=10,i=4
+Ht≤C
+0.223 (0.219–0.227)
+0.223 (0.216–0.230)
+0.223 (0.219–0.226)
+Variation of temporal preprocessing
+MBERT
+512
+Medium
+Vb=10,i=3
+Ht≤1y
+0.223 (0.219–0.228)
+0.222 (0.215–0.230)
+0.222 (0.219–0.226)
+Mamba
+512
+Medium
+Vb=10,i=3
+Ht≤1y
+0.222 (0.218–0.227)
+0.222 (0.214–0.230)
+0.223 (0.219–0.227)
+BERT
+512
+Medium
+Vb=10,i=3
+Ht≤C,w=1d
+0.222 (0.217–0.227)
+0.224 (0.216–0.233)
+0.224 (0.220–0.228)
+Mamba2
+512
+Medium
+Vb=10,i=3
+Ht≤C,w=1d
+0.220 (0.215–0.225)
+0.223 (0.215–0.231)
+0.220 (0.216–0.223)
+Variation of model scale (context length C; model size S )
+BERT
+128
+Tiny
+Vb=10,i=3
+Ht≤C
+0.237 (0.234–0.240)
+0.236 (0.231–0.241)
+0.237 (0.234–0.240)
+Llama
+128
+Tiny
+Vb=10,i=3
+Ht≤C
+0.222 (0.218–0.226)
+0.222 (0.215–0.229)
+0.222 (0.219–0.225)
+XLNet
+256
+Small
+Vb=10,i=3
+Ht≤C
+0.227 (0.222–0.231)
+0.225 (0.217–0.233)
+0.224 (0.221–0.228)
+Mamba
+256
+Small
+Vb=10,i=3
+Ht≤C
+0.223 (0.219–0.228)
+0.223 (0.215–0.230)
+0.222 (0.219–0.226)
+T2: One-year mortality after initial HF diagnosis
+Variation of architecture
+BERT
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.156 (0.150–0.162)
+0.157 (0.146–0.169)
+0.168 (0.162–0.173)
+XLNet
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.150 (0.145–0.156)
+0.151 (0.142–0.161)
+0.160 (0.156–0.165)
+MBERT
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.149 (0.143–0.155)
+0.152 (0.141–0.162)
+0.158 (0.153–0.164)
+Llama†
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.144 (0.139–0.149)
+0.148 (0.138–0.157)
+0.155 (0.150–0.160)
+Mamba
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.152 (0.146–0.158)
+0.154 (0.143–0.164)
+0.162 (0.157–0.167)
+Mamba2
+512
+Medium
+Vb=10,i=3
+Ht≤C
+0.151 (0.145–0.157)
+0.153 (0.142–0.163)
+0.160 (0.155–0.165)
+Variation of tokenization
+MBERT
+512
+Medium
+Vb=5,i=3
+Ht≤C
+0.147 (0.142–0.153)
+0.152 (0.142–0.163)
+0.160 (0.155–0.165)
+Llama
+512
+Medium
+Vb=5,i=3
+Ht≤C
+0.147 (0.141–0.153)
+0.151 (0.140–0.162)
+0.158 (0.153–0.164)
+XLNet
+512
+Medium
+Vb=10,i=4
+Ht≤C
+0.156 (0.150–0.161)
+0.161 (0.151–0.171)
+0.166 (0.161–0.170)
+Mamba2
+512
+Medium
+Vb=10,i=4
+Ht≤C
+0.151 (0.146–0.157)
+0.149 (0.140–0.158)
+0.159 (0.154–0.163)
+Variation of temporal preprocessing
+MBERT
+512
+Medium
+Vb=10,i=3
+Ht≤1y
+0.148 (0.142–0.154)
+0.149 (0.139–0.160)
+0.158 (0.153–0.163)
+Mamba
+512
+Medium
+Vb=10,i=3
+Ht≤1y
+0.150 (0.145–0.156)
+0.152 (0.142–0.161)
+0.159 (0.155–0.164)
+BERT
+512
+Medium
+Vb=10,i=3
+Ht≤C,w=1d
+0.152 (0.146–0.158)
+0.152 (0.142–0.162)
+0.160 (0.155–0.165)
+Mamba2
+512
+Medium
+Vb=10,i=3
+Ht≤C,w=1d
+0.153 (0.147–0.159)
+0.153 (0.143–0.164)
+0.160 (0.155–0.165)
+Variation of model scale (context length C; model size S )
+BERT
+128
+Tiny
+Vb=10,i=3
+Ht≤C
+0.173 (0.167–0.179)
+0.179 (0.167–0.190)
+0.184 (0.179–0.189)
+Llama
+128
+Tiny
+Vb=10,i=3
+Ht≤C
+0.149 (0.143–0.155)
+0.152 (0.141–0.163)
+0.160 (0.155–0.165)
+XLNet
+256
+Small
+Vb=10,i=3
+Ht≤C
+0.153 (0.147–0.159)
+0.151 (0.141–0.161)
+0.162 (0.156–0.166)
+Mamba
+256
+Small
+Vb=10,i=3
+Ht≤C
+0.154 (0.148–0.160)
+0.160 (0.149–0.171)
+0.165 (0.160–0.170)
+33
+
+0.63
+0.64
+0.65
+0.66
+0.67
+0.68
+AUROC
+Mamba2 (H6)
+Mamba (H6)
+Llama (H6)
+MBERT (H6)
+XLNet (H6)
+BERT (H6)
+Mamba2 (H5)
+Mamba (H5)
+Llama (H5)
+MBERT (H5)
+XLNet (H5)
+BERT (H5)
+Mamba2 (H1-H4)
+Mamba (H1-H4)
+Llama (H1-H4)
+MBERT (H1-H4)
+XLNet (H1-H4)
+BERT (H1-H4)
+Model architecture
+T1: One-year clinical instability after initial HF diagnosis
+0.74
+0.75
+0.76
+0.77
+0.78
+0.79
+0.80
+0.81
+0.82
+AUROC
+T2: One-year mortality after initial HF diagnosis
+Tokenization strategy
+Coarse
+Fine
+Temporal preprocessing
+Truncation (1y)
+Aggregation (1d)
+Model configuration
+Tiny (C = 128)
+Small (C = 256)
+Medium (C = 512)
+TGDS-HF
+Fig. S7: Evaluation of AUROC (↑) in cross-hospital validation grouped by model architecture and stratified by independent hospital
+sets.
+0.216 0.218 0.220 0.222 0.224 0.226 0.228 0.230
+Brier
+Mamba2 (H6)
+Mamba (H6)
+Llama (H6)
+MBERT (H6)
+XLNet (H6)
+BERT (H6)
+Mamba2 (H5)
+Mamba (H5)
+Llama (H5)
+MBERT (H5)
+XLNet (H5)
+BERT (H5)
+Mamba2 (H1-H4)
+Mamba (H1-H4)
+Llama (H1-H4)
+MBERT (H1-H4)
+XLNet (H1-H4)
+BERT (H1-H4)
+Model architecture
+T1: One-year clinical instability after initial HF diagnosis
+0.140
+0.145
+0.150
+0.155
+0.160
+0.165
+0.170
+Brier
+T2: One-year mortality after initial HF diagnosis
+Tokenization strategy
+Coarse
+Fine
+Temporal preprocessing
+Truncation (1y)
+Aggregation (1d)
+Model configuration
+Tiny (C = 128)
+Small (C = 256)
+Medium (C = 512)
+TGDS-HF
+Fig. S8: Evaluation of Brier score (↓) in cross-hospital validation grouped by model architecture and stratified by independent
+hospital sets.
+34

@@ -1,0 +1,462 @@
+Prognostic Value of Lung Ultrasound Biomarkers
+for Readmission Risk in Congestive Heart
+Failure: A Pilot Data-Driven Analysis
+Jana Armouti1, Laura Hutchins2, Jacob Duplantis2, Thomas Deiss2, Thales
+Nogueira Gomes2, Keyur H. Patel2, Seema Walvekar2, Shane Guillory2,
+Thomas H. Fox2, Amita Krishnan2, Ricardo Rodriguez3, Bennett
+DeBoisblanc2, Deva Ramanan1, John Galeotti1, and Gautam Gare1
+1 Carnegie Mellon University, Pittsburgh, USA
+2 LSUHSC Internal Medicine, New Orleans, USA
+3 Cosmetic Surgery Facility LLC, Baltimore, MD 21093, USA
+Abstract. Hospital readmission within 30 days of discharge is a leading driver of morbidity, mortality, and avoidable healthcare expenditure
+in congestive heart failure (CHF). [4] Current clinical risk stratification
+tools rely primarily on non-imaging data and exhibit limited predictive
+performance. Point-of-care lung ultrasound (LUS) offers a sensitive, noninvasive window into the pulmonary congestion that characterizes CHF
+decompensation, yet its prognostic utility for readmission prediction remains largely unexplored.
+We present a pilot feasibility study, the first systematic machine
+learning study using B-mode LUS acquired during hospitalization to
+predict 30-day CHF readmission. Quantitative spatiotemporal embeddings are extracted from a pretrained Temporal Shift Module (TSM)–
+ResNet-18 encoder, and interpretable biomarker features are separately
+evaluated. Through structured ablations over lung view, temporal representation, multi-view fusion, and cross-lung augmentation, we identify
+the key imaging factors driving readmission risk.
+Our findings reveal that (1) dependent lower-lung regions (Left-3, Right3) carry the strongest prognostic signal, consistent with their greater susceptibility to hydrostatic congestion; (2) temporal difference features between sequential examinations substantially outperform single-timepoint
+representations, highlighting the importance of capturing disease trajectory; and (3) multi-view feature concatenation yields the best overall
+performance, with our top MLP model achieving an F1 score of 0.80
+(95% CI: 0.62–0.96). Biomarker analysis further reveals that pleural-line
+abnormalities, including breaks and indentations, are as informative as
+the canonical A-line and B-line markers. These results support POCUSderived biomarkers as practical, interpretable tools for noninvasive CHF
+risk stratification.
+Keywords: Prognosis · Lung Ultrasound · Longitudinal Modeling · Biomarkers · Interpretability · Congestive Heart Failure
+arXiv:2605.18878v1 [eess.SP] 16 May 2026
+
+2
+J. Armouti et al.
+1
+Introduction
+Fig. 1: CHF 30-day readmission prediction pipeline. Six standardized
+LUS views (Right/Left 1–3, spanning upper anterior to dependent posterior
+regions) are acquired at two or more time points during the index hospitalization. B-mode video clips are encoded by a pretrained TSM–ResNet-18 to
+produce 512-dimensional spatiotemporal embeddings. Temporal difference features (∆= Day2 −Day1, capturing congestion trajectory) from all six views are
+concatenated into a single patient-level representation and fed to a downstream
+classifier to predict 30-day readmission risk.
+Hospital readmission in congestive heart failure (CHF) remains a major
+source of morbidity, mortality, and cost [8,4]. Predicting 30-day readmission is
+challenging, as pulmonary congestion evolves subtly and heterogeneously. Existing ML models based on electronic health records achieve only modest performance (AUC 0.60–0.72) [6,8], partly because standard assessments poorly
+capture decompensation physiology.
+CHF decompensation reflects fluid redistribution into the pulmonary interstitium and alveoli. Lung ultrasound (LUS) offers a real-time, noninvasive view
+of this process, quantifying A-lines (normal aeration), B-lines (interstitial fluid),
+and pleural abnormalities from B-mode clips [2,3]. Although established for diagnosing acute decompensation, its prognostic value for 30-day readmission remains underexplored.
+Machine learning can model the subtle, spatial, and temporal patterns in
+LUS, integrating multiple lung zones and time points to capture congestion
+trajectories. Interpreting these models may also reveal clinically meaningful, underrecognized prognostic biomarkers.
+
+Prognostic Value of Lung Ultrasound Biomarkers
+3
+Contributions. We present the first structured pilot ML study of prognostic potential of point-of-care ultrasound (POCUS) for predicting 30-day CHF
+readmission. Using B-mode LUS scans collected during hospitalization and predischarge, we train ML models to estimate readmission risk and analyze the
+contribution of different lung regions, temporal evolution, and LUS biomarker
+features. Our results show that lower-lung regions provide the strongest predictive signal and that pleural-line abnormalities are as informative as traditional
+biomarkers such as A-lines and B-lines. Our best model achieves an F1 score
+of 0.80, demonstrating the promise of ML-enhanced LUS analysis for practical,
+noninvasive CHF risk stratification.
+Related Work. Prior work on CHF readmission prediction has relied largely
+on non-imaging clinical features [6,8], consistently showing the task to be challenging. Lung ultrasound has been extensively studied for diagnostic classification using deep learning [11,10,3], demonstrating its sensitivity to pulmonary
+congestion and pleural abnormalities. Recent work [1] further examined LUSderived biomarkers, showing them to be predictive across multiple diagnostic
+tasks. However, the prognostic use of LUS, particularly for forecasting CHF
+readmission, remains largely unexplored.
+2
+Results and Analysis
+3
+Method
+We conduct a series of analyses to interpret the key factors driving prognostic
+predictions.
+3.1
+Dataset
+We pretrained on the lung ultrasound (LUS) dataset from [2], comprising linearprobe B-mode videos acquired on a Sonosite X-Porté system from 221 patients
+(1001 clips). Each exam includes multiple left and right lung scans at 4–6 cm
+depth across six standardized views: R1/L1 (upper anterior), R2/L2 (lateral),
+and R3/L3 (dependent/posterior) (refer Fig 1).
+The main CHF readmission prediction study was conducted on a separately
+collected CHF-specific cohort acquired using the same imaging protocol and acquisition setup. This cohort consisted of patients admitted with primary congestive heart failure (CHF) and documented 30-day outcomes, yielding 30 patients
+(9 readmitted, 21 non-readmitted). Pilot cohort: Given the small, imbalanced
+sample (9:21), results should be interpreted as feasibility evidence rather than
+definitive clinical validation.
+CHF patients were imaged on at least two hospitalization days (some more),
+yielding 180 scans on Day 1, 150 on Day 2, 66 on Day 3, and 30 on Day 4.
+Sequential day-pairs were constructed for temporal analysis.
+
+4
+J. Armouti et al.
+0
+0.5
+1
+0.75
+0.75
+0.88
+F1-Score
+Clinical EHR
+Imaging Biomarker
+Combined
+0.75 1.5
+2.25 3.0
+PL Location
+B-Line
+A-Line
+B-Line Origin
+PL Thickness
+PL Breaks
+Consolidation
+Effusion
+PL Indents
+Biomarker Selection Frequency
+Fig. 2: Imaging biomarkers complement clinical EHR. Left: EHR vs.
+expert biomarker performance. On a 25-patient held-out test cohort with
+available clinical EHR records, the clinical EHR model (purple) and expert LUS
+biomarker model (blue) achieve identical performance. In contrast, the combined
+model (red) improves the F1-score by +0.127 and correctly identifies all readmitted patients, highlighting the complementary prognostic information captured by imaging biomarkers that is not present in contemporary clinical EHR
+data. Right: Biomarker feature importance. Each axis represents a LUS
+biomarker group; radial distance encodes average Random Forest selection frequency (outer ring = 3.0, maximum observed). Pleural Line (PL) Location is
+the most discriminative single biomarker. The aggregate area covered by pleural attributes (Location, Thickness, Breaks, Indents) rivals the combined A-line
+and B-line contribution, highlighting underrecognized structural markers as key
+readmission predictors.
+3.2
+Pretrained Feature Extraction
+A Temporal Shift Module (TSM) network [5] with a ResNet-18 backbone was
+pretrained to regress the S/F ratio from LUS clips. The encoder was then frozen,
+and 512-dimensional embeddings were extracted from the layer preceding the
+regression head to provide high-level spatiotemporal features. For each patient,
+embeddings were generated at all available time points, and sequential daypairs (e.g., Day 1–2) were formed for downstream readmission classification using
+each patient’s single readmission label. Since most patients had only Day 1
+and Day 2 scans, our primary model was trained on Day 1–Day 2 pairs, with
+an All-Days variant trained on all available pairs (Table 2). Each LUS exam
+included six views (R1–L3), and models were trained separately for each view to
+assess per-view predictive value, with additional experiments evaluating multiview combinations.
+
+Prognostic Value of Lung Ultrasound Biomarkers
+5
+3.3
+Nested Cross-Validation and Evaluation
+We used five-by-five nested cross-validation to obtain unbiased performance estimates. Patients were split into five outer folds (six patients each) with strict
+patient-level separation to prevent leakage. Hyperparameter tuning was performed exclusively in the inner loop [9], while outer folds were reserved for testing. In each outer iteration, one fold served as test data and the remaining four
+formed the inner loop (three training, one validation, rotated). The model achieving the highest weighted F1 on inner validation was selected. This procedure
+yielded fold-specific results for all classifiers and fusion setups. For multi-view or
+multi-day experiments, decision-level fusion aggregated predictions across clips
+and time points. Evaluation: Final performance was computed from pooled
+outer-fold predictions using weighted F1-score. Ninety-five percent confidence
+intervals were estimated via bootstrap resampling (2000 iterations, 2.5th–97.5th
+percentiles).
+3.4
+View-Specific Performance & Classifier Comparison
+Table 1 summarizes F1-scores (with 95% CIs) for each view and classifier on
+Day 1–Day 2 pairs using the temporal difference representation and no crosslung pooling. Lower posterior views (Left-3 & Right-3) consistently show higher
+predictive performance than anterior views, supporting the intuition that dependent regions better capture pulmonary congestion. Across classifiers, MLP and
+MLP-Large generally achieve the best F1-scores, particularly when all views are
+concatenated.
+View
+Decision-Tree
+Random-Forest
+SVM
+MLP
+MLP-Large
+TabPFN
+Left-1
+0.60 [0.40–0.80]
+0.55 [0.34–0.77]
+0.41 [0.21–0.62]
+0.53 [0.33–0.73]
+0.53 [0.33–0.73]
+0.53 [0.31–0.77]
+Left-2
+0.42 [0.21–0.63]
+0.55 [0.34–0.74]
+0.49 [0.29–0.68]
+0.57 [0.37–0.76]
+0.49 [0.29–0.68]
+0.53 [0.32–0.74]
+Left-3
+0.63 [0.43–0.82] 0.58 [0.36–0.80] 0.60 [0.39–0.78] 0.68 [0.48–0.84] 0.68 [0.48–0.84]
+0.50 [0.28–0.72]
+Right-1
+0.41 [0.21–0.60]
+0.64 [0.43–0.84] 0.65 [0.45–0.83]
+0.44 [0.24–0.65]
+0.57 [0.37–0.76]
+0.50 [0.29–0.71]
+Right-2
+0.41 [0.22–0.62]
+0.64 [0.40–0.86]
+0.52 [0.32–0.73]
+0.47 [0.25–0.68]
+0.47 [0.25–0.69]
+0.51 [0.29–0.75]
+Right-3
+0.50 [0.29–0.69]
+0.55 [0.34–0.77]
+0.55 [0.34–0.75]
+0.61 [0.40–0.82] 0.68 [0.48–0.86] 0.64 [0.43–0.84]
+All Views
+0.53 [0.32–0.73]
+0.64 [0.40–0.85]
+0.58 [0.36–0.80]
+0.80 [0.62–0.96] 0.75 [0.55–0.92]
+0.55 [0.34–0.78]
+Table 1: View-wise classifier comparison. F1-scores (95% CIs) for each lung
+ultrasound (LUS) view on Day 1 vs. Day 2 using the difference representation
+and not trained with left–right pooled data. The “All Views” configuration combines all six views by concatenating their embeddings. MLP and MLP-Large
+perform best overall, with posterior views (3 and 6) most predictive.
+3.5
+Multi-View Fusion
+To leverage spatial information, we evaluated two fusion strategies. Feature-level
+fusion combines embeddings from all six views via averaging, max pooling, or
+concatenation. Decision-level fusion aggregates per-view predictions by either
+max-voting or averaging the predicted probabilities across views. As shown in
+Fig. 3, feature concatenation paired with temporal difference yields the best
+performance.
+
+6
+J. Armouti et al.
+Concatenate
+Difference
+Avg. Features
+Avg. Proba.
+Concatenate
+Max. Features
+Max. Votes
+0.45
+0.76
+0.55
+0.61
+0.57
+0.80
+0.49
+0.65
+0.55
+0.61
+Temporal Representation
+Fusion Strategy
+Fusion Strategy vs. Temporal Representation (All Views, MLP)
+0.4
+0.6
+0.8
+F1-score
+Fig. 3: Multi-view fusion heatmap (MLP, All Views). F1-scores across five
+fusion strategies (rows) and two temporal representations (columns). Feature
+concatenation with temporal difference achieves the best performance (0.80).
+Consistently higher scores in the “Difference” column indicate that temporal
+representation has greater impact than fusion strategy.
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+1
+Left-1
+Left-2
+Left-3
+Right-1
+Right-2
+Right-3
+All Views
+Weighted F1-score
+Per-View F1 by Temporal Strategy (MLP, Day 1 vs. Day 2)
+Temporal Concatenate
+Temporal Difference
+Fig. 4: Weighted F1 (95% CI) for temporal concatenation (gray) vs. temporal
+difference (blue) across six LUS views and the multi-view setting. Posterior views
+(Left-3, Right-3) outperform anterior views; temporal difference yields consistent
+gains; and all-view fusion achieves the highest F1.
+
+Prognostic Value of Lung Ultrasound Biomarkers
+7
+3.6
+Temporal Fusion
+To model temporal progression, we compared two ways of combining sequential
+embeddings: (1) taking their difference (e.g., Day 2–Day 1) to highlight changes,
+and (2) concatenating them to preserve both time points.
+Fig. 4 shows that using the difference between sequential scans generally outperforms concatenation, particularly for the posterior views and the multi-view
+setting. This supports the hypothesis that capturing progression or improvement
+over time is critical for readmission risk.
+3.7
+Day-Pair Modeling
+We next evaluated whether training on all available day-pair combinations improves generalization. Table 2 compares three settings: (1) a model trained and
+tested on Day 1 – Day 2 pairs only (Single-Day model), (2) a model trained on
+all day-pairs but evaluated on Day 1–Day 2 pairs (All-Days model), and (3) the
+All-Days model evaluated on all day-pairs.
+Overall, the Single-Day model yields the highest Day 1 –Day 2 F1 (0.80),
+while the All-Days model offers more consistent performance across views and
+day-pairs, indicating better temporal robustness.
+View
+Day 1 vs Day 2 (Single-Day Model)
+Day 1 vs Day 2 (All-Days Model)
+All Days (All-Days Model)
+Left-1
+0.53 [0.33–0.73]
+0.63 [0.42–0.82]
+0.66 [0.52–0.79]
+Left-2
+0.57 [0.37–0.76]
+0.60 [0.40–0.79]
+0.62 [0.47–0.75]
+Left-3
+0.68 [0.48–0.84]
+0.44 [0.23–0.67]
+0.48 [0.33–0.63]
+Right-1
+0.44 [0.24–0.65]
+0.65 [0.46–0.83]
+0.64 [0.50–0.77]
+Right-2
+0.47 [0.25–0.68]
+0.38 [0.19–0.57]
+0.46 [0.32–0.59]
+Right-3
+0.61 [0.40–0.82]
+0.68 [0.49–0.85]
+0.65 [0.52–0.78]
+All Views
+0.80 [0.62–0.96]
+0.72 [0.53–0.88]
+0.72 [0.60–0.83]
+Table 2: Day-pair modeling. F1-scores (95% CI) for each LUS view under
+different training settings. “Day 1 vs. Day 2 (Single-Day Model)” refers to performance on Day 1–Day 2 pairs using a model trained only on those pairs. “Day 1
+vs. Day 2 (All-Days Model)” uses a model trained on all available day-pair combinations but evaluated on Day 1–Day 2. “All Days (All-Days Model)” reports
+performance on all day-pairs. Fixed conditions: temporal difference, no crosslung pooling; for “All Views”, embeddings from all views are concatenated.
+3.8
+Cross-Lung: Training with Left–Right Pooled Data
+We exploited approximate left–right lung symmetry by treating paired views
+(R1–L1, R2–L2, R3–L3) as equivalent. During training, all directional mappings
+(e.g., R1→L1, L1→R1) were included to augment the data and enforce crosslung consistency. This pooling was applied only in training; evaluation remained
+side-specific to preserve clinical interpretability.
+
+8
+J. Armouti et al.
+Left-1
+Left-2
+Left-3
+Right-1
+Right-2
+Right-3
+All Views
+0.4
+0.6
+0.8
+1
+Weighted F1-score
+Effect of Cross-Lung Augmentation (MLP, Temporal Difference)
+No Cross-Lung
+With Cross-Lung
+Fig. 5: Cross-lung training. Comparison of MLP performance with and without left–right pooled augmentation across all LUS views. Fixed conditions: Day 1
+vs. Day 2, temporal difference; for “All Views”, embeddings are concatenated
+across views. Cross-lung pooling improves or maintains performance for most
+views while preserving the best multi-view result.
+As shown in Fig. 5, cross-lung pooling improves or maintains performance
+for most individual views (notably L3 and R3) while preserving the multi-view
+result (All Views F1 = 0.80). Thus, it serves as effective augmentation without
+degrading the best-performing configuration.
+3.9
+Biomarker-Prediction Pretraining
+We also evaluated a pretrained network from [2] designed to regress 38 interpretable LUS biomarkers, including A-lines, B-lines, pleural abnormalities,
+consolidations, and effusions. Using the same backbone pretraining dataset as
+the S/F model, the resulting 38-dimensional biomarker prediction vector was
+used in place of the 512-dimensional TSM embedding and evaluated using the
+same downstream classifiers and cross-validation protocol described in Sec. 3.
+This analysis aimed to assess the predictive utility of clinically interpretable
+biomarker-level features for 30-day readmission.
+View
+Decision-Tree Random-Forest
+SVM
+MLP
+MLP-Large
+TabPFN
+Left-3 (Day 1 vs. Day 2)
+0.63 [0.42–0.84]
+0.55 [0.33–0.77]
+0.44 [0.23–0.65]
+0.50 [0.28–0.71]
+0.53 [0.31–0.74]
+0.58 [0.36–0.78]
+Left-3 (All Days)
+0.52 [0.38–0.66]
+0.56 [0.41–0.70]
+0.47 [0.34–0.62]
+0.55 [0.39–0.68]
+0.55 [0.40–0.69]
+0.58 [0.42–0.72]
+Right-3 (Day 1 vs. Day 2)
+0.45 [0.25–0.66]
+0.50 [0.29–0.71]
+0.50 [0.29–0.69]
+0.47 [0.26–0.68]
+0.47 [0.26–0.69]
+0.39 [0.20–0.62]
+Right-3 (All Days)
+0.49 [0.35–0.62]
+0.53 [0.38–0.68]
+0.55 [0.42–0.68]
+0.50 [0.36–0.63]
+0.58 [0.43–0.71]
+0.55 [0.38–0.70]
+All Views (Day 1 vs. Day 2)
+0.58 [0.37–0.76]
+0.53 [0.31–0.77]
+0.71 [0.47–0.90]
+0.54 [0.34–0.73]
+0.60 [0.39–0.80]
+0.49 [0.27–0.71]
+All Views (All Days)
+0.68 [0.54–0.80] 0.67 [0.52–0.80]
+0.67 [0.52–0.80]
+0.65 [0.52–0.78] 0.60 [0.46–0.74]
+0.53 [0.37–0.69]
+Table 3: Biomarker-based pretraining. Using predicted biomarker values as
+input features, F1-scores (95% CI) with temporal difference are reported for the
+top performing views (L3, R3) and the multi-view condition, for Day 1 vs. Day 2
+and All-Days models. Fixed conditions: no cross-lung pooling; the “All Views”
+configuration combines all six views by feature concatenation.
+
+Prognostic Value of Lung Ultrasound Biomarkers
+9
+(a) Readmitted
+(b) Not Readmitted
+Fig. 6: Grad-CAM visualizations for paired Day 1 (top row) and Day 2 (bottom row) LUS clips. (a) Readmitted patient showing marked Day 2 effusion and
+corresponding focused model attention. (b) Not-readmitted patient demonstrating stable Day 2 appearance with diffuse, low-intensity attention.
+Table 3 summarizes results obtained using the 38-dimensional biomarker features for the top-performing individual views and multi-view fusion strategies.
+The best-performing biomarker-based model was the All Views (Day 1 vs. Day
+2) SVM configuration, achieving an F1-score of 0.71, which remained below the
+best-performing 512-dimensional TSM embedding model (F1-score = 0.80).
+Fig. 2 (right) presents a radar plot in which each axis corresponds to a LUS
+biomarker group, while the radial distance represents the average Random Forest
+feature-selection frequency across folds. A-line, B-line, and pleural line features
+(including location, thickness, and continuity) were selected most consistently,
+indicating that markers related to lung aeration and pleural structure are the
+strongest predictors of readmission risk. The Random Forest feature rankings
+further emphasize the combined importance of A-line, B-line, and pleural descriptors, consistent with clinical intuition.
+3.10
+Interpretability via Grad-CAM
+We applied Grad-CAM [7] to the final convolutional block of the pretrained
+TSM–ResNet18 encoder to visualize regions driving readmission predictions.
+Since the model processes paired sequential exams (e.g., Day 1 and 2), GradCAM was generated for both time points under the same prediction, yielding
+paired visual explanations. Analyses were limited to outer-fold test patients.
+Figure 6 shows representative readmitted and non-readmitted cases.
+
+10
+J. Armouti et al.
+4
+Conclusion
+This work demonstrates that lung ultrasound provides informative prognostic
+signals for 30-day CHF readmission. ML models achieved strong performance (F1
+up to 0.80), driven largely by lower-lung and pleural-line abnormalities. Temporal
+difference features and multi-view concatenation were most effective, with crosslung augmentation offering additional gains. Biomarker models highlighted Alines, B-lines, and pleural descriptors as key predictors, underscoring the value
+of LUS for noninvasive CHF risk stratification.
+Acknowledgments. This research was partially supported by the Liang
+Zhao Endowed Fellowship at Carnegie Mellon University (CMU). The authors
+gratefully acknowledge the clinicians at Louisiana State University (LSU) for
+their assistance with data collection, as well as collaborators at CMU for their
+helpful feedback and discussions. All datasets were de-identified prior to analysis.
+The LSU dataset was collected under IRB protocol #1509, titled Artificial Intelligence Interpretation of Lung Ultrasound Images and was de-identified prior
+to transfer to CMU.
+
+Prognostic Value of Lung Ultrasound Biomarkers
+11
