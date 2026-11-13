@@ -18,3 +18,4 @@
 {"ts": "2026-11-13T11:09:46+00:00", "agent": "coordinator", "action": "model_switch", "old": "qwen/qwen3.6-27b", "new": "openai/gpt-oss-20b", "reason": "Error code: 404 - {'error': {'message': 'The model `qwen/qwen3.6-27b` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'code': 'model_not_found'}}"}
 {"ts": "2026-11-13T11:31:45+00:00", "agent": "human", "action": "review_screening_full_text", "approve": true, "feedback": "ok"}
 {"ts": "2026-11-13T11:53:18+00:00", "agent": "coordinator", "action": "session_start", "provider": "groq", "fast": "openai/gpt-oss-20b", "strong": "openai/gpt-oss-120b", "b": "openai/gpt-oss-120b"}
+{"ts": "2026-11-13T11:57:19+00:00", "agent": "coordinator", "action": "session_start", "provider": "groq", "fast": "openai/gpt-oss-20b", "strong": "openai/gpt-oss-120b", "b": "openai/gpt-oss-120b"}
