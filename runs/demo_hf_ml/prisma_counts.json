@@ -9,5 +9,12 @@
   "duplicates_removed": 13,
   "records_screened": 272,
   "records_excluded_ta": 184,
-  "reports_sought": 88
+  "reports_sought": 88,
+  "reports_not_retrieved": 53,
+  "fulltext_retrieved": 35,
+  "fulltext_sources": {
+    "unpaywall": 11,
+    "oa_pdf": 13,
+    "arxiv": 11
+  }
 }
