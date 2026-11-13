@@ -15,3 +15,6 @@ pydantic>=2
 pyyaml
 requests
 pandas
+pypandoc_binary
+matplotlib
+gradio

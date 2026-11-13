@@ -91,6 +91,7 @@ docs/                        architecture diagram, video script
 3. *Add-ons → Secrets* (tick **attach**):
    - `LLM_API_KEY` — Groq API key (free at console.groq.com),
    - `GITHUB_TOKEN` — fine-grained token with *Contents: read & write* on this repository,
+   - `CEREBRAS_API_KEY` — optional, free at cloud.cerebras.ai (larger daily token quota),
    - `S2_API_KEY` — optional Semantic Scholar key.
 4. Edit cell 1 (GitHub user, e-mail) and run cells 1–6. Cell 6 tests the LLMs and the four databases.
 
@@ -119,8 +120,10 @@ Python ≥ 3.10. Other providers: `--provider google_genai` or `openai` with the
 | `max_extraction` | number of included studies sent to extraction/synthesis (reproducible sample); `null` = all |
 | `fulltext_required` | `false`: papers without open-access full text are assessed on the abstract (flagged `abstract_only`); `true`: counted as *not retrieved* |
 
-LLM roles (notebook cell 1 or `run.py --fast/--strong`) are **chains**: when a model reaches its daily quota
-(Groq free tier: 200k tokens/day per model) the next one is used automatically and the switch is logged.
+LLM roles (notebook cell 1 or `run.py --fast/--strong`) are **chains** that may mix providers
+(`cerebras:gpt-oss-120b`, then Groq `openai/gpt-oss-120b`, `openai/gpt-oss-20b`): when a model reaches its daily quota
+(e.g. Groq free tier: 200k tokens/day per model) the next one is used automatically and the switch is logged; if all are
+saturated the pipeline waits for the quota to refill. Keys: `LLM_API_KEY` (Groq) and optional `CEREBRAS_API_KEY`.
 
 ## 6. Execution
 - **Notebook**: run the *PIPELINE EXECUTION* cell. The coordinator resumes from where it stopped.
@@ -172,12 +175,12 @@ The 3-minute video script is in [`docs/video_script.md`](docs/video_script.md).
 | 0. Analysis | Requirements and deliverables analysis; demo topic chosen; Kaggle + Groq + GitHub selected | Kaggle sessions are time-limited → GitHub used as persistent store |
 | 1. Search | Protocol and search-strategy agents, 4 database connectors, deduplication, LangGraph coordinator with human checkpoints and SQLite checkpointer | Groq retired the Llama 3.x models (Aug 2026) → `gpt-oss-20b/120b`; ambiguous term "HF" kept and reported as a limitation |
 | 2. Screening + RAG | Dual screening in batches, arbiter, κ, full-text retrieval (Europe PMC, arXiv, OA PDFs, Unpaywall), hybrid RAG index, full-text eligibility | Free-tier rate limits → batching, throttling, retries, LLM cache; many paywalled papers → `abstract_only` flag |
-| 3. Synthesis | Extraction with verified quotes, PROBAST, synthesis, critic loop, report builder (Markdown/DOCX, PRISMA diagram, CSV, BibTeX) | Daily quota reached during arbitration → automatic model fallback chain |
+| 3. Synthesis | Extraction with verified quotes, PROBAST, synthesis, critic loop, report builder (Markdown/DOCX, PRISMA diagram, CSV, BibTeX) | Daily quota reached during arbitration → automatic model fallback chain, quota-wait mode, background execution, second provider (Cerebras), extraction limited to a reproducible sample |
 | 4. Evaluation & demo | Blinded human labelling, metrics, Gradio demo, documentation, video | — |
 
 ## 11. Limitations
 - Only open-access full texts are retrievable; others are assessed on abstracts (flagged and counted).
-- **Demonstration scope:** to stay within the free LLM quota, data extraction, risk-of-bias appraisal and synthesis were run on a reproducible random sample of 20 included studies (`max_extraction: 20`, seed 42, priority to open-access full texts). Setting `max_extraction: null` processes all included studies.
+- **Demonstration scope:** to stay within the free LLM quota, data extraction, risk-of-bias appraisal and synthesis were run on a reproducible random sample of 10 included studies (`max_extraction: 10`, seed 42, priority to open-access full texts). Setting `max_extraction: null` processes all included studies.
 - Retrieval is capped per database for the demonstration (top-N by relevance), so recall is not exhaustive.
 - LLM decisions can be wrong; human validation points and the critic agent mitigate but do not remove this risk. The manuscript is a **draft that requires expert verification**.
 - No quantitative pooling (narrative synthesis); data are exported for meta-analysis.
